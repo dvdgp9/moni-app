@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div style="display:flex;gap:10px;margin-top:10px">
       <button type="submit">Guardar</button>
-      <a class="btn" href="/?page=clients" style="background:#E2E8F0;color:#0F172A">Cancelar</a>
+      <a class="btn btn-secondary" href="/?page=clients">Cancelar</a>
     </div>
   </form>
 </section>

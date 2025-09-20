@@ -42,30 +42,30 @@ $clients = ClientsRepository::all();
     <p>No hay clientes todavía.</p>
   <?php else: ?>
     <div class="card">
-      <table style="width:100%;border-collapse:collapse">
+      <table class="table">
         <thead>
           <tr>
-            <th style="text-align:left;border-bottom:1px solid #E2E8F0;padding:8px">Nombre</th>
-            <th style="text-align:left;border-bottom:1px solid #E2E8F0;padding:8px">NIF</th>
-            <th style="text-align:left;border-bottom:1px solid #E2E8F0;padding:8px">Email</th>
-            <th style="text-align:left;border-bottom:1px solid #E2E8F0;padding:8px">Teléfono</th>
-            <th style="text-align:left;border-bottom:1px solid #E2E8F0;padding:8px">Acciones</th>
+            <th>Nombre</th>
+            <th>NIF</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($clients as $c): ?>
             <tr>
-              <td style="padding:8px;border-bottom:1px solid #F1F5F9;"><?= htmlspecialchars($c['name']) ?></td>
-              <td style="padding:8px;border-bottom:1px solid #F1F5F9;"><?= htmlspecialchars($c['nif'] ?? '') ?></td>
-              <td style="padding:8px;border-bottom:1px solid #F1F5F9;"><?= htmlspecialchars($c['email'] ?? '') ?></td>
-              <td style="padding:8px;border-bottom:1px solid #F1F5F9;"><?= htmlspecialchars($c['phone'] ?? '') ?></td>
-              <td style="padding:8px;border-bottom:1px solid #F1F5F9;display:flex;gap:8px">
-                <a href="/?page=client_form&id=<?= (int)$c['id'] ?>">Editar</a>
+              <td><?= htmlspecialchars($c['name']) ?></td>
+              <td><?= htmlspecialchars($c['nif'] ?? '') ?></td>
+              <td><?= htmlspecialchars($c['email'] ?? '') ?></td>
+              <td><?= htmlspecialchars($c['phone'] ?? '') ?></td>
+              <td class="table-actions">
+                <a href="/?page=client_form&id=<?= (int)$c['id'] ?>" class="btn">Editar</a>
                 <form method="post" onsubmit="return confirm('¿Eliminar cliente?');">
                   <input type="hidden" name="_action" value="delete" />
                   <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                   <input type="hidden" name="id" value="<?= (int)$c['id'] ?>" />
-                  <button type="submit" style="background:#EF4444" class="btn">Eliminar</button>
+                  <button type="submit" class="btn btn-danger">Eliminar</button>
                 </form>
               </td>
             </tr>
