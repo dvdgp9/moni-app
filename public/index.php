@@ -44,6 +44,8 @@ $routes = [
     'settings'  => $root . '/templates/settings.php',
     'clients'   => $root . '/templates/clients_list.php',
     'client_form' => $root . '/templates/clients_form.php',
+    'invoices'  => $root . '/templates/invoices_list.php',
+    'invoice_form' => $root . '/templates/invoices_form.php',
 ];
 
 $template = $routes[$page] ?? $routes['dashboard'];

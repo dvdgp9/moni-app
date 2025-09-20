@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   client_id INT NOT NULL,
   status ENUM('draft','issued','paid','cancelled') DEFAULT 'draft',
   issue_date DATE NOT NULL,
+  due_date DATE NULL,
   notes TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_invoice_number (invoice_number)

@@ -18,7 +18,7 @@ $view = $template;
         <a href="/?page=dashboard">Dashboard</a>
         <a href="/?page=settings">Ajustes</a>
         <a href="/?page=clients">Clientes</a>
-        <a class="disabled" title="Próximamente">Facturas</a>
+        <a href="/?page=invoices">Facturas</a>
         <a class="disabled" title="Próximamente">Declaraciones</a>
       </nav>
     </div>

@@ -101,7 +101,7 @@ Valores por defecto (editables):
   - [x] Lógica recordatorios trimestrales + fechas personalizadas
   - [x] Script cron `run_reminders.php` y servicio de recordatorios
   - [ ] Dashboard placeholder + estilo (pendiente de validar estilo cargado en producción)
-- [ ] H2: Clientes (CRUD)
+- [x] H2: Clientes (CRUD)
 - [ ] H3: Facturas (CRUD + cálculos + numeración)
 - [ ] H4: PDF de facturas (Dompdf)
 - [ ] H5: Asistencia declaraciones trimestrales
