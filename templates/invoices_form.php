@@ -184,7 +184,10 @@ $totals = InvoiceService::computeTotals($items);
     <h3>Líneas</h3>
     <div id="items">
       <?php foreach ($items as $idx => $it): ?>
-        <div class="card" style="margin-bottom:8px">
+        <div class="card" style="margin-bottom:8px; position:relative">
+          <?php if ($idx > 0): ?>
+            <button type="button" class="btn btn-danger" data-role="remove-line" title="Eliminar línea" style="position:absolute;top:8px;right:8px;padding:6px 10px">🗑️</button>
+          <?php endif; ?>
           <div class="grid-2">
             <div>
               <label>Descripción</label>
@@ -274,7 +277,9 @@ $totals = InvoiceService::computeTotals($items);
     const div = document.createElement('div');
     div.className = 'card';
     div.style.marginBottom = '8px';
+    div.style.position = 'relative';
     div.innerHTML = `
+      <button type="button" class="btn btn-danger" data-role="remove-line" title="Eliminar línea" style="position:absolute;top:8px;right:8px;padding:6px 10px">🗑️</button>
       <div class="grid-2">
         <div>
           <label>Descripción</label>
@@ -336,6 +341,27 @@ $totals = InvoiceService::computeTotals($items);
     if (e.target && names.includes(e.target.name)) {
       recalcTotals();
     }
+  });
+  // Delete line handling with confirmation if fields have data (description or price)
+  items.addEventListener('click', function(e){
+    const btn = e.target.closest('[data-role="remove-line"]');
+    if (!btn) return;
+    const card = btn.closest('.card');
+    if (!card) return;
+    // Ensure at least one line remains
+    const cards = items.querySelectorAll('.card');
+    if (cards.length <= 1) return; // first mandatory line protection
+    // Check if has data
+    const desc = card.querySelector('input[name="item_description[]"]').value.trim();
+    const priceStr = card.querySelector('input[name="item_unit_price[]"]').value.trim();
+    const price = parseFloat(priceStr.replace(',', '.')) || 0;
+    if (desc !== '' || price > 0) {
+      if (!confirm('Al continuar se eliminarán los datos de esta línea, ¿quieres continuar?')) {
+        return;
+      }
+    }
+    card.remove();
+    recalcTotals();
   });
   issue && issue.addEventListener('change', applyTerms);
   terms && terms.addEventListener('change', applyTerms);
