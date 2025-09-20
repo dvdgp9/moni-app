@@ -28,3 +28,12 @@ Config::init([
         'from_name' => $_ENV['MAIL_FROM_NAME'] ?? 'Moni',
     ],
 ]);
+
+// Toggle PHP error display based on debug mode
+if (Config::get('debug')) {
+    @ini_set('display_errors', '1');
+    @ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+} else {
+    @ini_set('display_errors', '0');
+}

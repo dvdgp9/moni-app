@@ -107,6 +107,9 @@ Valores por defecto (editables):
 - [ ] H5: Asistencia declaraciones trimestrales
 - [ ] H6: Auth básica
 - [ ] H7: Despliegue y cron en cPanel
+  - [ ] Crear repo GitHub y primer push (COMPLETADO 2025-09-20)
+  - [ ] Configurar hosting (document root a `public/`, clonar repo, `composer install`, `.env` producción)
+  - [ ] Configurar cron diario 08:00 Europe/Madrid
 
 ## Current Status / Progress Tracking
 - 2025-09-20: Planificación inicial completada (Planner). Aprobado pasar a Executor.
@@ -114,6 +117,7 @@ Valores por defecto (editables):
   - Archivos clave: `composer.json`, `public/index.php`, `src/bootstrap.php`, `src/support/Config.php`, `src/Database.php`, `src/Services/EmailService.php`, `templates/*`, `assets/css/styles.css`, `scripts/run_reminders.php`, `database/migrations/001_init.sql`, `.env.example` y `.gitignore`.
   - Pendiente ejecutar `composer install` para descargar dependencias.
   - Pendiente crear BD e importar `database/migrations/001_init.sql`.
+ - 2025-09-20: Git inicializado, primer commit y push a `origin/main` (repo: `dvdgp9/moni-app`).
 
 ## Executor's Feedback or Assistance Requests
 - Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`).
