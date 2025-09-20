@@ -1,15 +1,30 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/../vendor/autoload.php';
+$root = dirname(__DIR__);
+
+// Ensure Composer autoload exists
+$autoload = $root . '/vendor/autoload.php';
+if (!file_exists($autoload)) {
+    http_response_code(500);
+    echo 'Falta vendor/autoload.php. Instala dependencias con Composer (composer install).';
+    exit;
+}
+require $autoload;
 
 use Dotenv\Dotenv;
 
-$root = dirname(__DIR__);
-
-if (file_exists($root . '/.env')) {
-    $dotenv = Dotenv::createImmutable($root);
-    $dotenv->safeLoad();
+// Load .env if present
+try {
+    if (file_exists($root . '/.env')) {
+        $dotenv = Dotenv::createImmutable($root);
+        $dotenv->safeLoad();
+    }
+} catch (Throwable $e) {
+    // If dotenv fails very early, show basic hint
+    http_response_code(500);
+    echo 'Error cargando .env: ' . htmlspecialchars($e->getMessage());
+    exit;
 }
 
 $timezone = $_ENV['TIMEZONE'] ?? 'Europe/Madrid';
