@@ -5,6 +5,9 @@ use Moni\Support\Flash;
 
 $flashAll = Flash::getAll();
 
+// Read search query
+$q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
+
 // Handle delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
@@ -21,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'dele
     }
 }
 
-$clients = ClientsRepository::all();
+$clients = ClientsRepository::all($q);
 ?>
 <section>
   <h1>Clientes</h1>
@@ -29,14 +32,20 @@ $clients = ClientsRepository::all();
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>
       <?php foreach ($messages as $msg): ?>
-        <div class="alert" style="<?= $type==='error'?'background:#FEE2E2;border-color:#FCA5A5;color:#991B1B':'' ?>"><?= htmlspecialchars($msg) ?></div>
+        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
       <?php endforeach; ?>
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <p>
-    <a href="/?page=client_form" class="btn">+ Nuevo cliente</a>
-  </p>
+  <form method="get" class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <input type="hidden" name="page" value="clients" />
+    <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Buscar por nombre, NIF, email o teléfono" style="flex:1" />
+    <button type="submit" class="btn">Buscar</button>
+    <?php if ($q !== ''): ?>
+      <a href="/?page=clients" class="btn btn-secondary">Limpiar</a>
+    <?php endif; ?>
+    <a href="/?page=client_form" class="btn" style="margin-left:auto">+ Nuevo cliente</a>
+  </form>
 
   <?php if (empty($clients)): ?>
     <p>No hay clientes todavía.</p>

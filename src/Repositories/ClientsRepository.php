@@ -8,9 +8,18 @@ use PDO;
 
 final class ClientsRepository
 {
-    public static function all(): array
+    public static function all(?string $q = null): array
     {
         $pdo = Database::pdo();
+        if ($q !== null && trim($q) !== '') {
+            $like = '%' . str_replace(['%','_'], ['\\%','\\_'], trim($q)) . '%';
+            $stmt = $pdo->prepare('SELECT id, name, nif, email, phone, address, default_vat, default_irpf, created_at
+                FROM clients
+                WHERE name LIKE :k OR nif LIKE :k OR email LIKE :k OR phone LIKE :k
+                ORDER BY created_at DESC');
+            $stmt->execute([':k' => $like]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
         $stmt = $pdo->query('SELECT id, name, nif, email, phone, address, default_vat, default_irpf, created_at FROM clients ORDER BY created_at DESC');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
