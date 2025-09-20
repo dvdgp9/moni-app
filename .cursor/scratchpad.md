@@ -94,13 +94,13 @@ Valores por defecto (editables):
 
 ## Project Status Board (Markdown TODO)
 - [ ] H1: Bootstrap + Dashboard + Avisos
-  - [ ] Estructura PHP con Composer y `.env` (estructura creada; pendiente `composer install`)
-  - [ ] Migración inicial BD (001)
-  - [ ] PHPMailer + prueba de envío
-  - [ ] Ajustes (SMTP, TZ, preferencias)
-  - [ ] Lógica recordatorios trimestrales + custom
-  - [ ] Script cron `run_reminders.php`
-  - [ ] Dashboard placeholder + estilo
+  - [x] Estructura PHP con Composer y `.env`
+  - [x] Migración inicial BD (001)
+  - [x] PHPMailer + prueba de envío
+  - [x] Ajustes (SMTP, TZ, preferencias) con persistencia en BD
+  - [x] Lógica recordatorios trimestrales + fechas personalizadas
+  - [x] Script cron `run_reminders.php` y servicio de recordatorios
+  - [x] Dashboard placeholder + estilo
 - [ ] H2: Clientes (CRUD)
 - [ ] H3: Facturas (CRUD + cálculos + numeración)
 - [ ] H4: PDF de facturas (Dompdf)
@@ -118,6 +118,7 @@ Valores por defecto (editables):
   - Pendiente ejecutar `composer install` para descargar dependencias.
   - Pendiente crear BD e importar `database/migrations/001_init.sql`.
  - 2025-09-20: Git inicializado, primer commit y push a `origin/main` (repo: `dvdgp9/moni-app`).
+- 2025-09-20: Ajustes persistentes y motor de recordatorios implementados. Cron configurado en cPanel (08:00 Europe/Madrid).
 
 ## Executor's Feedback or Assistance Requests
 - Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`).
