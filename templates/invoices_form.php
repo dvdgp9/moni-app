@@ -20,6 +20,7 @@ $invoice = [
   'due_date' => date('Y-m-d', strtotime('+30 days')),
   'notes' => '',
 ];
+$due_terms = '30'; // '15' | '30' | 'custom'
 $items = [[
   'description' => '',
   'quantity' => '1',
@@ -33,6 +34,15 @@ if ($editing) {
   if ($found) {
     $invoice = array_merge($invoice, $found);
     $items = InvoiceItemsRepository::byInvoice($id);
+    // Preseleccionar due_terms según diferencia con issue_date
+    if (!empty($invoice['due_date']) && !empty($invoice['issue_date'])) {
+      $issue = strtotime($invoice['issue_date']);
+      $due = strtotime($invoice['due_date']);
+      $diffDays = (int) round(($due - $issue) / 86400);
+      if ($diffDays === 15) { $due_terms = '15'; }
+      elseif ($diffDays === 30) { $due_terms = '30'; }
+      else { $due_terms = 'custom'; }
+    }
     if (empty($items)) {
       $items = [[
         'description' => '', 'quantity' => '1', 'unit_price' => '0.00', 'vat_rate' => '21', 'irpf_rate' => '15'
@@ -75,7 +85,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   $invoice['client_id'] = (int)($_POST['client_id'] ?? 0);
   $invoice['issue_date'] = trim((string)($_POST['issue_date'] ?? date('Y-m-d')));
-  $invoice['due_date'] = trim((string)($_POST['due_date'] ?? '')) ?: null;
+  $due_terms = ($_POST['due_terms'] ?? '30');
+  $raw_due = trim((string)($_POST['due_date'] ?? ''));
+  if ($due_terms === '15' || $due_terms === '30') {
+    $base = strtotime($invoice['issue_date']);
+    if ($base !== false) {
+      $days = (int)$due_terms;
+      $invoice['due_date'] = date('Y-m-d', strtotime("+{$days} days", $base));
+    } else {
+      $invoice['due_date'] = null;
+    }
+  } else {
+    $invoice['due_date'] = $raw_due !== '' ? $raw_due : null;
+  }
   $invoice['notes'] = trim((string)($_POST['notes'] ?? ''));
   $items = parse_items_from_post();
 
@@ -140,8 +162,15 @@ $totals = InvoiceService::computeTotals($items);
         <?php if (!empty($errors['issue_date'])): ?><div class="alert error"><?= htmlspecialchars($errors['issue_date']) ?></div><?php endif; ?>
       </div>
       <div>
-        <label>Fecha de vencimiento</label>
-        <input type="date" name="due_date" value="<?= htmlspecialchars((string)$invoice['due_date']) ?>" id="due_date" />
+        <label>Vencimiento</label>
+        <div class="grid-2">
+          <select name="due_terms" id="due_terms" style="width:100%;padding:10px;border:1px solid #E2E8F0;border-radius:8px;background:#fff">
+            <option value="15" <?= $due_terms==='15'?'selected':'' ?>>15 días</option>
+            <option value="30" <?= $due_terms==='30'?'selected':'' ?>>30 días</option>
+            <option value="custom" <?= $due_terms==='custom'?'selected':'' ?>>Personalizado</option>
+          </select>
+          <input type="date" name="due_date" value="<?= htmlspecialchars((string)$invoice['due_date']) ?>" id="due_date" />
+        </div>
         <?php if (!empty($errors['due_date'])): ?><div class="alert error"><?= htmlspecialchars($errors['due_date']) ?></div><?php endif; ?>
       </div>
     </div>
@@ -207,17 +236,27 @@ $totals = InvoiceService::computeTotals($items);
   const items = document.getElementById('items');
   const issue = document.getElementById('issue_date');
   const due = document.getElementById('due_date');
+  const terms = document.getElementById('due_terms');
 
-  function recalcDue(){
-    if(!issue || !due) return;
-    const v = issue.value;
-    if(!v) return;
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return;
-    // +30 días
-    d.setDate(d.getDate() + 30);
-    const iso = d.toISOString().slice(0,10);
-    if(!due.value) due.value = iso; // autocompletar si vacío
+  function applyTerms(){
+    const mode = terms ? terms.value : '30';
+    if (!issue || !due) return;
+    if (mode === '15' || mode === '30') {
+      // calcular vista
+      const base = new Date(issue.value);
+      if (!isNaN(base.getTime())) {
+        const days = parseInt(mode, 10);
+        const d = new Date(base.getTime());
+        d.setDate(d.getDate() + days);
+        const iso = d.toISOString().slice(0,10);
+        due.value = iso;
+      }
+      due.readOnly = true;
+      due.style.opacity = 0.8;
+    } else {
+      due.readOnly = false;
+      due.style.opacity = 1;
+    }
   }
 
   function addLine(){
@@ -287,9 +326,9 @@ $totals = InvoiceService::computeTotals($items);
       recalcTotals();
     }
   });
-  issue && issue.addEventListener('change', function(){
-    // Autocalcular vencimiento siempre que esté vacío o si lo quieres recalcular cada vez, cambia la lógica
-    if (!due.value) recalcDue();
-  });
+  issue && issue.addEventListener('change', applyTerms);
+  terms && terms.addEventListener('change', applyTerms);
+  // inicial
+  applyTerms();
 })();
 </script>
