@@ -4,8 +4,6 @@ declare(strict_types=1);
 use Moni\Support\Config;
 use Moni\Repositories\SettingsRepository;
 
-require_once __DIR__ . '/support/Config.php';
-
 Config::init([
     'app_name' => $_ENV['APP_NAME'] ?? 'Moni',
     'app_url' => $_ENV['APP_URL'] ?? 'http://localhost',
