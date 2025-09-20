@@ -31,6 +31,7 @@ Config::init([
         'notify_email' => $_ENV['MAIL_FROM_ADDRESS'] ?? '',
         'timezone' => $_ENV['TIMEZONE'] ?? 'Europe/Madrid',
         'custom_dates' => [], // array de strings YYYY-MM-DD
+        'invoice_due_days' => 30,
     ],
 ]);
 
@@ -60,6 +61,12 @@ try {
         $decoded = json_decode($raw['reminder_custom_dates'] ?: '[]', true);
         if (is_array($decoded)) {
             $over['settings']['custom_dates'] = $decoded;
+        }
+    }
+    if (isset($raw['invoice_due_days'])) {
+        $days = (int)$raw['invoice_due_days'];
+        if ($days > 0 && $days <= 90) {
+            $over['settings']['invoice_due_days'] = $days;
         }
     }
     if (!empty($over)) {

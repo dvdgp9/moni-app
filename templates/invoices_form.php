@@ -5,6 +5,7 @@ use Moni\Repositories\ClientsRepository;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 use Moni\Services\InvoiceService;
+use Moni\Support\Config;
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
@@ -14,13 +15,15 @@ $errors = [];
 $clients = ClientsRepository::all();
 
 // Defaults
+$defaultDays = (int) Config::get('settings.invoice_due_days', 30);
+$defaultDays = ($defaultDays > 0 && $defaultDays <= 90) ? $defaultDays : 30;
 $invoice = [
   'client_id' => $clients[0]['id'] ?? 0,
   'issue_date' => date('Y-m-d'),
-  'due_date' => date('Y-m-d', strtotime('+30 days')),
+  'due_date' => date('Y-m-d', strtotime('+' . $defaultDays . ' days')),
   'notes' => '',
 ];
-$due_terms = '30'; // '15' | '30' | 'custom'
+$due_terms = ($defaultDays === 15 ? '15' : ($defaultDays === 30 ? '30' : 'custom')); // '15' | '30' | 'custom'
 $items = [[
   'description' => '',
   'quantity' => '1',

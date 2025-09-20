@@ -8,13 +8,28 @@ use PDO;
 
 final class InvoicesRepository
 {
-    public static function all(): array
+    public static function all(?string $q = null, ?string $status = null): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT i.id, i.invoice_number, i.client_id, i.status, i.issue_date, i.due_date, i.created_at, c.name AS client_name
-            FROM invoices i
-            LEFT JOIN clients c ON c.id = i.client_id
-            ORDER BY i.created_at DESC');
+        $sql = 'SELECT i.id, i.invoice_number, i.client_id, i.status, i.issue_date, i.due_date, i.created_at, c.name AS client_name
+                FROM invoices i LEFT JOIN clients c ON c.id = i.client_id';
+        $conds = [];
+        $params = [];
+        if ($status !== null && in_array($status, ['draft','issued','paid','cancelled'], true)) {
+            $conds[] = 'i.status = :status';
+            $params[':status'] = $status;
+        }
+        if ($q !== null && trim($q) !== '') {
+            $like = '%' . str_replace(['%','_'], ['\\%','\\_'], trim($q)) . '%';
+            $conds[] = '(i.invoice_number LIKE :k OR c.name LIKE :k)';
+            $params[':k'] = $like;
+        }
+        if (!empty($conds)) {
+            $sql .= ' WHERE ' . implode(' AND ', $conds);
+        }
+        $sql .= ' ORDER BY i.created_at DESC';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -58,7 +73,9 @@ final class InvoicesRepository
     public static function updateDraft(int $id, array $data): void
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('UPDATE invoices SET client_id = :client_id, issue_date = :issue_date, due_date = :due_date, notes = :notes WHERE id = :id AND status = "draft"');
+        $stmt = $pdo->prepare('UPDATE invoices
+            SET client_id = :client_id, issue_date = :issue_date, due_date = :due_date, notes = :notes
+            WHERE id = :id AND status = "draft"');
         $stmt->execute([
             ':id' => $id,
             ':client_id' => (int)$data['client_id'],
@@ -66,5 +83,19 @@ final class InvoicesRepository
             ':due_date' => $data['due_date'] ?? null,
             ':notes' => $data['notes'] ?? null,
         ]);
+    }
+
+    public static function setNumberAndStatusIssued(int $id, string $number): void
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('UPDATE invoices SET invoice_number = :num, status = "issued" WHERE id = :id AND status = "draft"');
+        $stmt->execute([':id' => $id, ':num' => $number]);
+    }
+
+    public static function setStatus(int $id, string $status): void
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('UPDATE invoices SET status = :status WHERE id = :id');
+        $stmt->execute([':id' => $id, ':status' => $status]);
     }
 }
