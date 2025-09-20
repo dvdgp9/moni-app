@@ -4,6 +4,7 @@ use Moni\Support\Flash;
 use Moni\Support\Csrf;
 use Moni\Services\InvoiceNumberingService;
 use Moni\Repositories\InvoiceItemsRepository;
+use Moni\Database;
 
 $flashAll = Flash::getAll();
 
@@ -11,7 +12,7 @@ $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
 $status = in_array($status, ['draft','issued','paid','cancelled'], true) ? $status : null;
 
-// Actions: issue, paid, cancelled
+// Actions: issue, paid, cancelled, delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
@@ -39,6 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       } elseif ($action === 'cancelled') {
         InvoicesRepository::setStatus($id, 'cancelled');
         Flash::add('success', 'Factura Cancelada.');
+      } elseif ($action === 'delete') {
+        // borrar líneas y factura
+        InvoiceItemsRepository::deleteByInvoice($id);
+        $pdo = Database::pdo();
+        $del = $pdo->prepare('DELETE FROM invoices WHERE id = :id');
+        $del->execute([':id' => $id]);
+        Flash::add('success', 'Factura eliminada.');
       }
     } catch (Throwable $e) {
       Flash::add('error', 'Acción fallida: ' . $e->getMessage());
@@ -135,6 +143,12 @@ function status_es(string $s): string {
                     <button type="submit" class="btn btn-danger">Cancelar</button>
                   </form>
                 <?php endif; ?>
+                <form method="post" style="display:inline" onsubmit="return confirm('¿Eliminar la factura?');">
+                  <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                  <input type="hidden" name="_action" value="delete" />
+                  <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
+                  <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
               </td>
             </tr>
           <?php endforeach; ?>

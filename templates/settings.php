@@ -35,6 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
         SettingsRepository::set('timezone', $tz);
         SettingsRepository::set('reminders_enabled', $enabled);
         SettingsRepository::set('reminder_custom_dates', json_encode($custom));
+        // Guardar plazo por defecto (días) si se envía
+        if (isset($_POST['invoice_due_days'])) {
+            $days = (int)$_POST['invoice_due_days'];
+            if ($days > 0 && $days <= 90) {
+                SettingsRepository::set('invoice_due_days', (string)$days);
+            }
+        }
         $flash = 'Ajustes guardados correctamente.';
     } catch (Throwable $e) {
         $flash = 'Error guardando ajustes: ' . htmlspecialchars($e->getMessage());
@@ -60,6 +67,7 @@ $s_enabled = $s_enabled_raw === null ? (bool)Config::get('settings.reminders_ena
 $s_custom_json = SettingsRepository::get('reminder_custom_dates') ?? '[]';
 $s_custom_arr = json_decode($s_custom_json, true);
 if (!is_array($s_custom_arr)) { $s_custom_arr = []; }
+$s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Config::get('settings.invoice_due_days', 30));
 ?>
 <section>
   <h1>Ajustes</h1>
@@ -95,6 +103,10 @@ if (!is_array($s_custom_arr)) { $s_custom_arr = []; }
 
         <label>Fechas personalizadas (YYYY-MM-DD, una por línea o JSON)</label>
         <textarea name="custom_dates" rows="5" placeholder="2025-02-15&#10;2025-09-30"><?php foreach ($s_custom_arr as $d) { echo htmlspecialchars($d) . "\n"; } ?></textarea>
+
+        <h3>Facturas</h3>
+        <label>Plazo por defecto (días)</label>
+        <input type="number" name="invoice_due_days" min="1" max="90" value="<?= (int)$s_due_days ?>" />
 
         <button type="submit">Guardar ajustes</button>
       </form>

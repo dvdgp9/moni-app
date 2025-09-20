@@ -229,6 +229,14 @@ $totals = InvoiceService::computeTotals($items);
     <div style="display:flex;gap:10px;margin-top:10px">
       <button type="submit" class="btn">Guardar borrador</button>
       <a class="btn btn-secondary" href="/?page=invoices">Cancelar</a>
+      <?php if ($editing): ?>
+        <form method="post" action="/?page=invoices" onsubmit="return confirm('¿Eliminar la factura?');" style="margin-left:auto">
+          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+          <input type="hidden" name="_action" value="delete" />
+          <input type="hidden" name="id" value="<?= (int)$id ?>" />
+          <button type="submit" class="btn btn-danger">Eliminar</button>
+        </form>
+      <?php endif; ?>
     </div>
   </form>
 </section>
