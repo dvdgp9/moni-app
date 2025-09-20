@@ -100,7 +100,7 @@ Valores por defecto (editables):
   - [x] Ajustes (SMTP, TZ, preferencias) con persistencia en BD
   - [x] Lógica recordatorios trimestrales + fechas personalizadas
   - [x] Script cron `run_reminders.php` y servicio de recordatorios
-  - [x] Dashboard placeholder + estilo
+  - [ ] Dashboard placeholder + estilo (pendiente de validar estilo cargado en producción)
 - [ ] H2: Clientes (CRUD)
 - [ ] H3: Facturas (CRUD + cálculos + numeración)
 - [ ] H4: PDF de facturas (Dompdf)

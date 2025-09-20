@@ -8,7 +8,7 @@ $view = $template;
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></title>
-  <link rel="stylesheet" href="/assets/css/styles.css?v=1">
+  <link rel="stylesheet" href="/assets/css/styles.css?v=2">
 </head>
 <body>
   <header class="app-header">
@@ -17,7 +17,7 @@ $view = $template;
       <nav class="nav">
         <a href="/?page=dashboard">Dashboard</a>
         <a href="/?page=settings">Ajustes</a>
-        <a class="disabled" title="Próximamente">Clientes</a>
+        <a href="/?page=clients">Clientes</a>
         <a class="disabled" title="Próximamente">Facturas</a>
         <a class="disabled" title="Próximamente">Declaraciones</a>
       </nav>

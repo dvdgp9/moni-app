@@ -32,11 +32,18 @@ $timezone = $_ENV['TIMEZONE'] ?? 'Europe/Madrid';
 
 require_once $root . '/src/bootstrap.php';
 
+$started = session_status() === PHP_SESSION_ACTIVE;
+if (!$started) {
+    @session_start();
+}
+
 $page = $_GET['page'] ?? 'dashboard';
 
 $routes = [
     'dashboard' => $root . '/templates/dashboard.php',
     'settings'  => $root . '/templates/settings.php',
+    'clients'   => $root . '/templates/clients_list.php',
+    'client_form' => $root . '/templates/clients_form.php',
 ];
 
 $template = $routes[$page] ?? $routes['dashboard'];

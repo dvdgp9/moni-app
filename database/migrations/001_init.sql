@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS clients (
   name VARCHAR(255) NOT NULL,
   nif VARCHAR(20) NULL,
   email VARCHAR(255) NULL,
+  phone VARCHAR(30) NULL,
   address TEXT NULL,
   default_vat DECIMAL(5,2) DEFAULT 21.00,
   default_irpf DECIMAL(5,2) DEFAULT 15.00,
