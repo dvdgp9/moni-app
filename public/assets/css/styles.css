@@ -248,6 +248,7 @@ input[type="color"]::-moz-color-swatch {
   background: #fff;
   height: 42px; /* align with color picker swatch height */
   box-sizing: border-box;
+  margin-top: 24px;
 }
 
 /* Modern Buttons */
