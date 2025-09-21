@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $values['phone'] = trim((string)($_POST['phone'] ?? ''));
     $values['billing_email'] = trim((string)($_POST['billing_email'] ?? ''));
     $values['iban'] = trim((string)($_POST['iban'] ?? ''));
-    $values['logo_url'] = trim((string)($_POST['logo_url'] ?? ''));
+    // No actual text field for logo_url: keep current unless a new file is uploaded
     $values['color_primary'] = trim((string)($_POST['color_primary'] ?? ''));
     $values['color_accent'] = trim((string)($_POST['color_accent'] ?? ''));
 
@@ -149,7 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
         <input type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
-        <input type="text" name="logo_url" value="<?= htmlspecialchars($values['logo_url']) ?>" placeholder="o pega una URL (opcional)" />
         <p style="color:var(--gray-500);font-size:0.8rem;margin:6px 0 0">Tamaño recomendado 600×600 (cuadrado). Máx. 2MB. Formatos: PNG, JPG, SVG, WEBP.</p>
       </div>
       <div>
