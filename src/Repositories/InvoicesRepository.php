@@ -98,4 +98,16 @@ final class InvoicesRepository
         $stmt = $pdo->prepare('UPDATE invoices SET status = :status WHERE id = :id');
         $stmt->execute([':id' => $id, ':status' => $status]);
     }
+
+    /**
+     * Count invoices linked to a given client id.
+     */
+    public static function countByClient(int $clientId): int
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('SELECT COUNT(*) AS c FROM invoices WHERE client_id = :cid');
+        $stmt->execute([':cid' => $clientId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int)($row['c'] ?? 0);
+    }
 }

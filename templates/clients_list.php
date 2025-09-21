@@ -1,5 +1,6 @@
 <?php
 use Moni\Repositories\ClientsRepository;
+use Moni\Repositories\InvoicesRepository;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
@@ -17,8 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'dele
     }
     $id = (int)($_POST['id'] ?? 0);
     if ($id > 0) {
-        ClientsRepository::delete($id);
-        Flash::add('success', 'Cliente eliminado.');
+        $cnt = InvoicesRepository::countByClient($id);
+        if ($cnt > 0) {
+            Flash::add('error', 'No se puede eliminar el cliente: tiene ' . $cnt . ' factura(s) asociada(s).');
+        } else {
+            ClientsRepository::delete($id);
+            Flash::add('success', 'Cliente eliminado.');
+        }
         header('Location: /?page=clients');
         exit;
     }
