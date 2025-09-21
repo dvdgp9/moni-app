@@ -219,6 +219,27 @@ input:focus, textarea:focus, select:focus {
   background: linear-gradient(135deg, #dc2626 0%, var(--danger) 100%);
 }
 
+/* Compact buttons */
+.btn.btn-sm {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: 0.6rem;
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Reminders compact lists */
+.kv {
+  list-style: none;
+  padding-left: 0;
+}
+.kv li {
+  padding: 4px 0;
+}
+.kv li span:last-child {
+  color: var(--gray-600);
+}
+
 /* Grid */
 .grid-2 {
   display: grid;

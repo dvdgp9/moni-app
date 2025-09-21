@@ -91,22 +91,28 @@ function icon_bell(): string {
   <div class="grid-2">
     <!-- Declaraciones obligatorias -->
     <div class="card">
-      <h3 style="display:flex;align-items:center;gap:8px"><?= icon_calendar() ?>Declaraciones obligatorias</h3>
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px">
+        <h3 style="display:flex;align-items:center;gap:8px;margin:0"><?= icon_calendar() ?>Declaraciones obligatorias</h3>
+        <div style="display:flex;gap:6px;align-items:center">
+          <?php if (!empty($quarters)): ?>
+          <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_enable" style="margin:0">
+            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+            <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
+            <input type="hidden" name="_action" value="bulk_enable" />
+            <button class="btn btn-sm" type="submit" data-role="bulk-enable">Seleccionar todo</button>
+          </form>
+          <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_disable" style="margin:0">
+            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+            <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
+            <input type="hidden" name="_action" value="bulk_disable" />
+            <button class="btn btn-secondary btn-sm" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
+          </form>
+          <?php endif; ?>
+        </div>
+      </div>
       <?php if (empty($quarters)): ?>
         <p class="hint">No hay declaraciones trimestrales configuradas.</p>
       <?php else: ?>
-        <form method="post" style="margin-bottom:8px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="quarters" data-action="bulk_enable">
-          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-          <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
-          <input type="hidden" name="_action" value="bulk_enable" />
-          <button class="btn" type="submit" data-role="bulk-enable">Seleccionar todo</button>
-        </form>
-        <form method="post" style="margin-bottom:12px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="quarters" data-action="bulk_disable">
-          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-          <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
-          <input type="hidden" name="_action" value="bulk_disable" />
-          <button class="btn btn-secondary" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
-        </form>
         <ul class="kv" style="margin-top:0">
           <?php foreach ($quarters as $r): ?>
             <li style="display:flex;align-items:center;gap:8px">
@@ -115,7 +121,7 @@ function icon_bell(): string {
                 <input type="hidden" name="_action" value="toggle" />
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
                 <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
-                <button type="submit" class="btn <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" style="padding:6px 10px" data-role="toggle">
+                <button type="submit" class="btn btn-sm <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" data-role="toggle">
                   <?= $r['enabled'] ? '✔' : '○' ?>
                 </button>
               </form>
@@ -129,7 +135,25 @@ function icon_bell(): string {
 
     <!-- Personalizadas -->
     <div class="card">
-      <h3 style="display:flex;align-items:center;gap:8px"><?= icon_bell() ?>Notificaciones personalizadas</h3>
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px">
+        <h3 style="display:flex;align-items:center;gap:8px;margin:0"><?= icon_bell() ?>Notificaciones personalizadas</h3>
+        <?php if (!empty($custom)): ?>
+        <div style="display:flex;gap:6px;align-items:center">
+          <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_enable" style="margin:0">
+            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+            <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
+            <input type="hidden" name="_action" value="bulk_enable" />
+            <button class="btn btn-sm" type="submit" data-role="bulk-enable">Seleccionar todo</button>
+          </form>
+          <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_disable" style="margin:0">
+            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+            <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
+            <input type="hidden" name="_action" value="bulk_disable" />
+            <button class="btn btn-secondary btn-sm" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
       <form method="post" style="display:grid;grid-template-columns:1.2fr 0.8fr 0.7fr auto;gap:8px;align-items:end;margin-bottom:8px" id="js-add-form">
         <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <input type="hidden" name="_action" value="add" />
@@ -176,7 +200,7 @@ function icon_bell(): string {
                 <input type="hidden" name="_action" value="toggle" />
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
                 <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
-                <button type="submit" class="btn <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" style="padding:6px 10px" data-role="toggle">
+                <button type="submit" class="btn btn-sm <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" data-role="toggle">
                   <?= $r['enabled'] ? '✔' : '○' ?>
                 </button>
               </form>
@@ -186,7 +210,7 @@ function icon_bell(): string {
                 <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                 <input type="hidden" name="_action" value="delete" />
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                <button type="submit" class="btn btn-danger" title="Eliminar" style="padding:6px 10px">🗑️</button>
+                <button type="submit" class="btn btn-danger btn-sm" title="Eliminar">🗑️</button>
               </form>
             </li>
           <?php endforeach; ?>
