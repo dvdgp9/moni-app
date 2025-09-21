@@ -89,125 +89,99 @@ function icon_bell(): string {
   <?php endif; ?>
 
   <div class="grid-2">
-    <!-- Declaraciones obligatorias -->
     <div class="card">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px">
-        <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.25rem">
-          <?= icon_calendar() ?>Declaraciones obligatorias
-        </h3>
-        <div style="display:flex;gap:6px;align-items:center">
-          <?php if (!empty($quarters)): ?>
-          <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_enable" style="margin:0">
+      <div class="section-header">
+        <h3 class="section-title"><?= icon_calendar() ?>Declaraciones obligatorias</h3>
+        <?php if (!empty($quarters)): ?>
+        <div class="section-actions">
+          <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_enable">
             <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
             <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
             <input type="hidden" name="_action" value="bulk_enable" />
-            <button class="btn btn-sm" type="submit" data-role="bulk-enable">Seleccionar todo</button>
+            <button class="btn btn-sm" type="submit">Todo</button>
           </form>
-          <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_disable" style="margin:0">
+          <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_disable">
             <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
             <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
             <input type="hidden" name="_action" value="bulk_disable" />
-            <button class="btn btn-secondary btn-sm" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
-          </form>
-          <?php endif; ?>
-        </div>
-      </div>
-      <?php if (empty($quarters)): ?>
-        <p class="hint">No hay declaraciones trimestrales configuradas.</p>
-      <?php else: ?>
-        <ul class="kv" style="margin-top:0">
-          <?php foreach ($quarters as $r): ?>
-            <li style="display:flex;align-items:center;gap:8px">
-              <form method="post" style="display:flex;align-items:center;gap:8px" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
-                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-                <input type="hidden" name="_action" value="toggle" />
-                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
-                <button type="submit" class="btn btn-sm <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" data-role="toggle">
-                  <?= $r['enabled'] ? '✔' : '○' ?>
-                </button>
-              </form>
-              <span style="flex:1;min-width:0"><?= htmlspecialchars($r['title']) ?></span>
-              <span><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m')) ?></span>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
-    </div>
-
-    <!-- Personalizadas -->
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px">
-        <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.25rem">
-          <?= icon_bell() ?>Notificaciones personalizadas
-        </h3>
-        <?php if (!empty($custom)): ?>
-        <div style="display:flex;gap:6px;align-items:center">
-          <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_enable" style="margin:0">
-            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-            <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
-            <input type="hidden" name="_action" value="bulk_enable" />
-            <button class="btn btn-sm" type="submit" data-role="bulk-enable">Seleccionar todo</button>
-          </form>
-          <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_disable" style="margin:0">
-            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-            <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
-            <input type="hidden" name="_action" value="bulk_disable" />
-            <button class="btn btn-secondary btn-sm" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
+            <button class="btn btn-secondary btn-sm" type="submit">Nada</button>
           </form>
         </div>
         <?php endif; ?>
       </div>
-      <form method="post" style="display:grid;grid-template-columns:1.2fr 0.8fr 0.7fr auto;gap:8px;align-items:end;margin-bottom:8px" id="js-add-form">
+      <?php if (empty($quarters)): ?>
+        <p style="color:var(--gray-500);font-style:italic">No configurado</p>
+      <?php else: ?>
+        <?php foreach ($quarters as $r): ?>
+          <div class="reminder-item">
+            <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
+              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+              <input type="hidden" name="_action" value="toggle" />
+              <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+              <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
+              <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
+            </form>
+            <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
+            <div class="reminder-date"><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m')) ?></div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
+    <div class="card">
+      <div class="section-header">
+        <h3 class="section-title"><?= icon_bell() ?>Personalizadas</h3>
+        <?php if (!empty($custom)): ?>
+        <div class="section-actions">
+          <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_enable">
+            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+            <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
+            <input type="hidden" name="_action" value="bulk_enable" />
+            <button class="btn btn-sm" type="submit">Todo</button>
+          </form>
+          <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_disable">
+            <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+            <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
+            <input type="hidden" name="_action" value="bulk_disable" />
+            <button class="btn btn-secondary btn-sm" type="submit">Nada</button>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
+      
+      <form method="post" style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:16px;padding:12px;background:var(--gray-50);border-radius:8px">
         <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <input type="hidden" name="_action" value="add" />
-        <div>
-          <label>Título</label>
-          <input type="text" name="title" placeholder="Ej: Modelo 130" required />
-        </div>
-        <div>
-          <label>Fecha</label>
-          <input type="date" name="event_date" required />
-        </div>
-        <div>
-          <label>Repetición</label>
-          <select name="recurring" style="width:100%;padding:10px;border:1px solid #E2E8F0;border-radius:8px;background:#fff">
-            <option value="yearly" selected>Anual</option>
-            <option value="none">Solo una vez</option>
-          </select>
-        </div>
-        <div style="display:flex;justify-content:flex-end">
-          <button type="submit" class="btn">Añadir</button>
-        </div>
+        <input type="text" name="title" placeholder="Nuevo recordatorio..." required style="margin:0" />
+        <input type="date" name="event_date" required style="margin:0" />
+        <button type="submit" class="btn btn-sm">+</button>
+        <input type="hidden" name="recurring" value="yearly" />
       </form>
 
       <?php if (empty($custom)): ?>
-        <p class="hint">No hay recordatorios personalizados todavía.</p>
+        <p style="color:var(--gray-500);font-style:italic">Ninguno creado</p>
       <?php else: ?>
-        
-        <ul class="kv" style="margin-top:0">
-          <?php foreach ($custom as $r): ?>
-            <li style="display:flex;align-items:center;gap:8px">
-              <form method="post" style="display:flex;align-items:center;gap:8px" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
-                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-                <input type="hidden" name="_action" value="toggle" />
-                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
-                <button type="submit" class="btn btn-sm <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" data-role="toggle">
-                  <?= $r['enabled'] ? '✔' : '○' ?>
-                </button>
-              </form>
-              <span style="flex:1;min-width:0"><?= htmlspecialchars($r['title']) ?></span>
-              <span><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m/Y')) ?></span>
-              <form method="post" onsubmit="return confirm('¿Eliminar recordatorio?');" style="margin-left:8px">
+        <?php foreach ($custom as $r): ?>
+          <div class="reminder-item">
+            <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
+              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+              <input type="hidden" name="_action" value="toggle" />
+              <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+              <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
+              <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
+            </form>
+            <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
+            <div class="reminder-actions">
+              <div class="reminder-date"><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m/Y')) ?></div>
+              <form method="post" onsubmit="return confirm('¿Eliminar?');">
                 <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                 <input type="hidden" name="_action" value="delete" />
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                <button type="submit" class="btn btn-danger btn-sm" title="Eliminar">🗑️</button>
+                <button type="submit" class="btn btn-danger btn-sm" style="padding:4px 6px">×</button>
               </form>
-            </li>
-          <?php endforeach; ?>
-        </ul>
+            </div>
+          </div>
+        <?php endforeach; ?>
       <?php endif; ?>
     </div>
   </div>
@@ -238,11 +212,9 @@ function icon_bell(): string {
     const btn = form.querySelector('[data-role="toggle"]');
     form.dataset.enabled = makeOn ? '1' : '0';
     const hidden = form.querySelector('input[name="enabled"]');
-    if (hidden) hidden.value = makeOn ? '0' : '1'; // next post should flip
+    if (hidden) hidden.value = makeOn ? '0' : '1';
     if (btn) {
-      btn.classList.toggle('btn-secondary', !makeOn);
-      btn.textContent = makeOn ? '✔' : '○';
-      btn.title = makeOn ? 'Desactivar' : 'Activar';
+      btn.classList.toggle('active', makeOn);
     }
   }
 
@@ -292,12 +264,7 @@ function icon_bell(): string {
           const makeOn = action === 'bulk_enable';
           container.querySelectorAll('.js-toggle').forEach(form => {
             if (!ids.includes(form.dataset.id)) return;
-            form.dataset.enabled = makeOn ? '1' : '0';
-            const btn = form.querySelector('[data-role="toggle"]');
-            if (!btn) return;
-            btn.classList.toggle('btn-secondary', !makeOn ? true : false);
-            btn.textContent = makeOn ? '✔' : '○';
-            btn.title = makeOn ? 'Desactivar' : 'Activar';
+            applyToggleUI(form, makeOn);
           });
         })
         .catch(err=>{ console.warn('Error AJAX', err && err.message ? err.message : err); });

@@ -240,6 +240,92 @@ input:focus, textarea:focus, select:focus {
   color: var(--gray-600);
 }
 
+/* Modern toggle switches */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background: var(--gray-300);
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+.toggle-switch:before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.toggle-switch.active {
+  background: var(--primary);
+}
+.toggle-switch.active:before {
+  transform: translateX(20px);
+}
+.toggle-switch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Reminder items */
+.reminder-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.reminder-item:last-child {
+  border-bottom: none;
+}
+.reminder-title {
+  flex: 1;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+.reminder-date {
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  min-width: 60px;
+}
+.reminder-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Section headers */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+.section-actions {
+  display: flex;
+  gap: 4px;
+}
+
 /* Grid */
 .grid-2 {
   display: grid;
