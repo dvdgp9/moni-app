@@ -57,6 +57,7 @@ $template = $routes[$page] ?? $routes['dashboard'];
 
 // Auth middleware: protect sensitive pages
 $protected = [
+    'dashboard',
     'settings', 'clients', 'client_form',
     'invoices', 'invoice_form', 'invoice_pdf',
     'profile', 'reminders'
