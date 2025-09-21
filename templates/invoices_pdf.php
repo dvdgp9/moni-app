@@ -36,20 +36,24 @@ $clientPhone = $client['phone'] ?? '';
 $clientAddress = $client['address'] ?? '';
 $notes = $inv['notes'] ?? '';
 
+// Colors from emitter profile (fallbacks)
+$primary = $emitter['color_primary'] ?? '#8B5CF6';
+$accent  = $emitter['color_accent'] ?? '#F59E0B';
+
 $html = '<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><style>
   body{font-family:DejaVu Sans, Arial, sans-serif; font-size:12px; color:#0F172A}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #E2E8F0;padding-bottom:8px;margin-bottom:12px}
-  .brand h1{margin:0;font-size:20px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ' . h($primary) . ';padding-bottom:8px;margin-bottom:12px}
+  .brand h1{margin:0;font-size:20px;color:' . h($primary) . '}
   .meta{font-size:12px;text-align:right}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .box{border:1px solid #E2E8F0;border-radius:8px;padding:8px}
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
-  th{background:#F1F5F9}
+  th{background:' . h($accent) . '; color:#0F172A}
   .totals{margin-top:12px;display:grid;grid-template-columns:1fr 280px;gap:12px;align-items:flex-start}
   .totals .card{border:1px solid #E2E8F0;border-radius:8px;padding:10px}
-  .totals .grand{font-size:16px;font-weight:700;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:12px;text-align:right}
+  .totals .grand{font-size:16px;font-weight:700;background:' . h($primary) . '15;border:1px solid ' . h($primary) . ';border-radius:8px;padding:12px;text-align:right}
   .right{text-align:right}
 </style></head><body>';
 

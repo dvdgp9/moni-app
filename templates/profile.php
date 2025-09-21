@@ -108,8 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div>
         <label>Colores (primario y acento)</label>
         <div class="grid-2">
-          <input type="text" name="color_primary" value="<?= htmlspecialchars($values['color_primary']) ?>" />
-          <input type="text" name="color_accent" value="<?= htmlspecialchars($values['color_accent']) ?>" />
+          <input type="color" name="color_primary" value="<?= htmlspecialchars($values['color_primary']) ?>" />
+          <input type="color" name="color_accent" value="<?= htmlspecialchars($values['color_accent']) ?>" />
         </div>
       </div>
     </div>
