@@ -133,8 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;margin-top:10px">
-      <button type="submit">Guardar</button>
+    <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
+      <button type="submit" class="btn">Guardar</button>
       <a class="btn btn-secondary" href="/?page=clients">Cancelar</a>
     </div>
   </form>

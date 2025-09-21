@@ -229,7 +229,7 @@ $totals = InvoiceService::computeTotals($items);
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;margin-top:10px">
+    <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
       <button type="submit" class="btn">Guardar borrador</button>
       <a class="btn btn-secondary" href="/?page=invoices">Cancelar</a>
       <?php if ($editing): ?>
