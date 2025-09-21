@@ -53,9 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="password" name="password" required placeholder="••••••••" />
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.5rem">
-          <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--gray-700);font-weight:500">
+          <label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--gray-700);font-weight:500;font-size:0.8rem;white-space:nowrap">
             <input type="checkbox" name="remember" value="1" />
-            Recordarme 30 días
+            Recordarme (30 días)
           </label>
           <button type="submit" class="btn">Entrar</button>
         </div>
