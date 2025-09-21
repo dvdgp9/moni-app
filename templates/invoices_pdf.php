@@ -43,6 +43,21 @@ $emitter = !empty($_SESSION['user_id']) ? UsersRepository::find((int)$_SESSION['
 $primary = $emitter['color_primary'] ?? '#8B5CF6';
 $accent  = $emitter['color_accent'] ?? '#F59E0B';
 
+// Pick contrasting text color for table headers based on accent background
+function pick_contrast_color(string $hex): string {
+    $h = ltrim($hex, '#');
+    if (strlen($h) === 3) { $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2]; }
+    $r = hexdec(substr($h,0,2));
+    $g = hexdec(substr($h,2,2));
+    $b = hexdec(substr($h,4,2));
+    // Relative luminance (sRGB)
+    $rf = $r/255; $gf = $g/255; $bf = $b/255;
+    $map = function($c){ return $c <= 0.03928 ? $c/12.92 : pow(($c+0.055)/1.055, 2.4); };
+    $L = 0.2126*$map($rf) + 0.7152*$map($gf) + 0.0722*$map($bf);
+    return ($L < 0.5) ? '#FFFFFF' : '#0F172A';
+}
+$thText = pick_contrast_color((string)$accent);
+
 // Helper to safely embed logo
 $root = dirname(__DIR__);
 function embed_logo_src(string $logoUrl, string $root): ?string {
@@ -79,7 +94,7 @@ $html = '<!doctype html>
   .box + .box{margin-top:10px} /* fallback for Dompdf when grid-gap is ignored */
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
-  th{background:' . h($accent) . '; color:#0F172A}
+  th{background:' . h($accent) . '; color:' . h($thText) . '}
   .totals{margin-top:12px;display:grid;grid-template-columns:1fr 280px;gap:12px;align-items:flex-start}
   .totals .card{border:1px solid #E2E8F0;border-radius:8px;padding:10px}
   .totals .grand{font-size:16px;font-weight:700;background:#F8FAFC;border:1px solid ' . h($primary) . ';border-radius:8px;padding:12px;text-align:right}
