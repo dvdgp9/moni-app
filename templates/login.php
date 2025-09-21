@@ -22,26 +22,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
-<section>
-  <h1>Entrar</h1>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entrar - Moni</title>
+  <link rel="stylesheet" href="/assets/css/styles.css?v=3">
+</head>
+<body>
+  <div class="login-container fade-in-up">
+    <div class="login-card">
+      <h1 class="login-title">Moni</h1>
+      <p class="login-subtitle">Gestión financiera para autónomos</p>
 
-  <?php if (!empty($flashAll)): ?>
-    <?php foreach ($flashAll as $type => $messages): ?>
-      <?php foreach ($messages as $msg): ?>
-        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
-      <?php endforeach; ?>
-    <?php endforeach; ?>
-  <?php endif; ?>
+      <?php if (!empty($flashAll)): ?>
+        <?php foreach ($flashAll as $type => $messages): ?>
+          <?php foreach ($messages as $msg): ?>
+            <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
+          <?php endforeach; ?>
+        <?php endforeach; ?>
+      <?php endif; ?>
 
-  <form method="post" class="card" style="max-width:520px">
-    <label>Email</label>
-    <input type="email" name="email" required />
+      <form method="post">
+        <label>Email</label>
+        <input type="email" name="email" required placeholder="tu@email.com" />
 
-    <label>Contraseña</label>
-    <input type="password" name="password" required />
+        <label>Contraseña</label>
+        <input type="password" name="password" required placeholder="••••••••" />
 
-    <button type="submit">Entrar</button>
-  </form>
+        <button type="submit" class="btn" style="width:100%;margin-top:1rem">Entrar</button>
+      </form>
 
-  <p class="hint">Si aún no tienes usuario, crea uno en la tabla <code>users</code> con una contraseña hash de PHP (password_hash).</p>
-</section>
+      <p style="margin-top:2rem;font-size:0.75rem;color:var(--gray-500)">
+        Usuario de prueba: david@wthefox.com
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -9,7 +9,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></title>
-  <link rel="stylesheet" href="/assets/css/styles.css?v=2">
+  <link rel="stylesheet" href="/assets/css/styles.css?v=3">
 </head>
 <body>
   <header class="app-header">
@@ -31,7 +31,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
     </div>
   </header>
   <main class="container">
-    <?php include $view; ?>
+    <div class="main-container fade-in-up">
+      <?php include $view; ?>
+    </div>
   </main>
   <footer class="app-footer">
     <div class="container">© <?= date('Y') ?> Moni</div>
