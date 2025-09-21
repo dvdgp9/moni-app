@@ -85,13 +85,13 @@ $html = '<!doctype html>
   .right{text-align:right}
 </style></head><body>';
 
-$html .= '<div class="header">
-  <div class="brand"><h1>Factura ' . h($number) . '</h1></div>
-  <div class="meta">
-    <div><strong>Fecha:</strong> ' . h($issue) . '</div>
-    <div><strong>Vencimiento:</strong> ' . h($due) . '</div>
-  </div>
-</div>';
+$html .= '<div class="header">'
+  . '<div class="brand"><h1>Factura ' . h($number) . '</h1></div>'
+  . '<div class="meta">'
+    . ($logoSrc ? ('<div><img src="' . h($logoSrc) . '" style="max-height:60px" /></div>') : '')
+    . '<div><strong>Fecha:</strong> ' . h($issue) . ' &nbsp;·&nbsp; <strong>Vencimiento:</strong> ' . h($due) . '</div>'
+  . '</div>'
+  . '</div>';
 
 $logo = $emitter['logo_url'] ?? '';
 $logoSrc = embed_logo_src((string)$logo, $root);
@@ -115,9 +115,6 @@ $html .= '<div class="box">'
 
 // Right: Emitter box (with optional logo on top)
 $html .= '<div class="box">';
-if ($logoSrc) {
-    $html .= '<div style="text-align:right"><img src="' . h($logoSrc) . '" style="max-height:60px" /></div>';
-}
 $html .= '<strong>Emisor</strong><br>'
     . h($emitterName) . '<br>'
     . ($emitterNif ? ('NIF: ' . h($emitterNif) . '<br>') : '')
