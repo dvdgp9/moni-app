@@ -30,11 +30,11 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
 <body>
   <header class="app-header">
     <div class="container">
-      <a class="brand" href="/?page=dashboard" style="display:flex;align-items:center;gap:8px;text-decoration:none">
+      <a class="brand-link" href="/?page=dashboard">
         <?php if ($logoPath): ?>
-          <img src="<?= $logoPath ?>" alt="<?= htmlspecialchars(Config::get('app_name', 'Moni')) ?>" style="height:28px;width:auto;display:block"/>
+          <img class="brand-logo" src="<?= $logoPath ?>" alt="<?= htmlspecialchars(Config::get('app_name', 'Moni')) ?>" />
         <?php else: ?>
-          <?= htmlspecialchars(Config::get('app_name', 'Moni')) ?>
+          <span class="brand"><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></span>
         <?php endif; ?>
       </a>
       <nav class="nav">
