@@ -92,7 +92,9 @@ function icon_bell(): string {
     <!-- Declaraciones obligatorias -->
     <div class="card">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px">
-        <h3 style="display:flex;align-items:center;gap:8px;margin:0"><?= icon_calendar() ?>Declaraciones obligatorias</h3>
+        <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.25rem">
+          <?= icon_calendar() ?>Declaraciones obligatorias
+        </h3>
         <div style="display:flex;gap:6px;align-items:center">
           <?php if (!empty($quarters)): ?>
           <form method="post" class="js-bulk" data-scope="quarters" data-action="bulk_enable" style="margin:0">
@@ -136,7 +138,9 @@ function icon_bell(): string {
     <!-- Personalizadas -->
     <div class="card">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px">
-        <h3 style="display:flex;align-items:center;gap:8px;margin:0"><?= icon_bell() ?>Notificaciones personalizadas</h3>
+        <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.25rem">
+          <?= icon_bell() ?>Notificaciones personalizadas
+        </h3>
         <?php if (!empty($custom)): ?>
         <div style="display:flex;gap:6px;align-items:center">
           <form method="post" class="js-bulk" data-scope="custom" data-action="bulk_enable" style="margin:0">
@@ -180,18 +184,7 @@ function icon_bell(): string {
       <?php if (empty($custom)): ?>
         <p class="hint">No hay recordatorios personalizados todavía.</p>
       <?php else: ?>
-        <form method="post" style="margin-bottom:8px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="custom" data-action="bulk_enable">
-          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-          <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
-          <input type="hidden" name="_action" value="bulk_enable" />
-          <button class="btn" type="submit" data-role="bulk-enable">Seleccionar todo</button>
-        </form>
-        <form method="post" style="margin-bottom:12px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="custom" data-action="bulk_disable">
-          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-          <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
-          <input type="hidden" name="_action" value="bulk_disable" />
-        <button class="btn btn-secondary" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
-        </form>
+        
         <ul class="kv" style="margin-top:0">
           <?php foreach ($custom as $r): ?>
             <li style="display:flex;align-items:center;gap:8px">
