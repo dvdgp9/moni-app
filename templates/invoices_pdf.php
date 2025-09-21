@@ -46,7 +46,9 @@ $html = '<!doctype html>
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
   th{background:#F1F5F9}
-  .totals{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .totals{margin-top:12px;display:grid;grid-template-columns:1fr 280px;gap:12px;align-items:flex-start}
+  .totals .card{border:1px solid #E2E8F0;border-radius:8px;padding:10px}
+  .totals .grand{font-size:16px;font-weight:700;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:12px;text-align:right}
   .right{text-align:right}
 </style></head><body>';
 
@@ -79,24 +81,29 @@ foreach ($items as $it) {
     $qty = (float)$it['quantity'];
     $price = (float)$it['unit_price'];
     $lineBase = $qty * $price;
+    $vatRate = $it['vat_rate'] === '' || !isset($it['vat_rate']) ? 21.0 : (float)$it['vat_rate'];
+    $irpfRate = $it['irpf_rate'] === '' || !isset($it['irpf_rate']) ? 15.0 : (float)$it['irpf_rate'];
+    $lineIva = $lineBase * ($vatRate/100.0);
+    $lineIrpf = $lineBase * ($irpfRate/100.0);
+    $lineTotal = $lineBase + $lineIva - $lineIrpf;
     $html .= '<tr>'
         . '<td>' . h($it['description']) . '</td>'
         . '<td>' . h($qty) . '</td>'
         . '<td>' . mny($price) . ' €</td>'
-        . '<td>' . h($it['vat_rate']) . '</td>'
-        . '<td>' . h($it['irpf_rate']) . '</td>'
-        . '<td class="right">' . mny($lineBase) . ' €</td>'
+        . '<td>' . h(number_format($vatRate, 2)) . '</td>'
+        . '<td>' . h(number_format($irpfRate, 2)) . '</td>'
+        . '<td class="right">' . mny($lineTotal) . ' €</td>'
         . '</tr>';
 }
 $html .= '</tbody></table>';
 
 $html .= '<div class="totals">
   <div></div>
-  <div>
-    <div><strong>Base:</strong> ' . mny($totals['base']) . ' €</div>
-    <div><strong>IVA:</strong> ' . mny($totals['iva']) . ' €</div>
-    <div><strong>IRPF:</strong> ' . mny($totals['irpf']) . ' €</div>
-    <div><strong>Total:</strong> ' . mny($totals['total']) . ' €</div>
+  <div class="card">
+    <div class="right"><strong>Base:</strong> ' . mny($totals['base']) . ' €</div>
+    <div class="right"><strong>IVA:</strong> ' . mny($totals['iva']) . ' €</div>
+    <div class="right"><strong>IRPF:</strong> ' . mny($totals['irpf']) . ' €</div>
+    <div class="grand">Total factura: ' . mny($totals['total']) . ' €</div>
   </div>
 </div>';
 
