@@ -154,31 +154,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div>
         <label>Colores (primario y acento)</label>
         <div class="grid-2">
-          <div data-color-pair style="display:flex;gap:8px;align-items:center">
-            <input type="color" name="color_primary" value="<?= htmlspecialchars($values['color_primary']) ?>" />
-            <input type="text" value="<?= htmlspecialchars(strtoupper($values['color_primary'])) ?>" maxlength="7" pattern="#?[0-9A-Fa-f]{6}" placeholder="#000000" style="width:110px;padding:10px;border:1px solid #E2E8F0;border-radius:8px" />
+          <div class="color-picker-group">
+            <input class="color-picker" type="color" name="color_primary" value="<?= htmlspecialchars($values['color_primary']) ?>" />
+            <div class="color-hex"><span>Primario</span><input type="text" id="hex_primary" value="<?= htmlspecialchars(strtoupper($values['color_primary'])) ?>" readonly></div>
           </div>
-          <div data-color-pair style="display:flex;gap:8px;align-items:center">
-            <input type="color" name="color_accent" value="<?= htmlspecialchars($values['color_accent']) ?>" />
-            <input type="text" value="<?= htmlspecialchars(strtoupper($values['color_accent'])) ?>" maxlength="7" pattern="#?[0-9A-Fa-f]{6}" placeholder="#000000" style="width:110px;padding:10px;border:1px solid #E2E8F0;border-radius:8px" />
+          <div class="color-picker-group">
+            <input class="color-picker" type="color" name="color_accent" value="<?= htmlspecialchars($values['color_accent']) ?>" />
+            <div class="color-hex"><span>Acento</span><input type="text" id="hex_accent" value="<?= htmlspecialchars(strtoupper($values['color_accent'])) ?>" readonly></div>
           </div>
         </div>
-        <script>
-        (function(){
-          document.querySelectorAll('[data-color-pair]').forEach(function(w){
-            var c=w.querySelector('input[type="color"]');
-            var t=w.querySelector('input[type="text"]');
-            function fromColor(){ t.value = (c.value||'').toUpperCase(); }
-            function fromText(){
-              var v=(t.value||'').trim();
-              if(v && v[0] !== '#') v = '#'+v;
-              if(/^#([0-9A-Fa-f]{6})$/.test(v)) { c.value=v; t.value=v.toUpperCase(); }
-            }
-            c.addEventListener('input', fromColor);
-            t.addEventListener('input', fromText);
-          });
-        })();
-        </script>
       </div>
     </div>
 

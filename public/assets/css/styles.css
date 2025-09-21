@@ -217,6 +217,35 @@ input[type="color"]::-moz-color-swatch {
   border-radius: 8px;
 }
 
+/* Color picker group: swatch + small hex field */
+.color-picker-group {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 8px;
+  align-items: center;
+}
+.color-picker-group .color-picker {
+  width: 100%;
+}
+.color-hex {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.color-hex span {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+.color-hex input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+  background: #fff;
+}
+
 /* Modern Buttons */
 .btn {
   display: inline-flex;
