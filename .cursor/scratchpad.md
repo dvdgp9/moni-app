@@ -102,14 +102,14 @@ Valores por defecto (editables):
   - [x] Script cron `run_reminders.php` y servicio de recordatorios
   - [ ] Dashboard placeholder + estilo (pendiente de validar estilo cargado en producción)
 - [x] H2: Clientes (CRUD)
-- [ ] H3: Facturas (CRUD + cálculos + numeración)
-- [ ] H4: PDF de facturas (Dompdf)
+- [x] H3: Facturas (CRUD + cálculos + numeración)
+- [x] H4: PDF de facturas (Dompdf)
 - [ ] H5: Asistencia declaraciones trimestrales
-- [ ] H6: Auth básica
-- [ ] H7: Despliegue y cron en cPanel
-  - [ ] Crear repo GitHub y primer push (COMPLETADO 2025-09-20)
-  - [ ] Configurar hosting (document root a `public/`, clonar repo, `composer install`, `.env` producción)
-  - [ ] Configurar cron diario 08:00 Europe/Madrid
+- [x] H6: Auth básica
+- [x] H7: Despliegue y cron en cPanel
+  - [x] Crear repo GitHub y primer push (COMPLETADO 2025-09-20)
+  - [x] Configurar hosting (document root a `public/`, clonar repo, `composer install`, `.env` producción)
+  - [x] Configurar cron diario 08:00 Europe/Madrid
 
 ## Current Status / Progress Tracking
 - 2025-09-20: Planificación inicial completada (Planner). Aprobado pasar a Executor.
