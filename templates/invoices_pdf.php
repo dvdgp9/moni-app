@@ -1,5 +1,6 @@
 <?php
 use Dompdf\Dompdf;
+use Dompdf\Options;
 use Moni\Repositories\InvoicesRepository;
 use Moni\Repositories\InvoiceItemsRepository;
 use Moni\Repositories\ClientsRepository;
@@ -42,6 +43,31 @@ $emitter = !empty($_SESSION['user_id']) ? UsersRepository::find((int)$_SESSION['
 $primary = $emitter['color_primary'] ?? '#8B5CF6';
 $accent  = $emitter['color_accent'] ?? '#F59E0B';
 
+// Helper to safely embed logo
+$root = dirname(__DIR__);
+function embed_logo_src(string $logoUrl, string $root): ?string {
+    $logoUrl = trim($logoUrl);
+    if ($logoUrl === '') return null;
+    // Local upload like /uploads/logos/...
+    if (str_starts_with($logoUrl, '/')) {
+        $file = $root . '/public' . $logoUrl;
+        if (is_file($file) && is_readable($file)) {
+            $f = new \finfo(FILEINFO_MIME_TYPE);
+            $mime = (string)$f->file($file);
+            $data = @file_get_contents($file);
+            if ($data !== false) {
+                return 'data:' . $mime . ';base64,' . base64_encode($data);
+            }
+        }
+        return null;
+    }
+    // Remote URL http(s) — Dompdf will fetch if isRemoteEnabled
+    if (preg_match('~^https?://~i', $logoUrl)) {
+        return $logoUrl;
+    }
+    return null;
+}
+
 $html = '<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><style>
   body{font-family:DejaVu Sans, Arial, sans-serif; font-size:12px; color:#0F172A}
@@ -68,6 +94,7 @@ $html .= '<div class="header">
 </div>';
 
 $logo = $emitter['logo_url'] ?? '';
+$logoSrc = embed_logo_src((string)$logo, $root);
 $emitterName = ($emitter['company_name'] ?? '') ?: ($emitter['name'] ?? '');
 $emitterNif = $emitter['nif'] ?? '';
 $emitterAddress = $emitter['address'] ?? '';
@@ -88,8 +115,8 @@ $html .= '<div class="box">'
 
 // Right: Emitter box (with optional logo on top)
 $html .= '<div class="box">';
-if ($logo) {
-    $html .= '<div style="text-align:right"><img src="' . h($logo) . '" style="max-height:60px" /></div>';
+if ($logoSrc) {
+    $html .= '<div style="text-align:right"><img src="' . h($logoSrc) . '" style="max-height:60px" /></div>';
 }
 $html .= '<strong>Emisor</strong><br>'
     . h($emitterName) . '<br>'
@@ -136,7 +163,9 @@ $html .= '<div class="totals">
 
 $html .= '</body></html>';
 
-$dompdf = new Dompdf();
+$options = new Options();
+$options->set('isRemoteEnabled', true);
+$dompdf = new Dompdf($options);
 $dompdf->loadHtml($html, 'UTF-8');
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
