@@ -291,7 +291,7 @@ input:focus, textarea:focus, select:focus {
 
 /* Login Page Specific */
 .login-container {
-  min-height: 85vh;
+  min-height: 70vh;
   display: flex;
   align-items: center;
   justify-content: center;
