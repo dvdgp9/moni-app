@@ -36,7 +36,9 @@ $clientPhone = $client['phone'] ?? '';
 $clientAddress = $client['address'] ?? '';
 $notes = $inv['notes'] ?? '';
 
-// Colors from emitter profile (fallbacks)
+// Emitter data (logged user) and brand colors (fallbacks)
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+$emitter = !empty($_SESSION['user_id']) ? UsersRepository::find((int)$_SESSION['user_id']) : null;
 $primary = $emitter['color_primary'] ?? '#8B5CF6';
 $accent  = $emitter['color_accent'] ?? '#F59E0B';
 
@@ -53,7 +55,7 @@ $html = '<!doctype html>
   th{background:' . h($accent) . '; color:#0F172A}
   .totals{margin-top:12px;display:grid;grid-template-columns:1fr 280px;gap:12px;align-items:flex-start}
   .totals .card{border:1px solid #E2E8F0;border-radius:8px;padding:10px}
-  .totals .grand{font-size:16px;font-weight:700;background:' . h($primary) . '15;border:1px solid ' . h($primary) . ';border-radius:8px;padding:12px;text-align:right}
+  .totals .grand{font-size:16px;font-weight:700;background:#F8FAFC;border:1px solid ' . h($primary) . ';border-radius:8px;padding:12px;text-align:right}
   .right{text-align:right}
 </style></head><body>';
 
@@ -65,12 +67,6 @@ $html .= '<div class="header">
   </div>
 </div>';
 
-// Emitter data (logged user)
-$emitter = null;
-if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
-if (!empty($_SESSION['user_id'])) {
-    $emitter = UsersRepository::find((int)$_SESSION['user_id']);
-}
 $logo = $emitter['logo_url'] ?? '';
 $emitterName = ($emitter['company_name'] ?? '') ?: ($emitter['name'] ?? '');
 $emitterNif = $emitter['nif'] ?? '';
