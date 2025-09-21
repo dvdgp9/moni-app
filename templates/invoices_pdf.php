@@ -90,7 +90,7 @@ $html = '<!doctype html>
   .brand h1{margin:0;font-size:20px;color:' . h($primary) . '}
   .meta{font-size:12px;text-align:right}
   .grid{display:grid;grid-template-columns:1fr;gap:10px}
-  .box{border:1px solid #E2E8F0;border-radius:8px;padding:8px}
+  .box{border:1px solid ' . h($primary) . ';border-radius:8px;padding:8px}
   .box + .box{margin-top:10px} /* fallback for Dompdf when grid-gap is ignored */
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
