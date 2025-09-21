@@ -46,8 +46,15 @@ $routes = [
     'client_form' => $root . '/templates/clients_form.php',
     'invoices'  => $root . '/templates/invoices_list.php',
     'invoice_form' => $root . '/templates/invoices_form.php',
+    'invoice_pdf' => $root . '/templates/invoices_pdf.php',
 ];
 
 $template = $routes[$page] ?? $routes['dashboard'];
+
+// Render PDF endpoints without the normal layout
+if ($page === 'invoice_pdf') {
+    include $template;
+    exit;
+}
 
 include $root . '/templates/layout.php';
