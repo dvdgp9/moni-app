@@ -22,35 +22,18 @@ final class ReminderService
         $tz = Config::get('settings.timezone', 'Europe/Madrid');
         @date_default_timezone_set($tz);
         $today = new DateTime('today');
-        $y = (int)$today->format('Y');
-
-        // Quarterly openings: 1 Jan, 1 Apr, 1 Jul, 1 Oct
-        $quarters = ["$y-01-01" => 'Inicio trimestre Q1', "$y-04-01" => 'Inicio trimestre Q2', "$y-07-01" => 'Inicio trimestre Q3', "$y-10-01" => 'Inicio trimestre Q4'];
-
-        $due = [];
         $todayStr = $today->format('Y-m-d');
-        if (isset($quarters[$todayStr])) {
-            $due[] = $quarters[$todayStr];
-        }
+        $due = [];
 
-        // Custom dates from settings in DB (array of YYYY-MM-DD)
-        $custom = (array)Config::get('settings.custom_dates', []);
-        foreach ($custom as $d) {
-            if ($d === $todayStr) {
-                $due[] = 'Recordatorio personalizado (' . $d . ')';
-            }
-        }
-
-        // Also read table reminders (optional yearly recurring)
+        // 1) Read enabled reminders from DB (single source of truth)
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT title, event_date, recurring FROM reminders');
+        $stmt = $pdo->query('SELECT title, event_date, recurring FROM reminders WHERE enabled = 1');
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $date = $row['event_date'];
-            $rec = $row['recurring'] ?? 'yearly';
+            $date = (string)$row['event_date'];
+            $rec = (string)($row['recurring'] ?? 'yearly');
             if ($rec === 'yearly') {
                 // Compare month-day
-                $md = substr($date, 5);
-                if ($md === substr($todayStr, 5)) {
+                if (substr($date, 5) === substr($todayStr, 5)) {
                     $due[] = (string)$row['title'];
                 }
             } elseif ($date === $todayStr) {
@@ -58,7 +41,16 @@ final class ReminderService
             }
         }
 
-        return $due;
+        // 2) Backward-compat: settings.custom_dates (if someone no usa la tabla)
+        $custom = (array)Config::get('settings.custom_dates', []);
+        foreach ($custom as $d) {
+            if ($d === $todayStr) {
+                $due[] = 'Recordatorio personalizado (' . $d . ')';
+            }
+        }
+
+        // Deduplicate by title
+        return array_values(array_unique($due));
     }
 
     /**

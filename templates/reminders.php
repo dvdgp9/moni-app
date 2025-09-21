@@ -7,12 +7,19 @@ use Moni\Support\Config;
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 $flashAll = Flash::getAll();
 
-// Handle actions
+// Actions: add, delete, toggle, bulk_enable, bulk_disable
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: /?page=reminders');
-    exit;
+    // AJAX friendly
+    if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
+      header('Content-Type: application/json');
+      echo json_encode(['ok' => false, 'error' => 'CSRF inválido']);
+      exit;
+    } else {
+      header('Location: /?page=reminders');
+      exit;
+    }
   }
   $action = $_POST['_action'] ?? '';
   try {
@@ -23,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($title === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         Flash::add('error', 'Título y fecha (YYYY-MM-DD) son obligatorios.');
       } else {
-        RemindersRepository::create($title, $date, in_array($recurring, ['none','yearly'], true) ? $recurring : 'yearly');
+        RemindersRepository::create($title, $date, $recurring === 'none' ? 'none' : 'yearly', null, true);
         Flash::add('success', 'Recordatorio añadido.');
       }
     } elseif ($action === 'delete') {
@@ -32,26 +39,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         RemindersRepository::delete($id);
         Flash::add('success', 'Recordatorio eliminado.');
       }
+    } elseif ($action === 'toggle') {
+      $id = (int)($_POST['id'] ?? 0);
+      $enabled = (int)($_POST['enabled'] ?? 0) === 1;
+      if ($id > 0) {
+        RemindersRepository::setEnabled($id, $enabled);
+      }
+    } elseif ($action === 'bulk_enable' || $action === 'bulk_disable') {
+      $ids = array_map('intval', $_POST['ids'] ?? []);
+      RemindersRepository::setEnabledMany($ids, $action === 'bulk_enable');
     }
   } catch (Throwable $e) {
     Flash::add('error', 'Acción fallida: ' . $e->getMessage());
+  }
+  // AJAX response
+  if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => true]);
+    exit;
   }
   header('Location: /?page=reminders');
   exit;
 }
 
-// Compute mandatory quarterly declarations for the current year
-$tz = Config::get('settings.timezone', 'Europe/Madrid');
-@date_default_timezone_set($tz);
-$y = (int)date('Y');
-$mandatory = [
-  ["title" => 'Inicio trimestre Q1', "date" => "$y-01-01"],
-  ["title" => 'Inicio trimestre Q2', "date" => "$y-04-01"],
-  ["title" => 'Inicio trimestre Q3', "date" => "$y-07-01"],
-  ["title" => 'Inicio trimestre Q4', "date" => "$y-10-01"],
-];
-
+// Load reminders and split groups
 $rows = RemindersRepository::all();
+$y = (int)date('Y');
+$isQuarter = fn(array $r) => str_starts_with((string)$r['title'], 'Inicio trimestre Q') && ($r['recurring'] ?? 'yearly') === 'yearly';
+$quarters = array_values(array_filter($rows, $isQuarter));
+$custom = array_values(array_filter($rows, fn($r) => !$isQuarter($r)));
+
+function icon_calendar(): string {
+  return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>';
+}
+function icon_bell(): string {
+  return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M14.5 18.5a2.5 2.5 0 0 1-5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 18.5h16l-1.2-2.4a7 7 0 0 1-.8-3.2V10a6 6 0 1 0-12 0v2.9c0 1.1-.27 2.2-.8 3.2L4 18.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
 ?>
 <section>
   <h1>Notificaciones</h1>
@@ -65,72 +89,172 @@ $rows = RemindersRepository::all();
   <?php endif; ?>
 
   <div class="grid-2">
+    <!-- Declaraciones obligatorias -->
     <div class="card">
-      <h3>Declaraciones obligatorias (trimestral)</h3>
-      <ul class="kv" style="margin-top:8px">
-        <?php foreach ($mandatory as $m): ?>
-          <li><span><?= htmlspecialchars($m['title']) ?></span><span><?= htmlspecialchars((new DateTime($m['date']))->format('d/m/Y')) ?></span></li>
-        <?php endforeach; ?>
-      </ul>
+      <h3 style="display:flex;align-items:center;gap:8px"><?= icon_calendar() ?>Declaraciones obligatorias</h3>
+      <?php if (empty($quarters)): ?>
+        <p class="hint">No hay declaraciones trimestrales configuradas.</p>
+      <?php else: ?>
+        <form method="post" style="margin-bottom:8px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="quarters" data-action="bulk_enable">
+          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+          <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
+          <input type="hidden" name="_action" value="bulk_enable" />
+          <button class="btn" type="submit" data-role="bulk-enable">Seleccionar todo</button>
+        </form>
+        <form method="post" style="margin-bottom:12px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="quarters" data-action="bulk_disable">
+          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+          <?php foreach ($quarters as $q) : ?><input type="hidden" name="ids[]" value="<?= (int)$q['id'] ?>" /><?php endforeach; ?>
+          <input type="hidden" name="_action" value="bulk_disable" />
+          <button class="btn btn-secondary" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
+        </form>
+        <ul class="kv" style="margin-top:0">
+          <?php foreach ($quarters as $r): ?>
+            <li style="display:flex;align-items:center;gap:8px">
+              <form method="post" style="display:flex;align-items:center;gap:8px" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="toggle" />
+                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
+                <button type="submit" class="btn <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" style="padding:6px 10px" data-role="toggle">
+                  <?= $r['enabled'] ? '✔' : '○' ?>
+                </button>
+              </form>
+              <span style="flex:1;min-width:0"><?= htmlspecialchars($r['title']) ?></span>
+              <span><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m')) ?></span>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </div>
 
+    <!-- Personalizadas -->
     <div class="card">
-      <h3>Nuevo recordatorio</h3>
-      <form method="post">
+      <h3 style="display:flex;align-items:center;gap:8px"><?= icon_bell() ?>Notificaciones personalizadas</h3>
+      <form method="post" style="display:grid;grid-template-columns:1.2fr 0.8fr 0.7fr auto;gap:8px;align-items:end;margin-bottom:8px" id="js-add-form">
         <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <input type="hidden" name="_action" value="add" />
-
-        <label>Título</label>
-        <input type="text" name="title" placeholder="Ej: Segundo pago fraccionado IRPF" required />
-
-        <label>Fecha</label>
-        <input type="date" name="event_date" required />
-
-        <label>Repetición</label>
-        <select name="recurring" style="width:100%;padding:10px;border:1px solid #E2E8F0;border-radius:8px;background:#fff">
-          <option value="yearly" selected>Anual</option>
-          <option value="none">Solo una vez</option>
-        </select>
-
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
-          <button type="submit" class="btn">Guardar</button>
+        <div>
+          <label>Título</label>
+          <input type="text" name="title" placeholder="Ej: Modelo 130" required />
+        </div>
+        <div>
+          <label>Fecha</label>
+          <input type="date" name="event_date" required />
+        </div>
+        <div>
+          <label>Repetición</label>
+          <select name="recurring" style="width:100%;padding:10px;border:1px solid #E2E8F0;border-radius:8px;background:#fff">
+            <option value="yearly" selected>Anual</option>
+            <option value="none">Solo una vez</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn">Añadir</button>
         </div>
       </form>
+
+      <?php if (empty($custom)): ?>
+        <p class="hint">No hay recordatorios personalizados todavía.</p>
+      <?php else: ?>
+        <form method="post" style="margin-bottom:8px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="custom" data-action="bulk_enable">
+          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+          <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
+          <input type="hidden" name="_action" value="bulk_enable" />
+          <button class="btn" type="submit" data-role="bulk-enable">Seleccionar todo</button>
+        </form>
+        <form method="post" style="margin-bottom:12px;display:flex;gap:8px;justify-content:flex-end" class="js-bulk" data-scope="custom" data-action="bulk_disable">
+          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+          <?php foreach ($custom as $c) : ?><input type="hidden" name="ids[]" value="<?= (int)$c['id'] ?>" /><?php endforeach; ?>
+          <input type="hidden" name="_action" value="bulk_disable" />
+        <button class="btn btn-secondary" type="submit" data-role="bulk-disable">Deseleccionar todo</button>
+        </form>
+        <ul class="kv" style="margin-top:0">
+          <?php foreach ($custom as $r): ?>
+            <li style="display:flex;align-items:center;gap:8px">
+              <form method="post" style="display:flex;align-items:center;gap:8px" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="toggle" />
+                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
+                <button type="submit" class="btn <?= $r['enabled'] ? '' : 'btn-secondary' ?>" title="<?= $r['enabled'] ? 'Desactivar' : 'Activar' ?>" style="padding:6px 10px" data-role="toggle">
+                  <?= $r['enabled'] ? '✔' : '○' ?>
+                </button>
+              </form>
+              <span style="flex:1;min-width:0"><?= htmlspecialchars($r['title']) ?></span>
+              <span><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m/Y')) ?></span>
+              <form method="post" onsubmit="return confirm('¿Eliminar recordatorio?');" style="margin-left:8px">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="delete" />
+                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                <button type="submit" class="btn btn-danger" title="Eliminar" style="padding:6px 10px">🗑️</button>
+              </form>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </div>
   </div>
-
-  <div class="card">
-    <h3>Tus recordatorios</h3>
-    <?php if (empty($rows)): ?>
-      <p>No hay recordatorios todavía.</p>
-    <?php else: ?>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Título</th>
-            <th>Fecha</th>
-            <th>Repetición</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($rows as $r): ?>
-            <tr>
-              <td><?= htmlspecialchars($r['title']) ?></td>
-              <td><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m/Y')) ?></td>
-              <td><?= htmlspecialchars($r['recurring'] === 'none' ? 'Una vez' : 'Anual') ?></td>
-              <td class="table-actions">
-                <form method="post" onsubmit="return confirm('¿Eliminar recordatorio?');">
-                  <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-                  <input type="hidden" name="_action" value="delete" />
-                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                  <button type="submit" class="btn btn-danger">Eliminar</button>
-                </form>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    <?php endif; ?>
-  </div>
 </section>
+<script>
+(function(){
+  const csrf = '<?= Csrf::token() ?>';
+
+  function postAjax(data) {
+    const body = new URLSearchParams(data);
+    body.append('ajax', '1');
+    return fetch('/?page=reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    }).then(r => r.json());
+  }
+
+  // Toggle buttons
+  document.querySelectorAll('.js-toggle').forEach(form => {
+    const btn = form.querySelector('[data-role="toggle"]');
+    btn && btn.addEventListener('click', function(ev){
+      ev.preventDefault();
+      const id = form.dataset.id;
+      const enabled = form.dataset.enabled === '1';
+      postAjax({ _token: csrf, _action: 'toggle', id, enabled: enabled ? '0' : '1' })
+        .then(res => {
+          if (!res || !res.ok) return;
+          // flip state in DOM
+          form.dataset.enabled = enabled ? '0' : '1';
+          btn.classList.toggle('btn-secondary', enabled);
+          btn.textContent = enabled ? '○' : '✔';
+          btn.title = enabled ? 'Activar' : 'Desactivar';
+        })
+        .catch(()=>{});
+    });
+  });
+
+  // Bulk actions
+  document.querySelectorAll('.js-bulk').forEach(f => {
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      const ids = Array.from(f.querySelectorAll('input[name="ids[]"]')).map(i=>i.value);
+      const action = f.dataset.action;
+      postAjax({ _token: csrf, _action: action, 'ids[]': ids })
+        .then(res => {
+          if (!res || !res.ok) return;
+          // Update UI of the corresponding scope
+          const scope = f.dataset.scope;
+          const container = scope === 'quarters' ? document.querySelectorAll('.grid-2 .card')[0] : document.querySelectorAll('.grid-2 .card')[1];
+          // mark all toggles accordingly
+          const makeOn = action === 'bulk_enable';
+          container.querySelectorAll('.js-toggle').forEach(form => {
+            if (!ids.includes(form.dataset.id)) return;
+            form.dataset.enabled = makeOn ? '1' : '0';
+            const btn = form.querySelector('[data-role="toggle"]');
+            if (!btn) return;
+            btn.classList.toggle('btn-secondary', !makeOn ? true : false);
+            btn.textContent = makeOn ? '✔' : '○';
+            btn.title = makeOn ? 'Desactivar' : 'Activar';
+          });
+        })
+        .catch(()=>{});
+    });
+  });
+})();
+</script>
