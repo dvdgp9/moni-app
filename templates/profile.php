@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
         <input type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
-        <p style="color:var(--gray-500);font-size:0.8rem;margin:6px 0 0">Tamaño recomendado 600×600 (cuadrado). Máx. 2MB. Formatos: PNG, JPG, SVG, WEBP.</p>
+        <p style="color:var(--gray-500);font-size:0.8rem;margin-bottom:10px">Tamaño recomendado 600×600 (cuadrado). Máx. 2MB. Formatos: PNG, JPG, SVG, WEBP.</p>
       </div>
       <div>
         <label>Colores</label>
