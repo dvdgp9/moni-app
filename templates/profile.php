@@ -44,6 +44,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $values['color_primary'] = trim((string)($_POST['color_primary'] ?? ''));
     $values['color_accent'] = trim((string)($_POST['color_accent'] ?? ''));
 
+    // Handle optional logo file upload
+    if (!empty($_FILES['logo_file']['name']) && is_uploaded_file($_FILES['logo_file']['tmp_name'])) {
+        $tmp = $_FILES['logo_file']['tmp_name'];
+        $orig = $_FILES['logo_file']['name'];
+        $size = (int)($_FILES['logo_file']['size'] ?? 0);
+        // Limit 2MB
+        if ($size > 2 * 1024 * 1024) {
+            Flash::add('error', 'El logo supera el tamaño máximo (2MB).');
+            header('Location: /?page=profile');
+            exit;
+        }
+        // Validate mime
+        $f = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = (string)$f->file($tmp);
+        $allowed = [
+            'image/png' => 'png',
+            'image/jpeg' => 'jpg',
+            'image/svg+xml' => 'svg',
+            'image/webp' => 'webp',
+        ];
+        if (!isset($allowed[$mime])) {
+            Flash::add('error', 'Formato de logo no soportado. Usa PNG, JPG, SVG o WEBP.');
+            header('Location: /?page=profile');
+            exit;
+        }
+        $ext = $allowed[$mime];
+        $uploadDir = dirname(__DIR__, 1) . '/public/uploads/logos';
+        if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0775, true); }
+        $fileName = 'logo-user-' . $userId . '.' . $ext;
+        $dest = $uploadDir . '/' . $fileName;
+        if (!@move_uploaded_file($tmp, $dest)) {
+            Flash::add('error', 'No se pudo guardar el logo.');
+            header('Location: /?page=profile');
+            exit;
+        }
+        // Public URL
+        $values['logo_url'] = '/uploads/logos/' . $fileName;
+    }
+
     UsersRepository::updateProfile($userId, $values);
     Flash::add('success', 'Perfil actualizado.');
     header('Location: /?page=profile');
@@ -61,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <form method="post" class="card">
+  <form method="post" class="card" enctype="multipart/form-data">
     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
 
     <div class="grid-2">
@@ -102,8 +141,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="grid-2">
       <div>
-        <label>Logo (URL)</label>
-        <input type="text" name="logo_url" value="<?= htmlspecialchars($values['logo_url']) ?>" />
+        <label>Logo</label>
+        <?php if (!empty($values['logo_url'])): ?>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <img src="<?= htmlspecialchars($values['logo_url']) ?>" alt="Logo actual" style="height:42px;width:auto;border-radius:6px;border:1px solid var(--gray-200);background:#fff" />
+            <span style="color:var(--gray-600);font-size:0.85rem">Se guardará en tu perfil y en el PDF</span>
+          </div>
+        <?php endif; ?>
+        <input type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+        <input type="text" name="logo_url" value="<?= htmlspecialchars($values['logo_url']) ?>" placeholder="o pega una URL (opcional)" />
+        <p style="color:var(--gray-500);font-size:0.8rem;margin:6px 0 0">Tamaño máx. 2MB. Formatos: PNG, JPG, SVG, WEBP.</p>
       </div>
       <div>
         <label>Colores (primario y acento)</label>
