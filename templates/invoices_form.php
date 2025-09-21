@@ -6,6 +6,7 @@ use Moni\Support\Csrf;
 use Moni\Support\Flash;
 use Moni\Services\InvoiceService;
 use Moni\Support\Config;
+use Moni\Services\InvoiceNumberingService;
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
@@ -23,6 +24,7 @@ $invoice = [
   'due_date' => date('Y-m-d', strtotime('+' . $defaultDays . ' days')),
   'notes' => '',
 ];
+$currentStatus = 'draft';
 $due_terms = ($defaultDays === 15 ? '15' : ($defaultDays === 30 ? '30' : 'custom')); // '15' | '30' | 'custom'
 $items = [[
   'description' => '',
@@ -36,6 +38,7 @@ if ($editing) {
   $found = InvoicesRepository::find($id);
   if ($found) {
     $invoice = array_merge($invoice, $found);
+    $currentStatus = $found['status'] ?? 'draft';
     $items = InvoiceItemsRepository::byInvoice($id);
     // Preseleccionar due_terms según diferencia con issue_date
     if (!empty($invoice['due_date']) && !empty($invoice['issue_date'])) {
@@ -102,6 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $invoice['due_date'] = $raw_due !== '' ? $raw_due : null;
   }
   $invoice['notes'] = trim((string)($_POST['notes'] ?? ''));
+  $targetStatus = (string)($_POST['status'] ?? 'draft');
+  $targetStatus = in_array($targetStatus, ['draft','issued','paid'], true) ? $targetStatus : 'draft';
   $items = parse_items_from_post();
 
   if ($invoice['client_id'] <= 0) {
@@ -118,18 +123,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   if (empty($errors)) {
+    $savedId = $id;
     if ($editing) {
+      // Guardar datos en borrador si es borrador
       InvoicesRepository::updateDraft($id, $invoice);
       InvoiceItemsRepository::deleteByInvoice($id);
       InvoiceItemsRepository::insertMany($id, $items);
-      Flash::add('success', 'Factura guardada como borrador.');
     } else {
-      $newId = InvoicesRepository::createDraft($invoice);
-      InvoiceItemsRepository::insertMany($newId, $items);
-      Flash::add('success', 'Factura creada como borrador.');
-      header('Location: /?page=invoice_form&id=' . $newId);
-      exit;
+      $savedId = InvoicesRepository::createDraft($invoice);
+      InvoiceItemsRepository::insertMany($savedId, $items);
     }
+
+    // Emitir y/o marcar pagada según selección
+    if ($targetStatus === 'issued' || $targetStatus === 'paid') {
+      // Emitir número si sigue en borrador
+      $num = InvoiceNumberingService::issue($savedId, $invoice['issue_date']);
+      if ($targetStatus === 'paid') {
+        InvoicesRepository::setStatus($savedId, 'paid');
+      }
+      Flash::add('success', 'Factura ' . ($targetStatus==='paid' ? 'emitida y marcada pagada' : 'emitida') . (isset($num) && $num ? ' (' . $num . ')' : '') . '.');
+    } else {
+      Flash::add('success', 'Factura guardada como borrador.');
+    }
+
+    // Ir al listado de facturas tras guardar
+    header('Location: /?page=invoices');
+    exit;
   }
 }
 
@@ -176,6 +195,18 @@ $totals = InvoiceService::computeTotals($items);
         </div>
         <?php if (!empty($errors['due_date'])): ?><div class="alert error"><?= htmlspecialchars($errors['due_date']) ?></div><?php endif; ?>
       </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label>Estado</label>
+        <select name="status" style="width:100%;padding:10px;border:1px solid #E2E8F0;border-radius:8px;background:#fff">
+          <option value="draft" <?= ($currentStatus==='draft')?'selected':'' ?>>Borrador</option>
+          <option value="issued" <?= ($currentStatus==='issued')?'selected':'' ?>>Emitida</option>
+          <option value="paid" <?= ($currentStatus==='paid')?'selected':'' ?>>Pagada</option>
+        </select>
+      </div>
+      <div></div>
     </div>
 
     <label>Notas</label>
@@ -230,7 +261,7 @@ $totals = InvoiceService::computeTotals($items);
     </div>
 
     <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
-      <button type="submit" class="btn">Guardar borrador</button>
+      <button type="submit" class="btn">Guardar</button>
       <a class="btn btn-secondary" href="/?page=invoices">Cancelar</a>
       <?php if ($editing): ?>
         <form method="post" action="/?page=invoices" onsubmit="return confirm('¿Eliminar la factura?');" style="margin-left:auto">
