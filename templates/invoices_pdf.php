@@ -92,11 +92,14 @@ $html = '<!doctype html>
   .grid{display:grid;grid-template-columns:1fr;gap:10px}
   .box{border:1px solid ' . h($primary) . ';border-radius:8px;padding:8px}
   .box + .box{margin-top:10px} /* fallback for Dompdf when grid-gap is ignored */
-  table{width:100%;border-collapse:collapse;margin-top:10px}
+  table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
-  th{background:' . h($accent) . '; color:' . h($thText) . '}
+  thead th{background:' . h($accent) . '; color:' . h($thText) . '}
+  thead th:first-child{border-top-left-radius:8px}
+  thead th:last-child{border-top-right-radius:8px}
   .totals{margin-top:12px;display:grid;grid-template-columns:1fr 280px;gap:12px;align-items:flex-start}
   .totals .card{border:1px solid #E2E8F0;border-radius:8px;padding:10px}
+  .totals .card .after-irpf{margin-bottom:10px}
   .totals .grand{font-size:16px;font-weight:700;background:#F8FAFC;border:1px solid ' . h($primary) . ';border-radius:8px;padding:12px;text-align:right}
   .right{text-align:right}
 </style></head><body>';
