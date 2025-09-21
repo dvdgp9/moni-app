@@ -3,6 +3,7 @@ use Moni\Repositories\InvoicesRepository;
 use Moni\Support\Flash;
 use Moni\Support\Csrf;
 use Moni\Services\InvoiceNumberingService;
+use Moni\Services\InvoiceService;
 use Moni\Repositories\InvoiceItemsRepository;
 use Moni\Database;
 
@@ -109,6 +110,7 @@ function status_es(string $s): string {
             <th>Estado</th>
             <th>Fecha</th>
             <th>Vencimiento</th>
+            <th>Importe</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -120,6 +122,8 @@ function status_es(string $s): string {
               <td><?= htmlspecialchars(status_es($i['status'])) ?></td>
               <td><?= htmlspecialchars($i['issue_date']) ?></td>
               <td><?= htmlspecialchars($i['due_date'] ?? '') ?></td>
+              <?php $items = InvoiceItemsRepository::byInvoice((int)$i['id']); $totals = InvoiceService::computeTotals($items); ?>
+              <td style="text-align:right;white-space:nowrap;"><?= number_format($totals['total'], 2) ?> €</td>
               <td class="table-actions">
                 <a class="btn" href="/?page=invoice_form&id=<?= (int)$i['id'] ?>">Editar</a>
                 <a class="btn btn-secondary" href="/?page=invoice_pdf&id=<?= (int)$i['id'] ?>" target="_blank" rel="noopener">PDF</a>

@@ -69,6 +69,7 @@ $clients = ClientsRepository::all($q);
         </thead>
         <tbody>
           <?php foreach ($clients as $c): ?>
+            <?php $invCount = InvoicesRepository::countByClient((int)$c['id']); ?>
             <tr>
               <td><?= htmlspecialchars($c['name']) ?></td>
               <td><?= htmlspecialchars($c['nif'] ?? '') ?></td>
@@ -76,7 +77,7 @@ $clients = ClientsRepository::all($q);
               <td><?= htmlspecialchars($c['phone'] ?? '') ?></td>
               <td class="table-actions">
                 <a href="/?page=client_form&id=<?= (int)$c['id'] ?>" class="btn">Editar</a>
-                <form method="post" onsubmit="return confirm('¿Eliminar cliente?');">
+                <form method="post" onsubmit="return canDeleteClient(this, <?= (int)$invCount ?>);">
                   <input type="hidden" name="_action" value="delete" />
                   <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                   <input type="hidden" name="id" value="<?= (int)$c['id'] ?>" />
@@ -88,5 +89,14 @@ $clients = ClientsRepository::all($q);
         </tbody>
       </table>
     </div>
+    <script>
+    function canDeleteClient(form, count) {
+      if (count > 0) {
+        alert('No se puede eliminar el cliente: tiene ' + count + ' factura(s) asociada(s).');
+        return false;
+      }
+      return confirm('¿Eliminar cliente?');
+    }
+    </script>
   <?php endif; ?>
 </section>
