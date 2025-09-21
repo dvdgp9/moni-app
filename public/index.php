@@ -54,6 +54,22 @@ $routes = [
 
 $template = $routes[$page] ?? $routes['dashboard'];
 
+// Auth middleware: protect sensitive pages
+$protected = [
+    'settings', 'clients', 'client_form',
+    'invoices', 'invoice_form', 'invoice_pdf',
+    'profile'
+];
+if (in_array($page, $protected, true)) {
+    if (empty($_SESSION['user_id'])) {
+        \Moni\Support\Flash::add('error', 'Inicia sesión para continuar.');
+        // store intended URL to return after login
+        $_SESSION['_intended'] = $_SERVER['REQUEST_URI'] ?? '/?page=dashboard';
+        header('Location: /?page=login');
+        exit;
+    }
+}
+
 // Render PDF endpoints without the normal layout (and require auth)
 if ($page === 'invoice_pdf') {
     if (empty($_SESSION['user_id'])) {

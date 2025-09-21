@@ -12,7 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = UsersRepository::findByEmail($email);
     if ($user && password_verify($password, $user['password_hash'])) {
         AuthService::login((int)$user['id']);
-        header('Location: /?page=dashboard');
+        $to = $_SESSION['_intended'] ?? '/?page=dashboard';
+        unset($_SESSION['_intended']);
+        header('Location: ' . $to);
         exit;
     }
     Flash::add('error', 'Credenciales inválidas');
