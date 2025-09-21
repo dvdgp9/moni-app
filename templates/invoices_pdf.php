@@ -92,9 +92,9 @@ $html = '<!doctype html>
   .grid{display:grid;grid-template-columns:1fr;gap:10px}
   .box{border:1px solid ' . h($primary) . ';border-radius:8px;padding:8px}
   .box + .box{margin-top:10px} /* fallback for Dompdf when grid-gap is ignored */
-  .row{display:flex;align-items:center;gap:6px;margin:2px 0}
-  .row strong{min-width:0}
-  .icon{display:inline-block;width:12px;height:12px}
+  .row{margin:2px 0}
+  .icon{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:6px}
+  .row span{vertical-align:middle}
   table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
   thead th{background:' . h($accent) . '; color:' . h($thText) . '}
@@ -126,30 +126,30 @@ $emitterEmail = $emitter['billing_email'] ?? ($emitter['email'] ?? '');
 $emitterIban = $emitter['iban'] ?? '';
 
 // Tiny inline SVG icons (UntitledUI-like simple strokes)
-$svgUser = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>';
-$svgId = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="12" y2="13"/></svg>';
-$svgLocation = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
-$svgContact = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.84 19.84 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.84 19.84 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.86.31 1.7.57 2.5a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.58-1.58a2 2 0 0 1 2.11-.45c.8.26 1.64.45 2.5.57A2 2 0 0 1 22 16.92Z"/></svg>';
+$svgUser = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>';
+$svgId = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="12" y2="13"/></svg>';
+$svgLocation = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+$svgContact = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.84 19.84 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.84 19.84 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.86.31 1.7.57 2.5a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.58-1.58a2 2 0 0 1 2.11-.45c.8.26 1.64.45 2.5.57A2 2 0 0 1 22 16.92Z"/></svg>';
 
 $html .= '<div class="grid">';
 
 // Emitter box (first)
 $html .= '<div class="box">';
 $html .= '<strong>Emisor</strong>'
-    . '<div class="row">' . $svgUser . '<div>' . h($emitterName) . '</div></div>'
-    . ($emitterNif ? ('<div class="row">' . $svgId . '<div>NIF: ' . h($emitterNif) . '</div></div>') : '')
-    . ($emitterAddress !== '' ? ('<div class="row">' . $svgLocation . '<div>' . h($emitterAddress) . '</div></div>') : '')
-    . (($emitterEmail || $emitterPhone) ? ('<div class="row">' . $svgContact . '<div>' . h($emitterEmail) . ($emitterPhone ? ' ' . h($emitterPhone) : '') . '</div></div>') : '')
-    . ($emitterIban ? ('<div class="row">' . $svgId . '<div>IBAN: ' . h($emitterIban) . '</div></div>') : '')
+    . '<div class="row">' . $svgUser . '<span>' . h($emitterName) . '</span></div>'
+    . ($emitterNif ? ('<div class="row">' . $svgId . '<span>NIF: ' . h($emitterNif) . '</span></div>') : '')
+    . ($emitterAddress !== '' ? ('<div class="row">' . $svgLocation . '<span>' . h($emitterAddress) . '</span></div>') : '')
+    . (($emitterEmail || $emitterPhone) ? ('<div class="row">' . $svgContact . '<span>' . h($emitterEmail) . ($emitterPhone ? ' ' . h($emitterPhone) : '') . '</span></div>') : '')
+    . ($emitterIban ? ('<div class="row">' . $svgId . '<span>IBAN: ' . h($emitterIban) . '</span></div>') : '')
     . '</div>';
 
 // Client box (second)
 $html .= '<div class="box">'
     . '<strong>Cliente</strong>'
-    . '<div class="row">' . $svgUser . '<div>' . h($clientName) . '</div></div>'
-    . ($clientNif !== '' ? ('<div class="row">' . $svgId . '<div>NIF: ' . h($clientNif) . '</div></div>') : '')
-    . ($clientAddress !== '' ? ('<div class="row">' . $svgLocation . '<div>' . h($clientAddress) . '</div></div>') : '')
-    . (($clientEmail || $clientPhone) ? ('<div class="row">' . $svgContact . '<div>' . h($clientEmail) . ($clientPhone ? ' ' . h($clientPhone) : '') . '</div></div>') : '')
+    . '<div class="row">' . $svgUser . '<span>' . h($clientName) . '</span></div>'
+    . ($clientNif !== '' ? ('<div class="row">' . $svgId . '<span>NIF: ' . h($clientNif) . '</span></div>') : '')
+    . ($clientAddress !== '' ? ('<div class="row">' . $svgLocation . '<span>' . h($clientAddress) . '</span></div>') : '')
+    . (($clientEmail || $clientPhone) ? ('<div class="row">' . $svgContact . '<span>' . h($clientEmail) . ($clientPhone ? ' ' . h($clientPhone) : '') . '</span></div>') : '')
     . '</div>';
 
 $html .= '</div>';
