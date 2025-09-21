@@ -4,6 +4,7 @@ use Moni\Repositories\InvoicesRepository;
 use Moni\Repositories\InvoiceItemsRepository;
 use Moni\Repositories\ClientsRepository;
 use Moni\Services\InvoiceService;
+use Moni\Repositories\UsersRepository;
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
@@ -60,19 +61,45 @@ $html .= '<div class="header">
   </div>
 </div>';
 
-$html .= '<div class="grid">
-  <div class="box">
-    <strong>Cliente</strong><br>
-    ' . h($clientName) . '<br>
-    NIF: ' . h($clientNif) . '<br>
-    ' . nl2br(h($clientAddress)) . '<br>
-    ' . h($clientEmail) . ' ' . h($clientPhone) . '
-  </div>
-  <div class="box">
-    <strong>Notas</strong><br>
-    ' . nl2br(h($notes)) . '
-  </div>
-</div>';
+// Emitter data (logged user)
+$emitter = null;
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+if (!empty($_SESSION['user_id'])) {
+    $emitter = UsersRepository::find((int)$_SESSION['user_id']);
+}
+$logo = $emitter['logo_url'] ?? '';
+$emitterName = ($emitter['company_name'] ?? '') ?: ($emitter['name'] ?? '');
+$emitterNif = $emitter['nif'] ?? '';
+$emitterAddress = $emitter['address'] ?? '';
+$emitterPhone = $emitter['phone'] ?? '';
+$emitterEmail = $emitter['billing_email'] ?? ($emitter['email'] ?? '');
+$emitterIban = $emitter['iban'] ?? '';
+
+$html .= '<div class="grid">';
+
+// Left: Client box
+$html .= '<div class="box">'
+    . '<strong>Cliente</strong><br>'
+    . h($clientName) . '<br>'
+    . 'NIF: ' . h($clientNif) . '<br>'
+    . nl2br(h($clientAddress)) . '<br>'
+    . h($clientEmail) . ' ' . h($clientPhone)
+    . '</div>';
+
+// Right: Emitter box (with optional logo on top)
+$html .= '<div class="box">';
+if ($logo) {
+    $html .= '<div style="text-align:right"><img src="' . h($logo) . '" style="max-height:60px" /></div>';
+}
+$html .= '<strong>Emisor</strong><br>'
+    . h($emitterName) . '<br>'
+    . ($emitterNif ? ('NIF: ' . h($emitterNif) . '<br>') : '')
+    . nl2br(h($emitterAddress)) . '<br>'
+    . h($emitterEmail) . ' ' . h($emitterPhone) . '<br>'
+    . ($emitterIban ? ('IBAN: ' . h($emitterIban)) : '')
+    . '</div>';
+
+$html .= '</div>';
 
 $html .= '<table><thead><tr>
   <th>Descripción</th><th>Cant.</th><th>Precio</th><th>IVA %</th><th>IRPF %</th><th class="right">Importe</th>

@@ -2,6 +2,7 @@
 use Moni\Support\Config;
 $root = dirname(__DIR__);
 $view = $template;
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -20,6 +21,12 @@ $view = $template;
         <a href="/?page=clients">Clientes</a>
         <a href="/?page=invoices">Facturas</a>
         <a class="disabled" title="Próximamente">Declaraciones</a>
+        <?php if (!empty($_SESSION['user_id'])): ?>
+          <a href="/?page=profile" style="margin-left:auto">Perfil</a>
+          <a href="/?page=logout">Salir</a>
+        <?php else: ?>
+          <a href="/?page=login" style="margin-left:auto">Entrar</a>
+        <?php endif; ?>
       </nav>
     </div>
   </header>

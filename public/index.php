@@ -47,12 +47,20 @@ $routes = [
     'invoices'  => $root . '/templates/invoices_list.php',
     'invoice_form' => $root . '/templates/invoices_form.php',
     'invoice_pdf' => $root . '/templates/invoices_pdf.php',
+    'login' => $root . '/templates/login.php',
+    'logout' => $root . '/templates/logout.php',
+    'profile' => $root . '/templates/profile.php',
 ];
 
 $template = $routes[$page] ?? $routes['dashboard'];
 
-// Render PDF endpoints without the normal layout
+// Render PDF endpoints without the normal layout (and require auth)
 if ($page === 'invoice_pdf') {
+    if (empty($_SESSION['user_id'])) {
+        http_response_code(403);
+        echo 'Inicia sesión para acceder al PDF';
+        exit;
+    }
     include $template;
     exit;
 }
