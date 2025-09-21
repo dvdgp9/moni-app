@@ -173,7 +173,7 @@ $html .= '<div class="totals">
   <div class="card">
     <div class="right"><strong>Base:</strong> ' . mny($totals['base']) . ' €</div>
     <div class="right"><strong>IVA:</strong> ' . mny($totals['iva']) . ' €</div>
-    <div class="right"><strong>IRPF:</strong> ' . mny($totals['irpf']) . ' €</div>
+    <div class="right after-irpf"><strong>IRPF:</strong> ' . mny($totals['irpf']) . ' €</div>
     <div class="grand">Total factura: ' . mny($totals['total']) . ' €</div>
   </div>
 </div>';
