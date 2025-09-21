@@ -34,6 +34,10 @@ $clients = ClientsRepository::all($q);
 ?>
 <section>
   <h1>Clientes</h1>
+  <p style="margin-top:-6px;margin-bottom:14px;color:var(--gray-600)">
+    Gestiona tus clientes para facturar más rápido. Desde aquí puedes crear, editar y eliminar
+    clientes. Si un cliente tiene facturas, no se podrá eliminar por seguridad.
+  </p>
 
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>

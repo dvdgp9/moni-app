@@ -72,6 +72,10 @@ function status_es(string $s): string {
 ?>
 <section>
   <h1>Facturas</h1>
+  <p style="margin-top:-6px;margin-bottom:14px;color:var(--gray-600)">
+    Crea, edita y gestiona tus facturas. Puedes filtrar por estado o buscar por número o cliente.
+    Desde Acciones podrás editar, generar el PDF, marcar estados o eliminar.
+  </p>
 
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>
