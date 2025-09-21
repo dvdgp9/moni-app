@@ -74,7 +74,7 @@ $html = '<!doctype html>
   .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ' . h($primary) . ';padding-bottom:8px;margin-bottom:12px}
   .brand h1{margin:0;font-size:20px;color:' . h($primary) . '}
   .meta{font-size:12px;text-align:right}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid{display:grid;grid-template-columns:1fr;gap:10px}
   .box{border:1px solid #E2E8F0;border-radius:8px;padding:8px}
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #E2E8F0;text-align:left}
@@ -105,16 +105,7 @@ $emitterIban = $emitter['iban'] ?? '';
 
 $html .= '<div class="grid">';
 
-// Left: Client box
-$html .= '<div class="box">'
-    . '<strong>Cliente</strong><br>'
-    . h($clientName) . '<br>'
-    . 'NIF: ' . h($clientNif) . '<br>'
-    . nl2br(h($clientAddress)) . '<br>'
-    . h($clientEmail) . ' ' . h($clientPhone)
-    . '</div>';
-
-// Right: Emitter box (with optional logo on top)
+// Emitter box (first)
 $html .= '<div class="box">';
 $html .= '<strong>Emisor</strong><br>'
     . h($emitterName) . '<br>'
@@ -122,6 +113,15 @@ $html .= '<strong>Emisor</strong><br>'
     . nl2br(h($emitterAddress)) . '<br>'
     . h($emitterEmail) . ' ' . h($emitterPhone) . '<br>'
     . ($emitterIban ? ('IBAN: ' . h($emitterIban)) : '')
+    . '</div>';
+
+// Client box (second)
+$html .= '<div class="box">'
+    . '<strong>Cliente</strong><br>'
+    . h($clientName) . '<br>'
+    . 'NIF: ' . h($clientNif) . '<br>'
+    . nl2br(h($clientAddress)) . '<br>'
+    . h($clientEmail) . ' ' . h($clientPhone)
     . '</div>';
 
 $html .= '</div>';
