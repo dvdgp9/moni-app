@@ -227,14 +227,16 @@ input[type="color"]::-moz-color-swatch {
 .color-picker-group .color-picker {
   width: 100%;
 }
+.color-swatch label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  margin-bottom: 4px;
+}
 .color-hex {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-.color-hex span {
-  font-size: 0.75rem;
-  color: var(--gray-600);
 }
 .color-hex input[type="text"] {
   width: 100%;
@@ -244,6 +246,8 @@ input[type="color"]::-moz-color-swatch {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.8rem;
   background: #fff;
+  height: 42px; /* align with color picker swatch height */
+  box-sizing: border-box;
 }
 
 /* Modern Buttons */

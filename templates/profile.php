@@ -155,12 +155,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Colores (primario y acento)</label>
         <div class="grid-2">
           <div class="color-picker-group">
-            <input class="color-picker" type="color" name="color_primary" value="<?= htmlspecialchars($values['color_primary']) ?>" />
-            <div class="color-hex"><span>Primario</span><input type="text" id="hex_primary" value="<?= htmlspecialchars(strtoupper($values['color_primary'])) ?>" readonly></div>
+            <div class="color-swatch">
+              <label for="color_primary">Primario</label>
+              <input id="color_primary" class="color-picker" type="color" name="color_primary" value="<?= htmlspecialchars($values['color_primary']) ?>" />
+            </div>
+            <div class="color-hex"><input type="text" id="hex_primary" value="<?= htmlspecialchars(strtoupper($values['color_primary'])) ?>" readonly></div>
           </div>
           <div class="color-picker-group">
-            <input class="color-picker" type="color" name="color_accent" value="<?= htmlspecialchars($values['color_accent']) ?>" />
-            <div class="color-hex"><span>Acento</span><input type="text" id="hex_accent" value="<?= htmlspecialchars(strtoupper($values['color_accent'])) ?>" readonly></div>
+            <div class="color-swatch">
+              <label for="color_accent">Acento</label>
+              <input id="color_accent" class="color-picker" type="color" name="color_accent" value="<?= htmlspecialchars($values['color_accent']) ?>" />
+            </div>
+            <div class="color-hex"><input type="text" id="hex_accent" value="<?= htmlspecialchars(strtoupper($values['color_accent'])) ?>" readonly></div>
           </div>
         </div>
       </div>
@@ -172,3 +178,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </form>
 </section>
+<script>
+(function(){
+  function sync(pickerId, hexId){
+    var p = document.getElementById(pickerId);
+    var h = document.getElementById(hexId);
+    if (!p || !h) return;
+    p.addEventListener('input', function(){ h.value = p.value.toUpperCase(); });
+  }
+  sync('color_primary','hex_primary');
+  sync('color_accent','hex_accent');
+})();
+</script>
