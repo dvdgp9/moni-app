@@ -217,28 +217,46 @@ function icon_bell(): string {
     }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)));
   }
 
-  // Toggle forms (listen to submit to truly prevent form navigation)
-  document.querySelectorAll('.js-toggle').forEach(form => {
+  function applyToggleUI(form, makeOn) {
     const btn = form.querySelector('[data-role="toggle"]');
-    form.addEventListener('submit', function(ev){
-      ev.preventDefault();
-      if (btn) { btn.disabled = true; }
-      const id = form.dataset.id;
-      const enabled = form.dataset.enabled === '1';
-      postAjax({ _token: csrf, _action: 'toggle', id, enabled: enabled ? '0' : '1' })
-        .then(res => {
-          if (!res || !res.ok) { console.warn('Toggle fallido'); return; }
-          // flip state in DOM
-          form.dataset.enabled = enabled ? '0' : '1';
-          if (btn) {
-            btn.classList.toggle('btn-secondary', enabled);
-            btn.textContent = enabled ? '○' : '✔';
-            btn.title = enabled ? 'Activar' : 'Desactivar';
-          }
-        })
-        .catch(err => { console.warn('Error AJAX', err && err.message ? err.message : err); })
-        .finally(() => { if (btn) { btn.disabled = false; } });
-    });
+    form.dataset.enabled = makeOn ? '1' : '0';
+    const hidden = form.querySelector('input[name="enabled"]');
+    if (hidden) hidden.value = makeOn ? '0' : '1'; // next post should flip
+    if (btn) {
+      btn.classList.toggle('btn-secondary', !makeOn);
+      btn.textContent = makeOn ? '✔' : '○';
+      btn.title = makeOn ? 'Desactivar' : 'Activar';
+    }
+  }
+
+  function toggleAjax(form) {
+    const btn = form.querySelector('[data-role="toggle"]');
+    const id = form.dataset.id;
+    const enabledNow = form.dataset.enabled === '1';
+    const target = enabledNow ? '0' : '1';
+    if (btn) btn.disabled = true;
+    // Optimistic UI
+    applyToggleUI(form, !enabledNow);
+    return postAjax({ _token: csrf, _action: 'toggle', id, enabled: target })
+      .then(res => {
+        if (!res || !res.ok) {
+          // rollback
+          applyToggleUI(form, enabledNow);
+          console.warn('Toggle fallido');
+        }
+      })
+      .catch(err => {
+        applyToggleUI(form, enabledNow);
+        console.warn('Error AJAX', err && err.message ? err.message : err);
+      })
+      .finally(() => { if (btn) btn.disabled = false; });
+  }
+
+  // Toggle forms (submit + click handlers)
+  document.querySelectorAll('.js-toggle').forEach(form => {
+    form.addEventListener('submit', function(ev){ ev.preventDefault(); toggleAjax(form); });
+    const btn = form.querySelector('[data-role="toggle"]');
+    if (btn) btn.addEventListener('click', function(ev){ ev.preventDefault(); toggleAjax(form); });
   });
 
   // Bulk actions
