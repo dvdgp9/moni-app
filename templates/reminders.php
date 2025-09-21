@@ -200,32 +200,44 @@ function icon_bell(): string {
   const csrf = '<?= Csrf::token() ?>';
 
   function postAjax(data) {
-    const body = new URLSearchParams(data);
+    const body = new URLSearchParams();
+    Object.entries(data).forEach(([k,v]) => {
+      if (Array.isArray(v)) {
+        v.forEach(item => body.append(k, item));
+      } else {
+        body.append(k, v);
+      }
+    });
     body.append('ajax', '1');
     return fetch('/?page=reminders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      credentials: 'same-origin',
       body: body.toString()
-    }).then(r => r.json());
+    }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)));
   }
 
-  // Toggle buttons
+  // Toggle forms (listen to submit to truly prevent form navigation)
   document.querySelectorAll('.js-toggle').forEach(form => {
     const btn = form.querySelector('[data-role="toggle"]');
-    btn && btn.addEventListener('click', function(ev){
+    form.addEventListener('submit', function(ev){
       ev.preventDefault();
+      if (btn) { btn.disabled = true; }
       const id = form.dataset.id;
       const enabled = form.dataset.enabled === '1';
       postAjax({ _token: csrf, _action: 'toggle', id, enabled: enabled ? '0' : '1' })
         .then(res => {
-          if (!res || !res.ok) return;
+          if (!res || !res.ok) { console.warn('Toggle fallido'); return; }
           // flip state in DOM
           form.dataset.enabled = enabled ? '0' : '1';
-          btn.classList.toggle('btn-secondary', enabled);
-          btn.textContent = enabled ? '○' : '✔';
-          btn.title = enabled ? 'Activar' : 'Desactivar';
+          if (btn) {
+            btn.classList.toggle('btn-secondary', enabled);
+            btn.textContent = enabled ? '○' : '✔';
+            btn.title = enabled ? 'Activar' : 'Desactivar';
+          }
         })
-        .catch(()=>{});
+        .catch(err => { console.warn('Error AJAX', err && err.message ? err.message : err); })
+        .finally(() => { if (btn) { btn.disabled = false; } });
     });
   });
 
@@ -237,7 +249,7 @@ function icon_bell(): string {
       const action = f.dataset.action;
       postAjax({ _token: csrf, _action: action, 'ids[]': ids })
         .then(res => {
-          if (!res || !res.ok) return;
+          if (!res || !res.ok) { console.warn('Acción masiva fallida'); return; }
           // Update UI of the corresponding scope
           const scope = f.dataset.scope;
           const container = scope === 'quarters' ? document.querySelectorAll('.grid-2 .card')[0] : document.querySelectorAll('.grid-2 .card')[1];
@@ -253,7 +265,7 @@ function icon_bell(): string {
             btn.title = makeOn ? 'Desactivar' : 'Activar';
           });
         })
-        .catch(()=>{});
+        .catch(err=>{ console.warn('Error AJAX', err && err.message ? err.message : err); });
     });
   });
 })();
