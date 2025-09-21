@@ -3,6 +3,13 @@ use Moni\Support\Config;
 $root = dirname(__DIR__);
 $view = $template;
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+// Brand assets autodiscovery
+$brandDir = $root . '/public/assets/brand';
+$logoPath = null;
+foreach (['/logo.svg','/logo.png'] as $p) { if (file_exists($brandDir . $p)) { $logoPath = '/assets/brand' . $p; break; } }
+$faviconSvg = file_exists($brandDir . '/favicon.svg') ? '/assets/brand/favicon.svg' : null;
+$faviconPng = file_exists($brandDir . '/favicon.png') ? '/assets/brand/favicon.png' : null;
+$faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.ico' : null;
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -10,11 +17,26 @@ if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></title>
   <link rel="stylesheet" href="/assets/css/styles.css?v=3">
+  <?php if ($faviconSvg): ?>
+    <link rel="icon" type="image/svg+xml" href="<?= $faviconSvg ?>">
+  <?php endif; ?>
+  <?php if ($faviconPng): ?>
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= $faviconPng ?>">
+  <?php endif; ?>
+  <?php if ($faviconIco): ?>
+    <link rel="icon" href="<?= $faviconIco ?>">
+  <?php endif; ?>
 </head>
 <body>
   <header class="app-header">
     <div class="container">
-      <div class="brand"><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></div>
+      <a class="brand" href="/?page=dashboard" style="display:flex;align-items:center;gap:8px;text-decoration:none">
+        <?php if ($logoPath): ?>
+          <img src="<?= $logoPath ?>" alt="<?= htmlspecialchars(Config::get('app_name', 'Moni')) ?>" style="height:28px;width:auto;display:block"/>
+        <?php else: ?>
+          <?= htmlspecialchars(Config::get('app_name', 'Moni')) ?>
+        <?php endif; ?>
+      </a>
       <nav class="nav">
         <a href="/?page=dashboard" class="<?= ($page==='dashboard')?'active':'' ?>">Dashboard</a>
         <a href="/?page=clients" class="<?= ($page==='clients'||$page==='client_form')?'active':'' ?>">Clientes</a>
