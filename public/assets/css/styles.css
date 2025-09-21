@@ -6,10 +6,11 @@
 }
 
 :root {
-  --primary: #2563EB; /* blue-600 */
-  --primary-dark: #1D4ED8; /* blue-700 */
-  --primary-light: #93C5FD; /* blue-300 */
-  --accent: #38BDF8; /* sky-400 */
+  /* Brand palette */
+  --primary: #0FA3B1; /* Primary Teal */
+  --primary-dark: #0B8290; /* darker teal */
+  --primary-light: #8FE3EA; /* light teal */
+  --accent: #84CC16; /* Accent Lime */
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
@@ -22,7 +23,7 @@
   --gray-600: #4b5563;
   --gray-700: #374151;
   --gray-800: #1f2937;
-  --gray-900: #111827;
+  --gray-900: #0F172A; /* Dark Slate */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -34,7 +35,7 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   color: var(--gray-900);
-  background: linear-gradient(135deg, #e0f2fe 0%, #eff6ff 100%);
+  background: linear-gradient(135deg, #F0FDFA 0%, #ffffff 100%); /* Mint 50 to white */
   min-height: 100vh;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
