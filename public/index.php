@@ -72,6 +72,12 @@ if (in_array($page, $protected, true)) {
     }
 }
 
+// Short-circuit JSON endpoints for AJAX posts to avoid wrapping with layout
+if ($page === 'reminders' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && (($_POST['ajax'] ?? '') === '1')) {
+    include $template; // the template handles POST + outputs JSON and exits
+    exit;
+}
+
 // Render PDF endpoints without the normal layout (and require auth)
 if ($page === 'invoice_pdf') {
     if (empty($_SESSION['user_id'])) {
