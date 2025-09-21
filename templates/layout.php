@@ -16,20 +16,20 @@ if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
     <div class="container">
       <div class="brand"><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></div>
       <nav class="nav">
-        <a href="/?page=dashboard">Dashboard</a>
-        <a href="/?page=clients">Clientes</a>
-        <a href="/?page=invoices">Facturas</a>
-        <a href="/?page=reminders">Notificaciones</a>
+        <a href="/?page=dashboard" class="<?= ($page==='dashboard')?'active':'' ?>">Dashboard</a>
+        <a href="/?page=clients" class="<?= ($page==='clients'||$page==='client_form')?'active':'' ?>">Clientes</a>
+        <a href="/?page=invoices" class="<?= ($page==='invoices'||$page==='invoice_form')?'active':'' ?>">Facturas</a>
+        <a href="/?page=reminders" class="<?= ($page==='reminders')?'active':'' ?>">Notificaciones</a>
         <?php if (!empty($_SESSION['user_id'])): ?>
           <!-- Penúltimo: Ajustes (icon settings-01) -->
-          <a href="/?page=settings" title="Ajustes">
+          <a href="/?page=settings" title="Ajustes" class="<?= ($page==='settings')?'active':'' ?>">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:middle;margin-right:4px">
               <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M19.4 15.5c.18-.32.6-.46.94-.32l.26.1a2 2 0 0 0 2.68-1.88v-2a2 2 0 0 0-2.68-1.88l-.26.1c-.34.14-.76 0-.94-.32a7.7 7.7 0 0 0-1.34-1.34c-.32-.18-.46-.6-.32-.94l.1-.26A2 2 0 0 0 16.4 1h-2a2 2 0 0 0-1.88 2.68l.1.26c.14.34 0 .76-.32.94-.47.4-.93.87-1.34 1.34-.18.32-.6.46-.94.32l-.26-.1A2 2 0 0 0 3 7.6v2c0 .9.57 1.63 1.4 1.88l.26.1c.34.14.46.6.28.92-.18.46-.28.94-.28 1.5 0 .5.1 1.02.28 1.5.18.32.06.78-.28.92l-.26.1A2 2 0 0 0 3 20.4v2a2 2 0 0 0 2.68 1.88l.26-.1c.34-.14.76 0 .94.32.41.47.87.93 1.34 1.34.32.18.46.6.32.94l-.1.26A2 2 0 0 0 9.6 27h2a2 2 0 0 0 1.88-2.68l-.1-.26c-.14-.34 0-.76.32-.94.47-.41.93-.87 1.34-1.34.18-.32.6-.46.94-.32l.26.1A2 2 0 0 0 23 20.4v-2a2 2 0 0 0-2.68-1.88l-.26.1c-.34.14-.76 0-.94-.32-.41-.47-.87-.93-1.34-1.34Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </a>
           <!-- Último a la derecha: Perfil (icon user-01) y Salir -->
-          <a href="/?page=profile" style="margin-left:auto" title="Perfil">
+          <a href="/?page=profile" style="margin-left:auto" title="Perfil" class="<?= ($page==='profile')?'active':'' ?>">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:middle;margin-right:4px">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M20 21a8 8 0 1 0-16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
