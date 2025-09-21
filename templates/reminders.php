@@ -79,6 +79,11 @@ function icon_bell(): string {
 ?>
 <section>
   <h1>Notificaciones</h1>
+  <p style="margin-top:-6px;margin-bottom:14px;color:var(--gray-600)">
+    Activa o desactiva cada aviso con el interruptor. Las declaraciones trimestrales y tus recordatorios se repiten
+    cada año en la misma fecha. Usa "Todo/Nada" para activar o desactivar en bloque. Puedes añadir recordatorios
+    personalizados indicando título y fecha.
+  </p>
 
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>
