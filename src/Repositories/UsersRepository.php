@@ -46,4 +46,26 @@ final class UsersRepository
             ':color_accent' => $data['color_accent'] ?? null,
         ]);
     }
+
+    public static function existsByEmail(string $email): bool
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('SELECT 1 FROM users WHERE email = :e LIMIT 1');
+        $stmt->execute([':e' => $email]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    public static function create(string $email, string $password, ?string $name = null): int
+    {
+        $pdo = Database::pdo();
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare('INSERT INTO users (email, password_hash, name, created_at) VALUES (:email, :hash, :name, :ts)');
+        $stmt->execute([
+            ':email' => $email,
+            ':hash' => $hash,
+            ':name' => $name,
+            ':ts' => date('Y-m-d H:i:s'),
+        ]);
+        return (int)$pdo->lastInsertId();
+    }
 }

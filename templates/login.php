@@ -54,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit" class="btn" style="width:100%;margin-top:1rem">Entrar</button>
       </form>
 
-      <p style="margin-top:2rem;font-size:0.75rem;color:var(--gray-500)">
-        Usuario de prueba: david@wthefox.com
+      <p style="margin-top:1rem;font-size:0.9rem;color:var(--gray-600)">
+        ¿No tienes cuenta? <a href="/?page=register">Crear una cuenta</a>
       </p>
     </div>
   </div>

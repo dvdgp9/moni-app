@@ -48,6 +48,7 @@ $routes = [
     'invoice_form' => $root . '/templates/invoices_form.php',
     'invoice_pdf' => $root . '/templates/invoices_pdf.php',
     'login' => $root . '/templates/login.php',
+    'register' => $root . '/templates/register.php',
     'logout' => $root . '/templates/logout.php',
     'profile' => $root . '/templates/profile.php',
     'reminders' => $root . '/templates/reminders.php',
