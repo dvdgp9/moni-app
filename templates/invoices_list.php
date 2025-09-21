@@ -122,6 +122,7 @@ function status_es(string $s): string {
               <td><?= htmlspecialchars($i['due_date'] ?? '') ?></td>
               <td class="table-actions">
                 <a class="btn" href="/?page=invoice_form&id=<?= (int)$i['id'] ?>">Editar</a>
+                <a class="btn btn-secondary" href="/?page=invoice_pdf&id=<?= (int)$i['id'] ?>" target="_blank" rel="noopener">PDF</a>
                 <?php if ($i['status'] === 'draft'): ?>
                   <form method="post" style="display:inline">
                     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
