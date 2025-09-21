@@ -291,11 +291,11 @@ input:focus, textarea:focus, select:focus {
 
 /* Login Page Specific */
 .login-container {
-  min-height: 100vh;
+  min-height: 85vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .login-card {
@@ -304,17 +304,17 @@ input:focus, textarea:focus, select:focus {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1.5rem;
-  padding: 3rem;
+  padding: 2rem;
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   text-align: center;
 }
 
 .login-title {
   font-size: 2rem;
   font-weight: 800;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -323,7 +323,7 @@ input:focus, textarea:focus, select:focus {
 
 .login-subtitle {
   color: var(--gray-600);
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
   font-size: 0.875rem;
 }
 
