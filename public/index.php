@@ -39,6 +39,11 @@ if (!$started) {
 
 $page = $_GET['page'] ?? 'dashboard';
 
+$authClass = \Moni\Services\AuthService::class;
+if (method_exists($authClass, 'autoLoginFromCookie')) {
+    $authClass::autoLoginFromCookie();
+}
+
 $routes = [
     'dashboard' => $root . '/templates/dashboard.php',
     'settings'  => $root . '/templates/settings.php',

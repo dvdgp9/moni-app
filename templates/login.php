@@ -9,9 +9,10 @@ $flashAll = Flash::getAll();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim((string)($_POST['email'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
+    $remember = isset($_POST['remember']) && $_POST['remember'] === '1';
     $user = UsersRepository::findByEmail($email);
     if ($user && password_verify($password, $user['password_hash'])) {
-        AuthService::login((int)$user['id']);
+        AuthService::login((int)$user['id'], $remember);
         $to = $_SESSION['_intended'] ?? '/?page=dashboard';
         unset($_SESSION['_intended']);
         header('Location: ' . $to);
@@ -51,7 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Contraseña</label>
         <input type="password" name="password" required placeholder="••••••••" />
 
-        <button type="submit" class="btn" style="width:100%;margin-top:1rem">Entrar</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.5rem">
+          <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--gray-700);font-weight:500">
+            <input type="checkbox" name="remember" value="1" />
+            Recordarme 30 días
+          </label>
+          <button type="submit" class="btn">Entrar</button>
+        </div>
       </form>
 
       <p style="margin-top:1rem;font-size:0.9rem;color:var(--gray-600)">
