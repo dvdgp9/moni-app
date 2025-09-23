@@ -26,11 +26,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add') {
       $title = trim((string)($_POST['title'] ?? ''));
       $date = trim((string)($_POST['event_date'] ?? ''));
+      $endDate = trim((string)($_POST['end_date'] ?? ''));
       $recurring = (string)($_POST['recurring'] ?? 'yearly');
-      if ($title === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        Flash::add('error', 'Título y fecha (YYYY-MM-DD) son obligatorios.');
+
+      // Build links JSON from pairs
+      $labels = isset($_POST['links_label']) && is_array($_POST['links_label']) ? $_POST['links_label'] : [];
+      $urls   = isset($_POST['links_url']) && is_array($_POST['links_url']) ? $_POST['links_url'] : [];
+      $links = [];
+      for ($i = 0; $i < max(count($labels), count($urls)); $i++) {
+        $lbl = trim((string)($labels[$i] ?? ''));
+        $url = trim((string)($urls[$i] ?? ''));
+        if ($lbl !== '' && $url !== '') {
+          $links[] = ['label' => $lbl, 'url' => $url];
+        }
+      }
+      $linksJson = !empty($links) ? json_encode($links, JSON_UNESCAPED_UNICODE) : null;
+
+      $validDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
+      $validEnd  = ($endDate === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate));
+
+      if ($title === '' || !$validDate || !$validEnd) {
+        Flash::add('error', 'Título y fecha inicio (YYYY-MM-DD) son obligatorios. Fin (opcional) en formato YYYY-MM-DD.');
       } else {
-        RemindersRepository::create($title, $date, $recurring === 'none' ? 'none' : 'yearly', null, true);
+        RemindersRepository::create($title, $date, $recurring === 'none' ? 'none' : 'yearly', null, true, ($endDate !== '' ? $endDate : null), $linksJson);
         Flash::add('success', 'Recordatorio añadido.');
       }
     } elseif ($action === 'delete') {
@@ -184,14 +202,23 @@ function format_range(?string $start, ?string $end): string {
         <?php endif; ?>
       </div>
       
-      <form method="post" style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:16px;padding:12px;background:var(--gray-50);border-radius:8px">
+      <form method="post" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:10px;padding:12px;background:var(--gray-50);border-radius:8px">
         <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <input type="hidden" name="_action" value="add" />
-        <input type="text" name="title" placeholder="Nuevo recordatorio..." required style="margin:0" />
-        <input type="date" name="event_date" required style="margin:0" />
-        <button type="submit" class="btn btn-sm">+</button>
+        <input type="text" name="title" placeholder="Título" required style="margin:0" />
+        <input type="date" name="event_date" required style="margin:0" title="Inicio" />
+        <input type="date" name="end_date" style="margin:0" title="Fin (opcional)" />
+        <button type="submit" class="btn btn-sm" title="Añadir">+</button>
         <input type="hidden" name="recurring" value="yearly" />
       </form>
+
+      <!-- Links compact repeater -->
+      <div class="links-repeater" style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:0 0 14px 0;padding:8px 12px;background:var(--gray-50);border:1px dashed var(--gray-100);border-radius:8px">
+        <input type="text" placeholder="Etiqueta (p.ej. IVA · Modelo 303)" id="link-label" style="margin:0" />
+        <input type="url" placeholder="https://..." id="link-url" style="margin:0" />
+        <button class="btn btn-sm" id="btn-add-link" type="button">Añadir enlace</button>
+        <div id="links-list" style="grid-column: 1 / -1; display:flex; flex-wrap:wrap; gap:6px;"></div>
+      </div>
 
       <?php if (empty($custom)): ?>
         <p style="color:var(--gray-500);font-style:italic">Ninguno creado</p>
@@ -253,6 +280,50 @@ function format_range(?string $start, ?string $end): string {
         body.append(k, v);
       }
     });
+
+  // Links repeater for custom creation form
+  const btnAdd = document.getElementById('btn-add-link');
+  const lbl = document.getElementById('link-label');
+  const url = document.getElementById('link-url');
+  const list = document.getElementById('links-list');
+  if (btnAdd && lbl && url && list) {
+    btnAdd.addEventListener('click', function(){
+      const l = (lbl.value || '').trim();
+      const u = (url.value || '').trim();
+      if (!l || !u) return;
+      const chip = document.createElement('div');
+      chip.style.display = 'inline-flex';
+      chip.style.alignItems = 'center';
+      chip.style.gap = '6px';
+      chip.style.padding = '4px 8px';
+      chip.style.border = '1px solid var(--gray-200)';
+      chip.style.borderRadius = '999px';
+      chip.style.background = 'var(--gray-0)';
+      chip.textContent = l;
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = '×';
+      close.className = 'btn btn-sm';
+      close.style.padding = '0 6px';
+      close.style.margin = '0 0 0 6px';
+      close.addEventListener('click', function(){ chip.remove(); hiddenL.remove(); hiddenU.remove(); });
+      chip.appendChild(close);
+      const hiddenL = document.createElement('input');
+      hiddenL.type = 'hidden';
+      hiddenL.name = 'links_label[]';
+      hiddenL.value = l;
+      const hiddenU = document.createElement('input');
+      hiddenU.type = 'hidden';
+      hiddenU.name = 'links_url[]';
+      hiddenU.value = u;
+      list.appendChild(chip);
+      list.appendChild(hiddenL);
+      list.appendChild(hiddenU);
+      lbl.value = '';
+      url.value = '';
+      lbl.focus();
+    });
+  }
     body.append('ajax', '1');
     return fetch('/?page=reminders', {
       method: 'POST',
