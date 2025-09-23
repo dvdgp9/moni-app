@@ -51,7 +51,7 @@ try {
     if (isset($raw['timezone']) && $raw['timezone'] !== '') {
         $over['settings']['timezone'] = $raw['timezone'];
     }
-    if (isset($raw['notify_email'])) {
+    if (isset($raw['notify_email']) && $raw['notify_email'] !== '') {
         $over['settings']['notify_email'] = $raw['notify_email'];
     }
     if (isset($raw['reminders_enabled'])) {

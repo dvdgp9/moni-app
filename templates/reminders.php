@@ -114,6 +114,67 @@ function icon_bell(): string {
         </div>
         <?php endif; ?>
       </div>
+      
+      <!-- Obligaciones fijas con enlaces directos (ayuda visual) -->
+      <div class="info" style="background:var(--gray-50);border:1px solid var(--gray-100);border-radius:8px;padding:12px 12px 4px;margin:8px 0 12px">
+        <?php
+          $aeat = [
+            [
+              'clave' => 'T4',
+              'periodo' => '01/01 – 20/01',
+              'items' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+            [
+              'clave' => 'Resumen anual',
+              'periodo' => '01/01 – 30/01',
+              'items' => [
+                ['label' => 'IVA anual · Modelo 390', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml'],
+              ],
+            ],
+            [
+              'clave' => 'T1',
+              'periodo' => '01/04 – 20/04',
+              'items' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+            [
+              'clave' => 'T2',
+              'periodo' => '01/07 – 20/07',
+              'items' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+            [
+              'clave' => 'T3',
+              'periodo' => '01/10 – 20/10',
+              'items' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+          ];
+        ?>
+        <div style="display:grid;gap:10px">
+          <?php foreach ($aeat as $b): ?>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--gray-200)">
+              <div style="font-weight:600;min-width:86px"><?= htmlspecialchars($b['clave']) ?></div>
+              <div style="color:var(--gray-600);min-width:120px"><?= htmlspecialchars($b['periodo']) ?></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <?php foreach ($b['items'] as $i): ?>
+                  <a class="btn btn-secondary btn-sm" href="<?= htmlspecialchars($i['url']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($i['label']) ?></a>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <div style="height:4px"></div>
+      </div>
       <?php if (empty($quarters)): ?>
         <p style="color:var(--gray-500);font-style:italic">No configurado</p>
       <?php else: ?>
