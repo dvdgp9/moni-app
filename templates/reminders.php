@@ -129,6 +129,7 @@ function format_range(?string $start, ?string $end): string {
         <p style="color:var(--gray-500);font-style:italic">No configurado</p>
       <?php else: ?>
         <?php foreach ($quarters as $r): ?>
+          <div class="reminder-row">
           <div class="reminder-item">
             <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
               <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
@@ -157,6 +158,7 @@ function format_range(?string $start, ?string $end): string {
               <?php endforeach; ?>
             </div>
           <?php endif; ?>
+          </div>
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
@@ -195,6 +197,7 @@ function format_range(?string $start, ?string $end): string {
         <p style="color:var(--gray-500);font-style:italic">Ninguno creado</p>
       <?php else: ?>
         <?php foreach ($custom as $r): ?>
+          <div class="reminder-row">
           <div class="reminder-item">
             <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
               <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
@@ -231,6 +234,7 @@ function format_range(?string $start, ?string $end): string {
               <?php endforeach; ?>
             </div>
           <?php endif; ?>
+          </div>
         <?php endforeach; ?>
       <?php endif; ?>
     </div>

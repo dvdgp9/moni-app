@@ -355,16 +355,18 @@ input[type="color"]::-moz-color-swatch {
   cursor: not-allowed;
 }
 
-/* Reminder items */
+/* Reminder rows & items */
+.reminder-row {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.reminder-row:last-child {
+  border-bottom: none;
+}
 .reminder-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--gray-100);
-}
-.reminder-item:last-child {
-  border-bottom: none;
 }
 .reminder-title {
   flex: 1;
