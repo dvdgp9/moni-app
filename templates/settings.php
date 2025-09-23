@@ -76,49 +76,70 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
   <?php endif; ?>
 
   <div class="grid-2">
-    <div>
-      <h3>SMTP (de .env)</h3>
-      <ul class="kv">
-        <li><span>Host</span><span><?= htmlspecialchars(Config::get('mail.host')) ?></span></li>
-        <li><span>Puerto</span><span><?= (int)Config::get('mail.port') ?></span></li>
-        <li><span>Usuario</span><span><?= htmlspecialchars((string)Config::get('mail.username')) ?></span></li>
-        <li><span>Encriptación</span><span><?= htmlspecialchars((string)Config::get('mail.encryption')) ?></span></li>
-        <li><span>Remitente</span><span><?= htmlspecialchars((string)Config::get('mail.from_address')) ?> (<?= htmlspecialchars((string)Config::get('mail.from_name')) ?>)</span></li>
-      </ul>
-
-      <h3>Ajustes de recordatorios</h3>
+    <!-- Notificaciones -->
+    <div class="card">
+      <div class="section-header">
+        <h3 class="section-title">Notificaciones</h3>
+      </div>
       <form method="post">
         <input type="hidden" name="save_settings" value="1" />
 
-        <label>
+        <label style="display:flex;align-items:center;gap:10px">
           <input type="checkbox" name="reminders_enabled" <?= $s_enabled ? 'checked' : '' ?> />
           Activar recordatorios por email
         </label>
 
-        <label>Email de notificación</label>
-        <input type="email" name="notify_email" value="<?= htmlspecialchars($s_notify) ?>" placeholder="tucorreo@dominio.com" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <label>Email de notificación</label>
+            <input type="email" name="notify_email" value="<?= htmlspecialchars($s_notify) ?>" placeholder="tucorreo@dominio.com" />
+          </div>
+          <div>
+            <label>Zona horaria</label>
+            <input type="text" name="timezone" value="<?= htmlspecialchars($s_tz) ?>" placeholder="Europe/Madrid" />
+          </div>
+        </div>
 
-        <label>Zona horaria</label>
-        <input type="text" name="timezone" value="<?= htmlspecialchars($s_tz) ?>" placeholder="Europe/Madrid" />
+        <details style="margin:8px 0">
+          <summary style="cursor:pointer;color:var(--gray-600);font-size:0.9rem">Avanzado</summary>
+          <div style="margin-top:8px">
+            <label>Fechas personalizadas (YYYY-MM-DD, una por línea o JSON)</label>
+            <textarea name="custom_dates" rows="4" placeholder="2025-02-15&#10;2025-09-30"><?php foreach ($s_custom_arr as $d) { echo htmlspecialchars($d) . "\n"; } ?></textarea>
+            <p class="form-hint">Compatibilidad con versiones anteriores; lo normal es usar la sección de Notificaciones.</p>
+          </div>
+        </details>
 
-        <label>Fechas personalizadas (YYYY-MM-DD, una por línea o JSON)</label>
-        <textarea name="custom_dates" rows="5" placeholder="2025-02-15&#10;2025-09-30"><?php foreach ($s_custom_arr as $d) { echo htmlspecialchars($d) . "\n"; } ?></textarea>
-
-        <h3>Facturas</h3>
-        <label>Plazo por defecto (días)</label>
-        <input type="number" name="invoice_due_days" min="1" max="90" value="<?= (int)$s_due_days ?>" />
-
-        <button type="submit">Guardar ajustes</button>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn">Guardar ajustes</button>
+        </div>
       </form>
     </div>
-    <div>
-      <h3>Enviar email de prueba</h3>
+
+    <!-- Facturación y pruebas -->
+    <div class="card">
+      <div class="section-header">
+        <h3 class="section-title">Facturación</h3>
+      </div>
+      <form method="post" style="margin-bottom:12px">
+        <input type="hidden" name="save_settings" value="1" />
+        <label>Plazo por defecto (días)</label>
+        <input type="number" name="invoice_due_days" min="1" max="90" value="<?= (int)$s_due_days ?>" />
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn btn-secondary">Guardar</button>
+        </div>
+      </form>
+
+      <div class="section-header" style="margin-top:4px">
+        <h3 class="section-title">Email de prueba</h3>
+      </div>
       <form method="post">
         <label>Email destino</label>
         <input type="email" name="test_email" required value="<?= htmlspecialchars($s_notify) ?>" placeholder="tu@correo.com" />
-        <button type="submit">Enviar prueba</button>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn">Enviar prueba</button>
+        </div>
       </form>
-      <p class="hint">SMTP se configura en `.env`. Los destinatarios y preferencias se guardan en BD.</p>
+      <p class="form-hint">SMTP se configura en `.env`. Aquí defines la zona horaria, destinatario y preferencias.</p>
     </div>
   </div>
 </section>
