@@ -27,17 +27,42 @@ final class ReminderService
 
         // 1) Read enabled reminders from DB (single source of truth)
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT title, event_date, recurring FROM reminders WHERE enabled = 1');
+        $stmt = $pdo->query('SELECT title, event_date, end_date, recurring FROM reminders WHERE enabled = 1');
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $date = (string)$row['event_date'];
+            $end  = isset($row['end_date']) ? (string)$row['end_date'] : '';
             $rec = (string)($row['recurring'] ?? 'yearly');
             if ($rec === 'yearly') {
-                // Compare month-day
-                if (substr($date, 5) === substr($todayStr, 5)) {
+                // Yearly recurrence: interpret start and optional end within the current year window
+                $startMD = substr($date, 5); // MM-DD
+                $start = DateTime::createFromFormat('Y-m-d', $today->format('Y') . '-' . $startMD);
+                if ($end) {
+                    $endMD = substr($end, 5);
+                    $endDt = DateTime::createFromFormat('Y-m-d', $today->format('Y') . '-' . $endMD);
+                    // Handle wrap-around ranges (e.g., Dec -> Jan)
+                    if ($endDt < $start) {
+                        // if today is in Jan and range wraps, move start to previous year
+                        $start->modify('-1 year');
+                    }
+                    if ($today >= $start && $today <= $endDt) {
+                        $due[] = (string)$row['title'];
+                    }
+                } else {
+                    // No end_date: use the start day only
+                    if ($start->format('Y-m-d') === $todayStr) {
+                        $due[] = (string)$row['title'];
+                    }
+                }
+            } else { // one-off
+                if ($end) {
+                    $start = new DateTime($date);
+                    $endDt = new DateTime($end);
+                    if ($today >= $start && $today <= $endDt) {
+                        $due[] = (string)$row['title'];
+                    }
+                } elseif ($date === $todayStr) {
                     $due[] = (string)$row['title'];
                 }
-            } elseif ($date === $todayStr) {
-                $due[] = (string)$row['title'];
             }
         }
 

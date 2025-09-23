@@ -11,7 +11,7 @@ final class RemindersRepository
     public static function all(): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT id, title, event_date, recurring, enabled, user_id, created_at FROM reminders ORDER BY event_date ASC, title ASC');
+        $stmt = $pdo->query('SELECT id, title, event_date, end_date, recurring, links, enabled, user_id, created_at FROM reminders ORDER BY event_date ASC, title ASC');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

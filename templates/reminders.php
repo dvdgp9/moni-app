@@ -65,9 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Load reminders and split groups
 $rows = RemindersRepository::all();
 $y = (int)date('Y');
-$isQuarter = fn(array $r) => str_starts_with((string)$r['title'], 'Inicio trimestre Q') && ($r['recurring'] ?? 'yearly') === 'yearly';
-$quarters = array_values(array_filter($rows, $isQuarter));
-$custom = array_values(array_filter($rows, fn($r) => !$isQuarter($r)));
+// Consideramos "obligatorias" las que tienen JSON de enlaces (campo links) -> vienen de BD con información oficial
+$isMandatory = fn(array $r) => isset($r['links']) && trim((string)$r['links']) !== '';
+$quarters = array_values(array_filter($rows, $isMandatory));
+$custom = array_values(array_filter($rows, fn($r) => !$isMandatory($r)));
 
 function icon_calendar(): string {
   return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>';
@@ -76,48 +77,15 @@ function icon_bell(): string {
   return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M14.5 18.5a2.5 2.5 0 0 1-5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 18.5h16l-1.2-2.4a7 7 0 0 1-.8-3.2V10a6 6 0 1 0-12 0v2.9c0 1.1-.27 2.2-.8 3.2L4 18.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
-// Mandatory filings, compact and with direct links (AEAT)
-$mandatory = [
-  [
-    'title' => 'Cierre T4',
-    'range' => '01/01 — 20/01',
-    'items' => [
-      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-    ],
-  ],
-  [
-    'title' => 'Resumen anual',
-    'range' => '01/01 — 30/01',
-    'items' => [
-      ['label' => 'IVA anual · Modelo 390', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml'],
-    ],
-  ],
-  [
-    'title' => 'Cierre T1',
-    'range' => '01/04 — 20/04',
-    'items' => [
-      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-    ],
-  ],
-  [
-    'title' => 'Cierre T2',
-    'range' => '01/07 — 20/07',
-    'items' => [
-      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-    ],
-  ],
-  [
-    'title' => 'Cierre T3',
-    'range' => '01/10 — 20/10',
-    'items' => [
-      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-    ],
-  ],
-];
+// Helper to format a date range (supports nullable end_date)
+function format_range(?string $start, ?string $end): string {
+  try {
+    $s = $start ? (new DateTime($start))->format('d/m') : '';
+    $e = $end ? (new DateTime($end))->format('d/m') : '';
+    if ($s && $e) return $s . ' — ' . $e;
+    return $s ?: ($e ?: '');
+  } catch (Throwable $e) { return htmlspecialchars((string)$start); }
+}
 
 ?>
 <section>
@@ -157,120 +125,38 @@ $mandatory = [
         </div>
         <?php endif; ?>
       </div>
-      <!-- Compact, useful calendar with direct links -->
-      <div class="mandatory-calendar" style="margin:8px 0 14px;padding:10px;background:var(--gray-50);border:1px solid var(--gray-100);border-radius:10px">
-        <div style="font-weight:600;margin-bottom:6px;color:var(--gray-800)">Calendario y enlaces directos</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:8px">
-          <?php foreach ($mandatory as $m): ?>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-              <div style="min-width:160px">
-                <div style="font-weight:600;color:var(--gray-900)"><?= htmlspecialchars($m['title']) ?></div>
-                <div style="font-size:12px;color:var(--gray-600)"><?= htmlspecialchars($m['range']) ?></div>
-              </div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                <?php foreach ($m['items'] as $it): ?>
-                  <a href="<?= htmlspecialchars($it['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none; padding:6px 10px; background:var(--gray-0); border:1px solid var(--gray-200); border-radius:999px; color:var(--gray-800);">
-                    <?= htmlspecialchars($it['label']) ?> ↗
-                  </a>
-                <?php endforeach; ?>
-              </div>
-            </div>
-          <?php endforeach; ?>
-        </div>
-      </div>
       <?php if (empty($quarters)): ?>
         <p style="color:var(--gray-500);font-style:italic">No configurado</p>
       <?php else: ?>
-        <?php
-          // Map quarters to friendly names, ranges and links
-          $qMeta = [
-            1 => [
-              'title' => 'Cierre T1',
-              'range' => '01/04 — 20/04',
-              'links' => [
-                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-              ],
-            ],
-            2 => [
-              'title' => 'Cierre T2',
-              'range' => '01/07 — 20/07',
-              'links' => [
-                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-              ],
-            ],
-            3 => [
-              'title' => 'Cierre T3',
-              'range' => '01/10 — 20/10',
-              'links' => [
-                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-              ],
-            ],
-            4 => [
-              'title' => 'Cierre T4',
-              'range' => '01/01 — 20/01',
-              'links' => [
-                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-              ],
-              'extra' => [
-                'title' => 'Resumen anual',
-                'range' => '01/01 — 30/01',
-                'links' => [
-                  ['label' => 'IVA anual · Modelo 390', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml'],
-                ],
-              ],
-            ],
-          ];
-        ?>
         <?php foreach ($quarters as $r): ?>
-          <?php
-            $title = (string)$r['title'];
-            $qNum = null;
-            if (preg_match('/Q([1-4])$/', $title, $m)) { $qNum = (int)$m[1]; }
-            $meta = $qNum && isset($qMeta[$qNum]) ? $qMeta[$qNum] : ['title' => $title, 'range' => '', 'links' => []];
-          ?>
-          <div class="reminder-item" style="flex-direction:column;align-items:stretch;gap:6px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
-                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-                <input type="hidden" name="_action" value="toggle" />
-                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
-                <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
-              </form>
-              <div class="reminder-title" style="flex:1">
-                <?= htmlspecialchars($meta['title']) ?>
-                <?php if (!empty($meta['range'])): ?>
-                  <div style="font-size:12px;color:var(--gray-600);margin-top:2px;"><?= htmlspecialchars($meta['range']) ?></div>
-                <?php endif; ?>
-              </div>
-            </div>
-            <?php if (!empty($meta['links'])): ?>
-              <div class="reminder-actions" style="display:flex;flex-wrap:wrap;gap:6px;margin-left:46px">
-                <?php foreach ($meta['links'] as $lnk): ?>
-                  <a href="<?= htmlspecialchars($lnk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none; padding:6px 10px; background:var(--gray-0); border:1px solid var(--gray-200); border-radius:999px; color:var(--gray-800);">
-                    <?= htmlspecialchars($lnk['label']) ?> ↗
-                  </a>
-                <?php endforeach; ?>
-              </div>
-            <?php endif; ?>
-            <?php if (isset($meta['extra'])): $ex=$meta['extra']; ?>
-              <div style="border-top:1px solid var(--gray-100); margin:4px 0 0 46px; padding-top:6px">
-                <div style="font-weight:600;color:var(--gray-800)"><?= htmlspecialchars($ex['title']) ?></div>
-                <div style="font-size:12px;color:var(--gray-600);margin:2px 0 6px;"><?= htmlspecialchars($ex['range']) ?></div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                  <?php foreach ($ex['links'] as $lnk): ?>
-                    <a href="<?= htmlspecialchars($lnk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none; padding:6px 10px; background:var(--gray-0); border:1px solid var(--gray-200); border-radius:999px; color:var(--gray-800);">
-                      <?= htmlspecialchars($lnk['label']) ?> ↗
-                    </a>
-                  <?php endforeach; ?>
-                </div>
-              </div>
-            <?php endif; ?>
+          <div class="reminder-item">
+            <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
+              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+              <input type="hidden" name="_action" value="toggle" />
+              <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+              <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
+              <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
+            </form>
+            <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
+            <?php $range = format_range($r['event_date'] ?? null, $r['end_date'] ?? null); ?>
+            <div class="reminder-date"><?= htmlspecialchars($range) ?></div>
           </div>
+          <?php
+            $links = [];
+            if (!empty($r['links'])) {
+              $decoded = json_decode((string)$r['links'], true);
+              if (is_array($decoded)) { $links = $decoded; }
+            }
+          ?>
+          <?php if (!empty($links)): ?>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px 40px">
+              <?php foreach ($links as $lk): if (!isset($lk['url']) || !isset($lk['label'])) continue; ?>
+                <a href="<?= htmlspecialchars((string)$lk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none;padding:6px 10px;background:var(--gray-0);border:1px solid var(--gray-200);border-radius:999px;color:var(--gray-800);">
+                  <?= htmlspecialchars((string)$lk['label']) ?> ↗
+                </a>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
@@ -319,7 +205,8 @@ $mandatory = [
             </form>
             <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
             <div class="reminder-actions">
-              <div class="reminder-date"><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m/Y')) ?></div>
+              <?php $range = format_range($r['event_date'] ?? null, $r['end_date'] ?? null); ?>
+              <div class="reminder-date"><?= htmlspecialchars($range ?: (new DateTime($r['event_date']))->format('d/m/Y')) ?></div>
               <form method="post" onsubmit="return confirm('¿Eliminar?');">
                 <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                 <input type="hidden" name="_action" value="delete" />
@@ -328,6 +215,22 @@ $mandatory = [
               </form>
             </div>
           </div>
+          <?php
+            $links = [];
+            if (!empty($r['links'])) {
+              $decoded = json_decode((string)$r['links'], true);
+              if (is_array($decoded)) { $links = $decoded; }
+            }
+          ?>
+          <?php if (!empty($links)): ?>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px 40px">
+              <?php foreach ($links as $lk): if (!isset($lk['url']) || !isset($lk['label'])) continue; ?>
+                <a href="<?= htmlspecialchars((string)$lk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none;padding:6px 10px;background:var(--gray-0);border:1px solid var(--gray-200);border-radius:999px;color:var(--gray-800);">
+                  <?= htmlspecialchars((string)$lk['label']) ?> ↗
+                </a>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
