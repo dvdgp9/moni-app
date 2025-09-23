@@ -83,8 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Load reminders and split groups
 $rows = RemindersRepository::all();
 $y = (int)date('Y');
-// Consideramos "obligatorias" las que tienen links JSON NO vacío y válido (al menos un objeto con label+url)
+// Agrupar por columna booleana 'mandatory' si existe; si no, fallback por links válidos
 $isMandatory = function(array $r): bool {
+  if (array_key_exists('mandatory', $r)) {
+    return (int)$r['mandatory'] === 1;
+  }
   if (!array_key_exists('links', $r) || $r['links'] === null) return false;
   $raw = trim((string)$r['links']);
   if ($raw === '') return false;

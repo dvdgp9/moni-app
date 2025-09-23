@@ -11,20 +11,21 @@ final class RemindersRepository
     public static function all(): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT id, title, event_date, end_date, recurring, links, enabled, user_id, created_at FROM reminders ORDER BY event_date ASC, title ASC');
+        $stmt = $pdo->query('SELECT id, title, event_date, end_date, recurring, links, mandatory, enabled, user_id, created_at FROM reminders ORDER BY event_date ASC, title ASC');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function create(string $title, string $eventDate, string $recurring = 'yearly', ?int $userId = null, bool $enabled = true, ?string $endDate = null, ?string $links = null): int
+    public static function create(string $title, string $eventDate, string $recurring = 'yearly', ?int $userId = null, bool $enabled = true, ?string $endDate = null, ?string $links = null, bool $mandatory = false): int
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('INSERT INTO reminders (title, event_date, end_date, recurring, links, enabled, user_id) VALUES (:title, :event_date, :end_date, :recurring, :links, :enabled, :user_id)');
+        $stmt = $pdo->prepare('INSERT INTO reminders (title, event_date, end_date, recurring, links, mandatory, enabled, user_id) VALUES (:title, :event_date, :end_date, :recurring, :links, :mandatory, :enabled, :user_id)');
         $stmt->execute([
             ':title' => $title,
             ':event_date' => $eventDate,
             ':end_date' => $endDate ?: null,
             ':recurring' => in_array($recurring, ['none','yearly'], true) ? $recurring : 'yearly',
             ':links' => $links ?: null,
+            ':mandatory' => $mandatory ? 1 : 0,
             ':enabled' => $enabled ? 1 : 0,
             ':user_id' => $userId,
         ]);
