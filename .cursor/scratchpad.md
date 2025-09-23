@@ -119,20 +119,11 @@ Valores por defecto (editables):
   - Pendiente crear BD e importar `database/migrations/001_init.sql`.
  - 2025-09-20: Git inicializado, primer commit y push a `origin/main` (repo: `dvdgp9/moni-app`).
 - 2025-09-20: Ajustes persistentes y motor de recordatorios implementados. Cron configurado en cPanel (08:00 Europe/Madrid).
-- 2025-09-23: Problema con cron resuelto - ruta incorrecta del binario PHP. Cambiado de `/opt/cpanel/ea-php83/root/usr/bin/php` a `/usr/bin/php`. Añadido logging robusto al script de recordatorios.
-- 2025-09-23: **MEJORA COMPLETADA**: Sección de declaraciones obligatorias añadida a la página de Notificaciones:
-  - Nueva sección informativa con grid responsive de tarjetas por trimestre
-  - Enlaces directos a los modelos 303 (IVA) y 130 (IRPF) en sede.agenciatributaria.gob.es
-  - Incluye modelo 390 (resumen anual del IVA)
-  - Diseño coherente con el estilo actual de la aplicación
-  - Efectos hover elegantes y iconos informativos
-  - Totalmente responsive para móvil y desktop
 
 ## Executor's Feedback or Assistance Requests
-- ✅ Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`). → Resuelto: `dvdgp9/moni-app`
-- ✅ Confirmar si preferimos cron via PHP CLI (recomendado) y un endpoint web protegido como alternativa manual. → Elegido: PHP CLI en cPanel, funcionando correctamente.
+- Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`).
+- Confirmar si preferimos cron via PHP CLI (recomendado) y un endpoint web protegido como alternativa manual. Elegido: PHP CLI en cPanel.
 - Proveer logo y colores cuando lleguemos al H4 (PDF/branding) o añadirlos a Ajustes cuando implementemos la sección de marca.
-- **COMPLETADO**: Mejorar interfaz de notificaciones con información clara de declaraciones obligatorias y enlaces directos.
 
 ## Lessons
 - Mantener cron idempotente con `reminder_logs` evita duplicados de envío el mismo día/evento.

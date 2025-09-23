@@ -76,156 +76,57 @@ function icon_bell(): string {
   return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M14.5 18.5a2.5 2.5 0 0 1-5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 18.5h16l-1.2-2.4a7 7 0 0 1-.8-3.2V10a6 6 0 1 0-12 0v2.9c0 1.1-.27 2.2-.8 3.2L4 18.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
+// Mandatory filings, compact and with direct links (AEAT)
+$mandatory = [
+  [
+    'title' => 'Cierre T4',
+    'range' => '01/01 — 20/01',
+    'items' => [
+      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+    ],
+  ],
+  [
+    'title' => 'Resumen anual',
+    'range' => '01/01 — 30/01',
+    'items' => [
+      ['label' => 'IVA anual · Modelo 390', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml'],
+    ],
+  ],
+  [
+    'title' => 'Cierre T1',
+    'range' => '01/04 — 20/04',
+    'items' => [
+      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+    ],
+  ],
+  [
+    'title' => 'Cierre T2',
+    'range' => '01/07 — 20/07',
+    'items' => [
+      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+    ],
+  ],
+  [
+    'title' => 'Cierre T3',
+    'range' => '01/10 — 20/10',
+    'items' => [
+      ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+      ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+    ],
+  ],
+];
+
 ?>
 <section>
   <h1>Notificaciones</h1>
-  <p style="margin-top:-6px;margin-bottom:20px;color:var(--gray-600)">
+  <p style="margin-top:-6px;margin-bottom:14px;color:var(--gray-600)">
     Activa o desactiva cada aviso con el interruptor. Las declaraciones trimestrales y tus recordatorios se repiten
     cada año en la misma fecha. Usa "Todo/Nada" para activar o desactivar en bloque. Puedes añadir recordatorios
     personalizados indicando título y fecha.
   </p>
-
-  <!-- Información de declaraciones obligatorias -->
-  <div class="tax-info-section">
-    <h2 style="margin-bottom:16px;color:var(--gray-800);font-size:1.25rem;font-weight:600">📋 Declaraciones obligatorias</h2>
-    
-    <div class="tax-quarters-grid">
-      <div class="tax-quarter-card">
-        <div class="quarter-header">
-          <h3>Cierre T4</h3>
-          <span class="quarter-dates">01/01 al 20/01</span>
-        </div>
-        <div class="tax-declarations">
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">📊</div>
-            <div class="tax-details">
-              <div class="tax-name">IVA - Modelo 303</div>
-              <div class="tax-description">Declaración trimestral del IVA</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">💰</div>
-            <div class="tax-details">
-              <div class="tax-name">IRPF - Modelo 130</div>
-              <div class="tax-description">Pago fraccionado del IRPF</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-
-      <div class="tax-quarter-card">
-        <div class="quarter-header">
-          <h3>Resumen Anual</h3>
-          <span class="quarter-dates">01/01 al 30/01</span>
-        </div>
-        <div class="tax-declarations">
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">📈</div>
-            <div class="tax-details">
-              <div class="tax-name">IVA Anual - Modelo 390</div>
-              <div class="tax-description">Resumen anual del IVA</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-
-      <div class="tax-quarter-card">
-        <div class="quarter-header">
-          <h3>Cierre T1</h3>
-          <span class="quarter-dates">01/04 al 20/04</span>
-        </div>
-        <div class="tax-declarations">
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">📊</div>
-            <div class="tax-details">
-              <div class="tax-name">IVA - Modelo 303</div>
-              <div class="tax-description">Declaración trimestral del IVA</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">💰</div>
-            <div class="tax-details">
-              <div class="tax-name">IRPF - Modelo 130</div>
-              <div class="tax-description">Pago fraccionado del IRPF</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-
-      <div class="tax-quarter-card">
-        <div class="quarter-header">
-          <h3>Cierre T2</h3>
-          <span class="quarter-dates">01/07 al 20/07</span>
-        </div>
-        <div class="tax-declarations">
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">📊</div>
-            <div class="tax-details">
-              <div class="tax-name">IVA - Modelo 303</div>
-              <div class="tax-description">Declaración trimestral del IVA</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">💰</div>
-            <div class="tax-details">
-              <div class="tax-name">IRPF - Modelo 130</div>
-              <div class="tax-description">Pago fraccionado del IRPF</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-
-      <div class="tax-quarter-card">
-        <div class="quarter-header">
-          <h3>Cierre T3</h3>
-          <span class="quarter-dates">01/10 al 20/10</span>
-        </div>
-        <div class="tax-declarations">
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">📊</div>
-            <div class="tax-details">
-              <div class="tax-name">IVA - Modelo 303</div>
-              <div class="tax-description">Declaración trimestral del IVA</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-          <a href="https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml" target="_blank" class="tax-link">
-            <div class="tax-icon">💰</div>
-            <div class="tax-details">
-              <div class="tax-name">IRPF - Modelo 130</div>
-              <div class="tax-description">Pago fraccionado del IRPF</div>
-            </div>
-            <svg class="external-link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>
@@ -255,6 +156,27 @@ function icon_bell(): string {
           </form>
         </div>
         <?php endif; ?>
+      </div>
+      <!-- Compact, useful calendar with direct links -->
+      <div class="mandatory-calendar" style="margin:8px 0 14px;padding:10px;background:var(--gray-50);border:1px solid var(--gray-100);border-radius:10px">
+        <div style="font-weight:600;margin-bottom:6px;color:var(--gray-800)">Calendario y enlaces directos</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:8px">
+          <?php foreach ($mandatory as $m): ?>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="min-width:160px">
+                <div style="font-weight:600;color:var(--gray-900)"><?= htmlspecialchars($m['title']) ?></div>
+                <div style="font-size:12px;color:var(--gray-600)"><?= htmlspecialchars($m['range']) ?></div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <?php foreach ($m['items'] as $it): ?>
+                  <a href="<?= htmlspecialchars($it['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none; padding:6px 10px; background:var(--gray-0); border:1px solid var(--gray-200); border-radius:999px; color:var(--gray-800);">
+                    <?= htmlspecialchars($it['label']) ?> ↗
+                  </a>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
       </div>
       <?php if (empty($quarters)): ?>
         <p style="color:var(--gray-500);font-style:italic">No configurado</p>
