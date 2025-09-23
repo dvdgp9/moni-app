@@ -181,17 +181,95 @@ $mandatory = [
       <?php if (empty($quarters)): ?>
         <p style="color:var(--gray-500);font-style:italic">No configurado</p>
       <?php else: ?>
+        <?php
+          // Map quarters to friendly names, ranges and links
+          $qMeta = [
+            1 => [
+              'title' => 'Cierre T1',
+              'range' => '01/04 — 20/04',
+              'links' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+            2 => [
+              'title' => 'Cierre T2',
+              'range' => '01/07 — 20/07',
+              'links' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+            3 => [
+              'title' => 'Cierre T3',
+              'range' => '01/10 — 20/10',
+              'links' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+            ],
+            4 => [
+              'title' => 'Cierre T4',
+              'range' => '01/01 — 20/01',
+              'links' => [
+                ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+              ],
+              'extra' => [
+                'title' => 'Resumen anual',
+                'range' => '01/01 — 30/01',
+                'links' => [
+                  ['label' => 'IVA anual · Modelo 390', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml'],
+                ],
+              ],
+            ],
+          ];
+        ?>
         <?php foreach ($quarters as $r): ?>
-          <div class="reminder-item">
-            <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
-              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-              <input type="hidden" name="_action" value="toggle" />
-              <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-              <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
-              <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
-            </form>
-            <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
-            <div class="reminder-date"><?= htmlspecialchars((new DateTime($r['event_date']))->format('d/m')) ?></div>
+          <?php
+            $title = (string)$r['title'];
+            $qNum = null;
+            if (preg_match('/Q([1-4])$/', $title, $m)) { $qNum = (int)$m[1]; }
+            $meta = $qNum && isset($qMeta[$qNum]) ? $qMeta[$qNum] : ['title' => $title, 'range' => '', 'links' => []];
+          ?>
+          <div class="reminder-item" style="flex-direction:column;align-items:stretch;gap:6px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <form method="post" class="js-toggle" data-id="<?= (int)$r['id'] ?>" data-enabled="<?= $r['enabled'] ? 1 : 0 ?>">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="toggle" />
+                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
+                <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
+              </form>
+              <div class="reminder-title" style="flex:1">
+                <?= htmlspecialchars($meta['title']) ?>
+                <?php if (!empty($meta['range'])): ?>
+                  <div style="font-size:12px;color:var(--gray-600);margin-top:2px;"><?= htmlspecialchars($meta['range']) ?></div>
+                <?php endif; ?>
+              </div>
+            </div>
+            <?php if (!empty($meta['links'])): ?>
+              <div class="reminder-actions" style="display:flex;flex-wrap:wrap;gap:6px;margin-left:46px">
+                <?php foreach ($meta['links'] as $lnk): ?>
+                  <a href="<?= htmlspecialchars($lnk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none; padding:6px 10px; background:var(--gray-0); border:1px solid var(--gray-200); border-radius:999px; color:var(--gray-800);">
+                    <?= htmlspecialchars($lnk['label']) ?> ↗
+                  </a>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+            <?php if (isset($meta['extra'])): $ex=$meta['extra']; ?>
+              <div style="border-top:1px solid var(--gray-100); margin:4px 0 0 46px; padding-top:6px">
+                <div style="font-weight:600;color:var(--gray-800)"><?= htmlspecialchars($ex['title']) ?></div>
+                <div style="font-size:12px;color:var(--gray-600);margin:2px 0 6px;"><?= htmlspecialchars($ex['range']) ?></div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <?php foreach ($ex['links'] as $lnk): ?>
+                    <a href="<?= htmlspecialchars($lnk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none; padding:6px 10px; background:var(--gray-0); border:1px solid var(--gray-200); border-radius:999px; color:var(--gray-800);">
+                      <?= htmlspecialchars($lnk['label']) ?> ↗
+                    </a>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            <?php endif; ?>
           </div>
         <?php endforeach; ?>
       <?php endif; ?>
