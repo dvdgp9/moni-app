@@ -84,15 +84,17 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
       <form method="post">
         <input type="hidden" name="save_settings" value="1" />
 
-        <label style="display:flex;align-items:center;gap:10px">
-          <input type="checkbox" name="reminders_enabled" <?= $s_enabled ? 'checked' : '' ?> />
-          Activar recordatorios por email
-        </label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-weight:600;color:var(--gray-800)">Activar recordatorios por email</span>
+          <input type="hidden" name="reminders_enabled" id="settings-reminders-enabled" value="<?= $s_enabled ? '1' : '0' ?>" />
+          <button type="button" id="settings-toggle-btn" class="toggle-switch <?= $s_enabled ? 'active' : '' ?>" aria-label="Activar recordatorios"></button>
+        </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <div>
             <label>Email de notificación</label>
-            <input type="email" name="notify_email" value="<?= htmlspecialchars($s_notify) ?>" placeholder="tucorreo@dominio.com" />
+            <input type="email" name="notify_email" id="settings-notify" value="<?= htmlspecialchars($s_notify) ?>" placeholder="tucorreo@dominio.com" />
+            <p id="notify-hint" class="form-hint" style="display:none;margin-top:4px">Introduce un email para poder activar los recordatorios.</p>
           </div>
           <div>
             <label>Zona horaria</label>
@@ -100,14 +102,7 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
           </div>
         </div>
 
-        <details style="margin:8px 0">
-          <summary style="cursor:pointer;color:var(--gray-600);font-size:0.9rem">Avanzado</summary>
-          <div style="margin-top:8px">
-            <label>Fechas personalizadas (YYYY-MM-DD, una por línea o JSON)</label>
-            <textarea name="custom_dates" rows="4" placeholder="2025-02-15&#10;2025-09-30"><?php foreach ($s_custom_arr as $d) { echo htmlspecialchars($d) . "\n"; } ?></textarea>
-            <p class="form-hint">Compatibilidad con versiones anteriores; lo normal es usar la sección de Notificaciones.</p>
-          </div>
-        </details>
+        <!-- Fechas personalizadas eliminadas: se gestionan desde Notificaciones -->
 
         <div style="display:flex;justify-content:flex-end">
           <button type="submit" class="btn">Guardar ajustes</button>
@@ -143,3 +138,42 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
     </div>
   </div>
 </section>
+<script>
+(function(){
+  const input = document.getElementById('settings-reminders-enabled');
+  const btn = document.getElementById('settings-toggle-btn');
+  const notify = document.getElementById('settings-notify');
+  const hint = document.getElementById('notify-hint');
+
+  function isEmailReady(v){ return (v||'').trim() !== ''; }
+
+  function updateNotifyState(){
+    const ok = isEmailReady(notify ? notify.value : '');
+    if (!btn) return;
+    if (ok) {
+      btn.disabled = false;
+      if (hint) hint.style.display = 'none';
+    } else {
+      btn.disabled = true;
+      if (hint) hint.style.display = 'block';
+      if (input) { input.value = '0'; btn.classList.remove('active'); }
+    }
+  }
+
+  if (btn && input) {
+    btn.addEventListener('click', function(){
+      const on = input.value === '1';
+      const next = on ? '0' : '1';
+      input.value = next;
+      btn.classList.toggle('active', next === '1');
+    });
+  }
+
+  if (notify) {
+    notify.addEventListener('input', updateNotifyState);
+    notify.addEventListener('change', updateNotifyState);
+  }
+
+  updateNotifyState();
+})();
+</script>
