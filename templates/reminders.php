@@ -208,11 +208,13 @@ function format_range(?string $start, ?string $end): string {
         <input type="hidden" name="recurring" value="yearly" />
         
         <!-- Basic fields -->
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px">
-          <input type="text" name="title" placeholder="Nuevo recordatorio..." required style="margin:0" />
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px">
+          <input type="text" name="title" placeholder="Título del recordatorio..." required style="margin:0;font-size:1rem;padding:10px 12px" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px">
           <input type="date" name="event_date" required style="margin:0" />
           <input type="date" name="end_date" placeholder="Fecha fin (opcional)" style="margin:0" />
-          <button type="submit" class="btn btn-sm">+</button>
+          <button type="submit" class="btn btn-sm">Añadir</button>
         </div>
         
         <!-- Links section (collapsible) -->
@@ -222,7 +224,7 @@ function format_range(?string $start, ?string $end): string {
             <div class="link-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:4px">
               <input type="text" name="link_labels[]" placeholder="Etiqueta" style="margin:0;font-size:0.875rem;padding:6px 8px" />
               <input type="url" name="link_urls[]" placeholder="https://..." style="margin:0;font-size:0.875rem;padding:6px 8px" />
-              <button type="button" onclick="addLinkRow()" class="btn btn-sm" style="padding:6px 8px;font-size:0.75rem">+</button>
+              <button type="button" onclick="addLinkRow()" class="btn btn-secondary btn-sm" style="padding:6px 8px;font-size:0.75rem">+</button>
             </div>
           </div>
         </details>
