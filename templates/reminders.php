@@ -83,8 +83,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Load reminders and split groups
 $rows = RemindersRepository::all();
 $y = (int)date('Y');
-// Consideramos "obligatorias" las que tienen JSON de enlaces (campo links) -> vienen de BD con información oficial
-$isMandatory = fn(array $r) => isset($r['links']) && trim((string)$r['links']) !== '';
+// Consideramos "obligatorias" las que tienen links JSON NO vacío y válido (al menos un objeto con label+url)
+$isMandatory = function(array $r): bool {
+  if (!array_key_exists('links', $r) || $r['links'] === null) return false;
+  $raw = trim((string)$r['links']);
+  if ($raw === '') return false;
+  $arr = json_decode($raw, true);
+  if (!is_array($arr) || empty($arr)) return false;
+  foreach ($arr as $it) {
+    if (isset($it['label'], $it['url']) && $it['label'] !== '' && $it['url'] !== '') return true;
+  }
+  return false;
+};
 $quarters = array_values(array_filter($rows, $isMandatory));
 $custom = array_values(array_filter($rows, fn($r) => !$isMandatory($r)));
 
