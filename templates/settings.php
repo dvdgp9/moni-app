@@ -61,7 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
 
 // Vista previa de recordatorio
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preview_reminder'])) {
-    $to = trim((string)($s_notify ?? ''));
+    // Leer directamente desde BD/Config para evitar dependencia del orden de carga
+    $currentNotify = SettingsRepository::get('notify_email') ?? (string)Config::get('settings.notify_email');
+    $to = trim((string)$currentNotify);
     if ($to === '') {
         $flash = 'Configura primero un Email de notificación para enviar la vista previa.';
     } else {
