@@ -59,6 +59,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
     }
 }
 
+// Vista previa de recordatorio
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preview_reminder'])) {
+    $to = trim((string)($s_notify ?? ''));
+    if ($to === '') {
+        $flash = 'Configura primero un Email de notificación para enviar la vista previa.';
+    } else {
+        try {
+            $subject = 'Vista previa · Recordatorio: Cierre trimestral';
+            $data = [
+                'title' => 'Cierre T3',
+                'range' => '01/10 — 20/10',
+                'links' => [
+                    ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                    ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+                ],
+                'brandName' => (string)(Config::get('app_name') ?? 'Moni'),
+                'appUrl' => (string)(Config::get('app_url') ?? '#'),
+            ];
+            EmailService::sendReminder($to, $subject, $data);
+            $flash = 'Vista previa enviada a ' . htmlspecialchars($to);
+        } catch (Throwable $e) {
+            $flash = 'Error enviando vista previa: ' . htmlspecialchars($e->getMessage());
+        }
+    }
+}
+
 // Cargar ajustes actuales (fallback a config/.env)
 $s_notify = SettingsRepository::get('notify_email') ?? (string)Config::get('settings.notify_email');
 $s_tz = SettingsRepository::get('timezone') ?? (string)Config::get('settings.timezone');
@@ -135,6 +161,17 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
         </div>
       </form>
       <p class="form-hint">SMTP se configura en `.env`. Aquí defines la zona horaria, destinatario y preferencias.</p>
+
+      <div class="section-header" style="margin-top:8px">
+        <h3 class="section-title">Vista previa de recordatorio</h3>
+      </div>
+      <form method="post">
+        <input type="hidden" name="preview_reminder" value="1" />
+        <p class="form-hint">Se enviará un ejemplo a tu Email de notificación.</p>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn btn-secondary">Enviar vista previa</button>
+        </div>
+      </form>
     </div>
   </div>
 </section>

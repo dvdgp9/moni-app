@@ -115,10 +115,33 @@ final class ReminderService
                 continue;
             }
 
-            $subject = 'Recordatorio fiscal: ' . $title;
-            $body = "Hola,\n\nRecuerda: $title.\nFecha: $todayStr.\n\n— Moni";
             try {
-                EmailService::sendTest($notify, $subject, nl2br($body));
+                // Build payload for email template
+                $range = $todayStr;
+                // Try to show start-end from the DB row if available by querying again for this title
+                $info = $pdo->prepare('SELECT event_date, end_date, links FROM reminders WHERE enabled = 1 AND title = :t LIMIT 1');
+                $info->execute([':t' => $title]);
+                $rowInfo = $info->fetch(PDO::FETCH_ASSOC) ?: [];
+                if (!empty($rowInfo['event_date'])) {
+                    $start = new DateTime((string)$rowInfo['event_date']);
+                    $endd = !empty($rowInfo['end_date']) ? new DateTime((string)$rowInfo['end_date']) : null;
+                    $range = $endd ? $start->format('d/m') . ' — ' . $endd->format('d/m') : $start->format('d/m');
+                }
+                $links = [];
+                if (!empty($rowInfo['links'])) {
+                    $decoded = json_decode((string)$rowInfo['links'], true);
+                    if (is_array($decoded)) { $links = $decoded; }
+                }
+
+                $payload = [
+                    'title' => $title,
+                    'range' => $range,
+                    'links' => $links,
+                    'brandName' => (string)Config::get('app_name', 'Moni'),
+                    'appUrl' => (string)Config::get('app_url', '#'),
+                ];
+                $subject = 'Recordatorio: ' . $title;
+                EmailService::sendReminder($notify, $subject, $payload);
                 $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, event_date, sent_to) VALUES (NULL, :d, :to)');
                 $ins->execute([':d' => $todayStr, ':to' => $notify]);
                 $results['sent'][] = $title;

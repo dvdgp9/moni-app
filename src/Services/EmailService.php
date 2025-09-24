@@ -65,4 +65,72 @@ final class EmailService
         }
         return true;
     }
+
+    /**
+     * Send a branded reminder email with HTML + plain text parts.
+     * $data keys: title, range, links(array[label,url]), brandName, appUrl
+     */
+    public static function sendReminder(string $to, string $subject, array $data): bool
+    {
+        $mail = new PHPMailer(true);
+        $cfg = Config::get('mail');
+        $debug = Config::get('debug');
+
+        $mail->isSMTP();
+        $mail->Host = (string)$cfg['host'];
+        $mail->Port = (int)$cfg['port'];
+        $mail->SMTPAuth = !empty($cfg['username']);
+        if ($mail->SMTPAuth) {
+            $mail->Username = $cfg['username'];
+            $mail->Password = $cfg['password'];
+        }
+        $enc = strtolower((string)($cfg['encryption'] ?? ''));
+        if ($mail->Port === 465) {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($mail->Port === 587 || $enc === 'tls' || $enc === 'starttls') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } elseif ($enc === 'ssl') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        }
+        $mail->Timeout = 15;
+        $mail->SMTPKeepAlive = false;
+        $mail->CharSet = 'UTF-8';
+        $mail->SMTPDebug = $debug ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
+
+        if (!empty($cfg['from_address'])) {
+            $mail->setFrom((string)$cfg['from_address'], (string)($cfg['from_name'] ?? ''));
+        }
+        $mail->addAddress($to);
+        $mail->Subject = $subject;
+
+        // Render templates
+        $brandName = (string)($data['brandName'] ?? (Config::get('app_name') ?: 'Moni'));
+        $appUrl = (string)($data['appUrl'] ?? (Config::get('app_url') ?: '#'));
+        $title = (string)($data['title'] ?? '');
+        $range = (string)($data['range'] ?? '');
+        $links = (array)($data['links'] ?? []);
+
+        $html = self::renderTemplate(__DIR__ . '/../../templates/emails/reminder.php', compact('brandName','appUrl','title','range','links'));
+        $text = self::renderTemplate(__DIR__ . '/../../templates/emails/reminder.txt.php', compact('brandName','appUrl','title','range','links'));
+
+        $mail->isHTML(true);
+        $mail->Body = $html;
+        $mail->AltBody = $text;
+
+        if (!$mail->send()) {
+            throw new RuntimeException('Error SMTP: ' . $mail->ErrorInfo);
+        }
+        return true;
+    }
+
+    private static function renderTemplate(string $file, array $vars): string
+    {
+        if (!is_file($file)) {
+            return '';
+        }
+        extract($vars, EXTR_SKIP);
+        ob_start();
+        include $file;
+        return (string)ob_get_clean();
+    }
 }
