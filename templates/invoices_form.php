@@ -27,7 +27,7 @@ $invoice = [
   'notes' => '',
 ];
 $currentStatus = 'draft';
-$due_terms = ($defaultDays === 15 ? '15' : ($defaultDays === 30 ? '30' : 'custom')); // '15' | '30' | 'custom'
+$due_terms = 'default'; // default from settings; alternative: '15' | '30' | 'custom'
 $items = [[
   'description' => '',
   'quantity' => '1',
@@ -49,6 +49,7 @@ if ($editing) {
       $diffDays = (int) round(($due - $issue) / 86400);
       if ($diffDays === 15) { $due_terms = '15'; }
       elseif ($diffDays === 30) { $due_terms = '30'; }
+      elseif ($diffDays === $defaultDays) { $due_terms = 'default'; }
       else { $due_terms = 'custom'; }
     }
     if (empty($items)) {
@@ -93,12 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   $invoice['client_id'] = (int)($_POST['client_id'] ?? 0);
   $invoice['issue_date'] = trim((string)($_POST['issue_date'] ?? date('Y-m-d')));
-  $due_terms = ($_POST['due_terms'] ?? '30');
+  $due_terms = ($_POST['due_terms'] ?? 'default');
   $raw_due = trim((string)($_POST['due_date'] ?? ''));
-  if ($due_terms === '15' || $due_terms === '30') {
+  if ($due_terms === '15' || $due_terms === '30' || $due_terms === 'default') {
     $base = strtotime($invoice['issue_date']);
     if ($base !== false) {
-      $days = (int)$due_terms;
+      $days = ($due_terms === 'default') ? $defaultDays : (int)$due_terms;
       $invoice['due_date'] = date('Y-m-d', strtotime("+{$days} days", $base));
     } else {
       $invoice['due_date'] = null;
@@ -189,6 +190,7 @@ $totals = InvoiceService::computeTotals($items);
         <label>Vencimiento</label>
         <div class="grid-2">
           <select name="due_terms" id="due_terms" style="width:100%;padding:10px;border:1px solid #E2E8F0;border-radius:8px;background:#fff">
+            <option value="default" <?= $due_terms==='default'?'selected':'' ?>>Por defecto (<?= (int)$defaultDays ?> días)</option>
             <option value="15" <?= $due_terms==='15'?'selected':'' ?>>15 días</option>
             <option value="30" <?= $due_terms==='30'?'selected':'' ?>>30 días</option>
             <option value="custom" <?= $due_terms==='custom'?'selected':'' ?>>Personalizado</option>
@@ -286,13 +288,13 @@ $totals = InvoiceService::computeTotals($items);
   const terms = document.getElementById('due_terms');
 
   function applyTerms(){
-    const mode = terms ? terms.value : '30';
+    const mode = terms ? terms.value : 'default';
     if (!issue || !due) return;
-    if (mode === '15' || mode === '30') {
+    if (mode === '15' || mode === '30' || mode === 'default') {
       // calcular vista
       const base = new Date(issue.value);
       if (!isNaN(base.getTime())) {
-        const days = parseInt(mode, 10);
+        const days = (mode === 'default') ? parseInt('<?= (int)$defaultDays ?>', 10) : parseInt(mode, 10);
         const d = new Date(base.getTime());
         d.setDate(d.getDate() + days);
         const iso = d.toISOString().slice(0,10);
