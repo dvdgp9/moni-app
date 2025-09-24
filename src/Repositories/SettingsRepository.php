@@ -11,7 +11,8 @@ final class SettingsRepository
     public static function get(string $key, ?int $userId = null): ?string
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('SELECT setting_value FROM settings WHERE setting_key = :k AND (user_id <=> :u) LIMIT 1');
+        // Prefer latest row if duplicates exist (historical rows with NULL user_id may exist)
+        $stmt = $pdo->prepare('SELECT setting_value FROM settings WHERE setting_key = :k AND (user_id <=> :u) ORDER BY id DESC LIMIT 1');
         $stmt->execute([':k' => $key, ':u' => $userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row['setting_value'] ?? null;
@@ -20,20 +21,25 @@ final class SettingsRepository
     public static function set(string $key, ?string $value, ?int $userId = null): void
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('INSERT INTO settings (setting_key, setting_value, user_id)
-            VALUES (:k, :v, :u)
-            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
-        $stmt->execute([':k' => $key, ':v' => $value, ':u' => $userId]);
+        // UPDATE first (handles existing rows even if unique constraint isn't enforced due to NULL)
+        $upd = $pdo->prepare('UPDATE settings SET setting_value = :v WHERE setting_key = :k AND (user_id <=> :u)');
+        $upd->execute([':k' => $key, ':v' => $value, ':u' => $userId]);
+        if ($upd->rowCount() === 0) {
+            // No row updated, INSERT new record
+            $ins = $pdo->prepare('INSERT INTO settings (setting_key, setting_value, user_id) VALUES (:k, :v, :u)');
+            $ins->execute([':k' => $key, ':v' => $value, ':u' => $userId]);
+        }
     }
 
     public static function all(?int $userId = null): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('SELECT setting_key, setting_value FROM settings WHERE (user_id <=> :u)');
+        // If duplicates exist, prefer the latest by id
+        $stmt = $pdo->prepare('SELECT setting_key, setting_value FROM settings WHERE (user_id <=> :u) ORDER BY id ASC');
         $stmt->execute([':u' => $userId]);
         $out = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $out[$row['setting_key']] = $row['setting_value'];
+            $out[$row['setting_key']] = $row['setting_value']; // later rows (newer ids) overwrite older
         }
         return $out;
     }
