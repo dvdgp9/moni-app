@@ -7,6 +7,7 @@ use Moni\Support\Flash;
 use Moni\Services\InvoiceService;
 use Moni\Support\Config;
 use Moni\Services\InvoiceNumberingService;
+use Moni\Repositories\SettingsRepository;
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
@@ -15,8 +16,9 @@ $errors = [];
 // Load clients for select
 $clients = ClientsRepository::all();
 
-// Defaults
-$defaultDays = (int) Config::get('settings.invoice_due_days', 30);
+// Defaults (read from DB first, then fallback to Config)
+$storedDays = SettingsRepository::get('invoice_due_days');
+$defaultDays = $storedDays !== null ? (int)$storedDays : (int) Config::get('settings.invoice_due_days', 30);
 $defaultDays = ($defaultDays > 0 && $defaultDays <= 90) ? $defaultDays : 30;
 $invoice = [
   'client_id' => $clients[0]['id'] ?? 0,

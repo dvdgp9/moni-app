@@ -7,13 +7,13 @@ $flash = null;
 
 // Guardado de ajustes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
-    $notify = trim((string)($_POST['notify_email'] ?? ''));
-    $tz = trim((string)($_POST['timezone'] ?? 'Europe/Madrid'));
-    $enabled = isset($_POST['reminders_enabled']) ? '1' : '0';
-    $customDatesRaw = trim((string)($_POST['custom_dates'] ?? ''));
+    $notify = isset($_POST['notify_email']) ? trim((string)$_POST['notify_email']) : null;
+    $tz = isset($_POST['timezone']) ? trim((string)$_POST['timezone']) : null;
+    $enabled = isset($_POST['reminders_enabled']) ? '1' : null; // null means no change
+    $customDatesRaw = isset($_POST['custom_dates']) ? trim((string)$_POST['custom_dates']) : null;
     // Permitir formato líneas o JSON
     $custom = [];
-    if ($customDatesRaw !== '') {
+    if ($customDatesRaw !== null && $customDatesRaw !== '') {
         $json = json_decode($customDatesRaw, true);
         if (is_array($json)) {
             $custom = $json;
@@ -31,10 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     }));
 
     try {
-        SettingsRepository::set('notify_email', $notify);
-        SettingsRepository::set('timezone', $tz);
-        SettingsRepository::set('reminders_enabled', $enabled);
-        SettingsRepository::set('reminder_custom_dates', json_encode($custom));
+        if ($notify !== null) { SettingsRepository::set('notify_email', $notify); }
+        if ($tz !== null) { SettingsRepository::set('timezone', $tz); }
+        if ($enabled !== null) { SettingsRepository::set('reminders_enabled', $enabled); }
+        if ($customDatesRaw !== null) { SettingsRepository::set('reminder_custom_dates', json_encode($custom)); }
         // Guardar plazo por defecto (días) si se envía
         if (isset($_POST['invoice_due_days'])) {
             $days = (int)$_POST['invoice_due_days'];
