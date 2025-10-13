@@ -98,16 +98,27 @@ final class ReminderService
         $pdo = Database::pdo();
 
         foreach ($events as $title) {
+            // Preload reminder info (also gives us its ID to use for idempotency in legacy schemas)
+            $info = $pdo->prepare('SELECT id, event_date, end_date, links FROM reminders WHERE enabled = 1 AND title = :t LIMIT 1');
+            $info->execute([':t' => $title]);
+            $rowInfo = $info->fetch(PDO::FETCH_ASSOC) ?: [];
+
             // Check if already sent today for this recipient
             $stmt = $pdo->prepare('SELECT id FROM reminder_logs WHERE event_date = :d AND sent_to = :to AND reminder_id IS NULL AND title = :t LIMIT 1');
-            // In case older schema lacks title column, fallback logic with reminder_id NULL and event_date+recipient
+            // In case older schema lacks title column, fallback to reminder_id-based idempotency if we know it
             try {
                 $stmt->execute([':d' => $todayStr, ':to' => $notify, ':t' => $title]);
                 $exists = $stmt->fetchColumn();
             } catch (\Throwable $e) {
-                $stmt2 = $pdo->prepare('SELECT id FROM reminder_logs WHERE event_date = :d AND sent_to = :to LIMIT 1');
-                $stmt2->execute([':d' => $todayStr, ':to' => $notify]);
-                $exists = $stmt2->fetchColumn();
+                $rid = isset($rowInfo['id']) ? (int)$rowInfo['id'] : 0;
+                if ($rid > 0) {
+                    $stmt2 = $pdo->prepare('SELECT id FROM reminder_logs WHERE event_date = :d AND sent_to = :to AND reminder_id = :rid LIMIT 1');
+                    $stmt2->execute([':d' => $todayStr, ':to' => $notify, ':rid' => $rid]);
+                    $exists = $stmt2->fetchColumn();
+                } else {
+                    // No title column and no reminder_id to match: do not globally skip by date (would block other reminders)
+                    $exists = false;
+                }
             }
 
             if ($exists) {
@@ -118,10 +129,6 @@ final class ReminderService
             try {
                 // Build payload for email template
                 $range = $todayStr;
-                // Try to show start-end from the DB row if available by querying again for this title
-                $info = $pdo->prepare('SELECT event_date, end_date, links FROM reminders WHERE enabled = 1 AND title = :t LIMIT 1');
-                $info->execute([':t' => $title]);
-                $rowInfo = $info->fetch(PDO::FETCH_ASSOC) ?: [];
                 if (!empty($rowInfo['event_date'])) {
                     $start = new DateTime((string)$rowInfo['event_date']);
                     $endd = !empty($rowInfo['end_date']) ? new DateTime((string)$rowInfo['end_date']) : null;
@@ -142,8 +149,14 @@ final class ReminderService
                 ];
                 $subject = 'Recordatorio: ' . $title;
                 EmailService::sendReminder($notify, $subject, $payload);
-                $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, event_date, sent_to) VALUES (NULL, :d, :to)');
-                $ins->execute([':d' => $todayStr, ':to' => $notify]);
+                $rid = isset($rowInfo['id']) ? (int)$rowInfo['id'] : null;
+                if ($rid && $rid > 0) {
+                    $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, event_date, sent_to) VALUES (:rid, :d, :to)');
+                    $ins->execute([':rid' => $rid, ':d' => $todayStr, ':to' => $notify]);
+                } else {
+                    $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, event_date, sent_to) VALUES (NULL, :d, :to)');
+                    $ins->execute([':d' => $todayStr, ':to' => $notify]);
+                }
                 $results['sent'][] = $title;
             } catch (\Throwable $e) {
                 $results['errors'][] = $title . ' => ' . $e->getMessage();

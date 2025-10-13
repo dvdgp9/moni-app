@@ -119,6 +119,7 @@ Valores por defecto (editables):
   - Pendiente crear BD e importar `database/migrations/001_init.sql`.
  - 2025-09-20: Git inicializado, primer commit y push a `origin/main` (repo: `dvdgp9/moni-app`).
 - 2025-09-20: Ajustes persistentes y motor de recordatorios implementados. Cron configurado en cPanel (08:00 Europe/Madrid).
+ - 2025-10-13: Executor: Corregida idempotencia de envíos para recordatorios (obligatorios). Ahora, cuando el esquema de `reminder_logs` no tiene columna `title`, se usa `reminder_id` para evitar falsos positivos que bloqueaban envíos. Código modificado en `src/Services/ReminderService.php`.
 
 ## Executor's Feedback or Assistance Requests
 - Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`).
@@ -129,3 +130,4 @@ Valores por defecto (editables):
 - Mantener cron idempotente con `reminder_logs` evita duplicados de envío el mismo día/evento.
 - Diseñar numeración de facturas desacoplada en un servicio con transacción reduce colisiones.
 - Configuración por `.env` + `settings` en BD permite multi-tenant futuro sin reconfigurar despliegue.
+ - La verificación de duplicados debe usar identificadores estables. Si hay esquemas antiguos sin columna `title`, usar `reminder_id` por evento evita que un envío previo del día bloquee otros eventos diferentes.
