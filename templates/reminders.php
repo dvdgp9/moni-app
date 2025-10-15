@@ -83,6 +83,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Load reminders and split groups
 $rows = RemindersRepository::all();
 $y = (int)date('Y');
+// Ordering selector
+$order = isset($_GET['order']) ? (string)$_GET['order'] : 'next';
+if (!in_array($order, ['next','far','alpha'], true)) { $order = 'next'; }
+$today = new DateTime('today');
+// Compute next occurrence (YYYY-MM-DD) for sorting
+$computeNext = function(array $r) use ($today): string {
+  $date = isset($r['event_date']) ? (string)$r['event_date'] : '';
+  $end  = isset($r['end_date']) ? (string)$r['end_date'] : '';
+  $rec  = isset($r['recurring']) ? (string)$r['recurring'] : 'yearly';
+  if ($date === '') return '9999-12-31';
+  if ($rec === 'yearly') {
+    $startMD = substr($date, 5);
+    $start = DateTime::createFromFormat('Y-m-d', $today->format('Y') . '-' . $startMD);
+    if ($end) {
+      $endMD = substr($end, 5);
+      $endDt = DateTime::createFromFormat('Y-m-d', $today->format('Y') . '-' . $endMD);
+      if ($endDt < $start) { $endDt->modify('+1 year'); }
+      if ($today <= $start) { return $start->format('Y-m-d'); }
+      if ($today > $endDt) { $start->modify('+1 year'); return $start->format('Y-m-d'); }
+      $start->modify('+1 year');
+      return $start->format('Y-m-d');
+    } else {
+      if ($start < $today) { $start->modify('+1 year'); }
+      return $start->format('Y-m-d');
+    }
+  } else {
+    try { $d = new DateTime($date); } catch (Throwable $e) { return '9999-12-31'; }
+    if ($d < $today) { return '9999-12-31'; }
+    return $d->format('Y-m-d');
+  }
+};
 // Agrupar por columna booleana 'mandatory' si existe; si no, fallback por links válidos
 $isMandatory = function(array $r): bool {
   if (array_key_exists('mandatory', $r)) {
@@ -100,6 +131,25 @@ $isMandatory = function(array $r): bool {
 };
 $quarters = array_values(array_filter($rows, $isMandatory));
 $custom = array_values(array_filter($rows, fn($r) => !$isMandatory($r)));
+// Attach next occurrence
+foreach ($quarters as &$q) { $q['next_occurrence'] = $computeNext($q); }
+unset($q);
+foreach ($custom as &$c) { $c['next_occurrence'] = $computeNext($c); }
+unset($c);
+// Sort by selected order
+$cmp = function(array $a, array $b) use ($order): int {
+  if ($order === 'alpha') {
+    $t = strcasecmp((string)$a['title'], (string)$b['title']);
+    return $t;
+  }
+  $da = (string)($a['next_occurrence'] ?? '9999-12-31');
+  $db = (string)($b['next_occurrence'] ?? '9999-12-31');
+  $res = strcmp($da, $db);
+  if ($res === 0) { return strcasecmp((string)$a['title'], (string)$b['title']); }
+  return $order === 'far' ? -$res : $res;
+};
+usort($quarters, $cmp);
+usort($custom, $cmp);
 
 function icon_calendar(): string {
   return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>';
@@ -126,6 +176,20 @@ function format_range(?string $start, ?string $end): string {
     cada año en la misma fecha. Usa "Todo/Nada" para activar o desactivar en bloque. Puedes añadir recordatorios
     personalizados indicando título y fecha.
   </p>
+  <div style="display:flex;align-items:center;gap:10px;margin:-4px 0 14px 0">
+    <form method="get" action="/" style="display:flex;align-items:center;gap:6px">
+      <input type="hidden" name="page" value="reminders" />
+      <label for="order" style="font-size:0.9rem;color:var(--gray-700)">Orden:</label>
+      <select id="order" name="order" onchange="this.form.submit()" style="padding:6px 8px">
+        <option value="next" <?= $order==='next'?'selected':'' ?>>Próximos primero</option>
+        <option value="far" <?= $order==='far'?'selected':'' ?>>Más lejanos primero</option>
+        <option value="alpha" <?= $order==='alpha'?'selected':'' ?>>Alfabético</option>
+      </select>
+    </form>
+    <span style="font-size:0.85rem;color:var(--gray-600);background:var(--gray-50);border:1px solid var(--gray-200);padding:4px 8px;border-radius:999px">
+      <?= $order==='alpha' ? 'Ordenado alfabéticamente' : ($order==='far' ? 'Ordenado por más lejanos primero' : 'Ordenado por próxima ejecución') ?>
+    </span>
+  </div>
 
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>

@@ -121,6 +121,8 @@ Valores por defecto (editables):
 - 2025-09-20: Ajustes persistentes y motor de recordatorios implementados. Cron configurado en cPanel (08:00 Europe/Madrid).
  - 2025-10-13: Executor: Corregida idempotencia de envíos para recordatorios (obligatorios). Ahora, cuando el esquema de `reminder_logs` no tiene columna `title`, se usa `reminder_id` para evitar falsos positivos que bloqueaban envíos. Código modificado en `src/Services/ReminderService.php`.
 
+- 2025-10-15: Executor: Página `reminders` ahora ordena por próxima ocurrencia (desempate alfabético) con selector de orden (`next`/`far`/`alpha`) y badge informativo. Implementado en `templates/reminders.php`. TZ según ajustes (`Europe/Madrid` por defecto). Pendiente añadir tests unitarios de cálculo de `next_occurrence`.
+
 ## Executor's Feedback or Assistance Requests
 - Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`).
 - Confirmar si preferimos cron via PHP CLI (recomendado) y un endpoint web protegido como alternativa manual. Elegido: PHP CLI en cPanel.
