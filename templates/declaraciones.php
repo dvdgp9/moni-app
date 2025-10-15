@@ -129,24 +129,28 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
     <div class="card">
       <h3>Modelo 303 — IVA</h3>
       <p style="color:var(--gray-600);margin-top:-6px">MVP: solo devengado por ventas registradas en Moni.</p>
-      <div class="grid-2">
-        <div><strong>Base imponible (ventas)</strong><br /><?= number_format($base, 2) ?> €</div>
-        <div><strong>IVA devengado (27)</strong><br /><?= number_format($devengado27, 2) ?> €</div>
-        <div><strong>IVA deducible (45)</strong><br /><span title="Pendiente de implementar">0,00 €</span></div>
-        <div><strong>Resultado (46)</strong><br /><?= number_format($resultado46, 2) ?> €</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:8px">
+        <div class="stat"><div class="stat-label">Base imponible (ventas)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($base, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label">IVA devengado (27)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($devengado27, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label">IVA deducible (45)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;">0,00 €</div></div>
+        <div class="stat"><div class="stat-label">Resultado (46)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($resultado46, 2) ?> €</div></div>
       </div>
       <?php if (!empty($byVat)): ?>
-        <div style="margin-top:10px">
+        <div style="margin-top:14px">
           <table class="table">
             <thead>
-              <tr><th>Tipo IVA</th><th>Base</th><th>Cuota</th></tr>
+              <tr>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600">Tipo IVA</th>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Base</th>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Cuota</th>
+              </tr>
             </thead>
             <tbody>
               <?php foreach ($byVat as $rate => $t): ?>
                 <tr>
                   <td><?= htmlspecialchars($rate) ?>%</td>
-                  <td><?= number_format($t['base'], 2) ?> €</td>
-                  <td><?= number_format($t['iva'], 2) ?> €</td>
+                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['base'], 2) ?> €</td>
+                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['iva'], 2) ?> €</td>
                 </tr>
               <?php endforeach; ?>
             </tbody>
@@ -158,47 +162,56 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
     <div class="card">
       <h3>Modelo 130 — IRPF</h3>
       <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
-      <div class="grid-2">
-        <div><strong>Ingresos (01)</strong><br /><?= number_format($ingresos01, 2) ?> €</div>
+      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-top:6px">
         <div>
-          <form method="get" style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+            <div class="stat"><div class="stat-label">Ingresos (01)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($ingresos01, 2) ?> €</div></div>
+            <div class="stat"><div class="stat-label">Gastos (02)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($gastos02, 2) ?> €</div></div>
+            <div class="stat"><div class="stat-label">Rendimiento (03)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($rendimiento03, 2) ?> €</div></div>
+            <div class="stat"><div class="stat-label">20% (04)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($cuota04, 2) ?> €</div></div>
+            <div class="stat"><div class="stat-label">Pago fraccionado (7)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($casilla7, 2) ?> €</div></div>
+          </div>
+        </div>
+        <div>
+          <form method="get" class="card" style="padding:12px;box-shadow:none;background:var(--gray-50)">
             <input type="hidden" name="page" value="declaraciones" />
             <input type="hidden" name="year" value="<?= (int)$y ?>" />
             <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
-            <label style="font-weight:600">Gastos (02)</label>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" style="width:140px" />
-              <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;color:var(--gray-700)">
-                <input type="checkbox" name="ddj" value="1" <?= $aplicarDdj?'checked':'' ?> /> Añadir 5% gastos de difícil justificación (máx. 2.000 €/año)
-              </label>
-              <?php if ($aplicarDdj): ?>
-                <span style="color:var(--gray-600);font-size:0.9rem">Añadidos: <?= number_format($ddj, 2) ?> €</span>
-              <?php endif; ?>
-            </div>
-            <div class="grid-2">
+            <div style="display:flex;flex-direction:column;gap:10px">
               <div>
-                <label style="font-weight:600">Pagos previos (5)</label>
+                <label style="font-weight:600">Gastos (02)</label>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                  <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
-                  <span style="color:var(--gray-600);font-size:0.9rem">Auto: <?= number_format($autoPrev, 2) ?> €</span>
+                  <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" style="width:160px" />
+                  <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;color:var(--gray-700)">
+                    <input type="checkbox" name="ddj" value="1" <?= $aplicarDdj?'checked':'' ?> /> 5% gastos difícil justificación (máx. 2.000 €)
+                  </label>
+                  <?php if ($aplicarDdj): ?>
+                    <span class="badge" style="background:var(--gray-200);color:var(--gray-800);border-radius:999px;padding:2px 8px;font-size:0.8rem">+<?= number_format($ddj, 2) ?> €</span>
+                  <?php endif; ?>
                 </div>
               </div>
-              <div>
-                <label style="font-weight:600">Retenciones acumuladas (6)</label>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                  <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
-                  <span style="color:var(--gray-600);font-size:0.9rem">Auto: <?= number_format($autoRetenciones, 2) ?> €</span>
+              <div class="grid-2">
+                <div>
+                  <label style="font-weight:600">Pagos previos (5)</label>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+                    <span class="badge" style="background:var(--gray-200);color:var(--gray-800);border-radius:999px;padding:2px 8px;font-size:0.8rem">Auto: <?= number_format($autoPrev, 2) ?> €</span>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-weight:600">Retenciones acumuladas (6)</label>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
+                    <span class="badge" style="background:var(--gray-200);color:var(--gray-800);border-radius:999px;padding:2px 8px;font-size:0.8rem">Auto: <?= number_format($autoRetenciones, 2) ?> €</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
-              <button type="submit" class="btn btn-sm">Recalcular</button>
+              <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+                <button type="submit" class="btn btn-sm">Recalcular</button>
+              </div>
             </div>
           </form>
         </div>
-        <div><strong>Rendimiento (03)</strong><br /><?= number_format($rendimiento03, 2) ?> €</div>
-        <div><strong>20% (04)</strong><br /><?= number_format($cuota04, 2) ?> €</div>
-        <div><strong>Pago fraccionado (7)</strong><br /><?= number_format($casilla7, 2) ?> €</div>
       </div>
     </div>
   </div>
