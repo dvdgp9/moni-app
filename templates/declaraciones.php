@@ -29,10 +29,7 @@ $resultado46 = $devengado27 - $deducible45;
 $ytd = TaxQuarterService::summarizeSalesYTD($y, $q);
 $ingresos01 = $ytd['base_total_ytd'];
 $gastosManuales = isset($_GET['gastos_ytd']) ? (float)str_replace(',', '.', (string)$_GET['gastos_ytd']) : 0.0;
-$aplicarDdj = isset($_GET['ddj']) && $_GET['ddj'] === '1';
-$baseParaDdj = max($ingresos01 - $gastosManuales, 0.0);
-$ddj = $aplicarDdj ? min(round($baseParaDdj * 0.05, 2), 2000.0) : 0.0;
-$gastos02 = round($gastosManuales + $ddj, 2);
+$gastos02 = round($gastosManuales, 2);
 $rendimiento03 = $ingresos01 - $gastos02;
 $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
 $autoPrev = 0.0;
@@ -42,9 +39,7 @@ if ($q > 1) {
     $ytdK = TaxQuarterService::summarizeSalesYTD($y, $k);
     $ingK = (float)$ytdK['base_total_ytd'];
     $retK = (float)$ytdK['irpf_total_ytd'];
-    // DDJ opcional aplicado también en histórico (sin otros gastos conocidos)
-    $ddjK = $aplicarDdj ? min(round(max($ingK - 0.0, 0.0) * 0.05, 2), 2000.0) : 0.0;
-    $rendK = max($ingK - $ddjK, 0.0);
+    $rendK = max($ingK, 0.0);
     $c4K = round($rendK * 0.20, 2);
     // Casilla 7 del trimestre k: 04(k) - pagos previos (hasta k-1) - retenciones YTD(k)
     $c7K = round(max(0.0, $c4K - $paidSoFar - $retK), 2);
@@ -162,57 +157,35 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
     <div class="card">
       <h3>Modelo 130 — IRPF</h3>
       <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
-      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-top:6px">
-        <div>
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-            <div class="stat"><div class="stat-label">Ingresos (01)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($ingresos01, 2) ?> €</div></div>
-            <div class="stat"><div class="stat-label">Gastos (02)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($gastos02, 2) ?> €</div></div>
-            <div class="stat"><div class="stat-label">Rendimiento (03)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($rendimiento03, 2) ?> €</div></div>
-            <div class="stat"><div class="stat-label">20% (04)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($cuota04, 2) ?> €</div></div>
-            <div class="stat"><div class="stat-label">Pago fraccionado (7)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($casilla7, 2) ?> €</div></div>
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:8px">
+        <div class="stat"><div class="stat-label">Ingresos (01)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($ingresos01, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label">Gastos (02)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($gastos02, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label">Rendimiento (03)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($rendimiento03, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label">20% (04)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($cuota04, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label">Pago fraccionado (7)</div><div class="stat-value" style="font-size:1.1rem;font-weight:700;"><?= number_format($casilla7, 2) ?> €</div></div>
+      </div>
+      <form method="get" style="margin-top:16px;padding:12px;background:var(--gray-50);border-radius:8px">
+        <input type="hidden" name="page" value="declaraciones" />
+        <input type="hidden" name="year" value="<?= (int)$y ?>" />
+        <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end">
+          <div>
+            <label style="font-weight:600;font-size:0.9rem">Gastos (02)</label>
+            <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" />
+          </div>
+          <div>
+            <label style="font-weight:600;font-size:0.9rem">Pagos previos (5) <span style="font-weight:400;color:var(--gray-600)">Auto: <?= number_format($autoPrev, 2) ?> €</span></label>
+            <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+          </div>
+          <div>
+            <label style="font-weight:600;font-size:0.9rem">Retenciones acumuladas (6) <span style="font-weight:400;color:var(--gray-600)">Auto: <?= number_format($autoRetenciones, 2) ?> €</span></label>
+            <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
           </div>
         </div>
-        <div>
-          <form method="get" class="card" style="padding:12px;box-shadow:none;background:var(--gray-50)">
-            <input type="hidden" name="page" value="declaraciones" />
-            <input type="hidden" name="year" value="<?= (int)$y ?>" />
-            <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <div>
-                <label style="font-weight:600">Gastos (02)</label>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                  <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" style="width:160px" />
-                  <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;color:var(--gray-700)">
-                    <input type="checkbox" name="ddj" value="1" <?= $aplicarDdj?'checked':'' ?> /> 5% gastos difícil justificación (máx. 2.000 €)
-                  </label>
-                  <?php if ($aplicarDdj): ?>
-                    <span class="badge" style="background:var(--gray-200);color:var(--gray-800);border-radius:999px;padding:2px 8px;font-size:0.8rem">+<?= number_format($ddj, 2) ?> €</span>
-                  <?php endif; ?>
-                </div>
-              </div>
-              <div class="grid-2">
-                <div>
-                  <label style="font-weight:600">Pagos previos (5)</label>
-                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
-                    <span class="badge" style="background:var(--gray-200);color:var(--gray-800);border-radius:999px;padding:2px 8px;font-size:0.8rem">Auto: <?= number_format($autoPrev, 2) ?> €</span>
-                  </div>
-                </div>
-                <div>
-                  <label style="font-weight:600">Retenciones acumuladas (6)</label>
-                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
-                    <span class="badge" style="background:var(--gray-200);color:var(--gray-800);border-radius:999px;padding:2px 8px;font-size:0.8rem">Auto: <?= number_format($autoRetenciones, 2) ?> €</span>
-                  </div>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
-                <button type="submit" class="btn btn-sm">Recalcular</button>
-              </div>
-            </div>
-          </form>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px">
+          <button type="submit" class="btn btn-sm">Recalcular</button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 </section>
