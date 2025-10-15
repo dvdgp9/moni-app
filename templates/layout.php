@@ -41,6 +41,7 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
         <a href="/?page=dashboard" class="<?= ($page==='dashboard')?'active':'' ?>">Dashboard</a>
         <a href="/?page=clients" class="<?= ($page==='clients'||$page==='client_form')?'active':'' ?>">Clientes</a>
         <a href="/?page=invoices" class="<?= ($page==='invoices'||$page==='invoice_form')?'active':'' ?>">Facturas</a>
+        <a href="/?page=declaraciones" class="<?= ($page==='declaraciones')?'active':'' ?>">Declaraciones</a>
         <a href="/?page=reminders" class="<?= ($page==='reminders')?'active':'' ?>">Notificaciones</a>
         <?php if (!empty($_SESSION['user_id'])): ?>
           <!-- Penúltimo: Ajustes (icon settings-01) -->

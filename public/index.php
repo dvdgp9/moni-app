@@ -57,6 +57,7 @@ $routes = [
     'logout' => $root . '/templates/logout.php',
     'profile' => $root . '/templates/profile.php',
     'reminders' => $root . '/templates/reminders.php',
+    'declaraciones' => $root . '/templates/declaraciones.php',
 ];
 
 $template = $routes[$page] ?? $routes['dashboard'];
@@ -66,7 +67,7 @@ $protected = [
     'dashboard',
     'settings', 'clients', 'client_form',
     'invoices', 'invoice_form', 'invoice_pdf',
-    'profile', 'reminders'
+    'profile', 'reminders', 'declaraciones'
 ];
 if (in_array($page, $protected, true)) {
     if (empty($_SESSION['user_id'])) {

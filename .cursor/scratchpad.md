@@ -123,6 +123,13 @@ Valores por defecto (editables):
 
 - 2025-10-15: Executor: Página `reminders` ahora ordena por próxima ocurrencia (desempate alfabético) con selector de orden (`next`/`far`/`alpha`) y badge informativo. Implementado en `templates/reminders.php`. TZ según ajustes (`Europe/Madrid` por defecto). Pendiente añadir tests unitarios de cálculo de `next_occurrence`.
 
+- 2025-10-15: Executor: Implementado MVP de declaraciones.
+  - Servicio `src/Services/TaxQuarterService.php`: `quarterRange()` y `summarizeSales(year, quarter)` filtrando `invoices.issue_date` por trimestre y `status IN ('issued','paid')`. Devuelve `base_total`, `iva_total`, `irpf_total`, desglose `by_vat` y `range`.
+  - Página `templates/declaraciones.php`: selector año/trimestre; tarjetas de 303 (Base, Devengado 27, Deducible 45=0, Resultado 46) y 130 (Ingresos 01, Gastos 02=0, Rendimiento 03, 20% 04). Sin export por ahora.
+  - Enrutador `public/index.php`: nueva ruta `page=declaraciones` protegida por sesión; añadido enlace en `templates/layout.php`.
+  - Alcance: solo ventas desde facturas (no gastos ni IVA deducible). Redondeo a 2 decimales al final.
+  - Pendiente: campos manuales persistentes, export CSV/PDF, tests del servicio (rangos de trimestre y acumulados), y validación con casos reales.
+
 ## Executor's Feedback or Assistance Requests
 - Confirmar nombre del repositorio GitHub (p.ej., `moni` o `moni-app`).
 - Confirmar si preferimos cron via PHP CLI (recomendado) y un endpoint web protegido como alternativa manual. Elegido: PHP CLI en cPanel.
