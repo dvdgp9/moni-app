@@ -33,7 +33,7 @@ $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
   <h1>Declaraciones</h1>
   <p style="margin-top:-6px;margin-bottom:14px;color:var(--gray-600)">
     Resumen del trimestre para IVA (Modelo 303) y pagos fraccionados IRPF (Modelo 130).
-    Se incluyen facturas <strong>Emitidas</strong> y <strong>Pagadas</strong> por <strong>fecha de factura</strong> (issue_date).
+    Se incluyen facturas <strong>Emitidas</strong> y <strong>Pagadas</strong> según su <strong>fecha de factura</strong>.
   </p>
 
   <?php if (!empty($flashAll)): ?>
@@ -44,19 +44,27 @@ $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <form method="get" class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <form method="get" class="card">
     <input type="hidden" name="page" value="declaraciones" />
-    <label>Año</label>
-    <input type="number" name="year" value="<?= (int)$y ?>" min="2000" max="2100" style="width:110px" />
-    <label>Trimestre</label>
-    <select name="quarter">
-      <option value="1" <?= $q===1?'selected':'' ?>>1T (01–03)</option>
-      <option value="2" <?= $q===2?'selected':'' ?>>2T (04–06)</option>
-      <option value="3" <?= $q===3?'selected':'' ?>>3T (07–09)</option>
-      <option value="4" <?= $q===4?'selected':'' ?>>4T (10–12)</option>
-    </select>
-    <button type="submit" class="btn">Calcular</button>
-    <span style="margin-left:auto;color:var(--gray-600)">Rango: <?= htmlspecialchars($range['start']) ?> — <?= htmlspecialchars($range['end']) ?></span>
+    <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+      <div>
+        <label for="year">Año</label>
+        <input id="year" type="number" name="year" value="<?= (int)$y ?>" min="2000" max="2100" style="width:120px" />
+      </div>
+      <div>
+        <label for="quarter">Trimestre</label>
+        <select id="quarter" name="quarter" style="min-width:180px">
+          <option value="1" <?= $q===1?'selected':'' ?>>1T (01–03)</option>
+          <option value="2" <?= $q===2?'selected':'' ?>>2T (04–06)</option>
+          <option value="3" <?= $q===3?'selected':'' ?>>3T (07–09)</option>
+          <option value="4" <?= $q===4?'selected':'' ?>>4T (10–12)</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:12px;align-items:center">
+        <span style="color:var(--gray-600);white-space:nowrap">Rango: <?= htmlspecialchars($range['start']) ?> — <?= htmlspecialchars($range['end']) ?></span>
+        <button type="submit" class="btn">Calcular</button>
+      </div>
+    </div>
   </form>
 
   <div class="grid-2">
