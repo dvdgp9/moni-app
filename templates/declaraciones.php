@@ -25,11 +25,19 @@ $devengado27 = $iva; // total cuota devengada
 $deducible45 = 0.00; // manual en futuras iteraciones
 $resultado46 = $devengado27 - $deducible45;
 
-// Modelo 130 (MVP)
-$ingresos01 = $base; // sin IVA
-$gastos02 = 0.00; // manual futuro
+// Modelo 130 (YTD acumulado)
+$ytd = TaxQuarterService::summarizeSalesYTD($y, $q);
+$ingresos01 = $ytd['base_total_ytd'];
+$gastosManuales = isset($_GET['gastos_ytd']) ? (float)str_replace(',', '.', (string)$_GET['gastos_ytd']) : 0.0;
+$aplicarDdj = isset($_GET['ddj']) && $_GET['ddj'] === '1';
+$baseParaDdj = max($ingresos01 - $gastosManuales, 0.0);
+$ddj = $aplicarDdj ? min(round($baseParaDdj * 0.05, 2), 2000.0) : 0.0;
+$gastos02 = round($gastosManuales + $ddj, 2);
 $rendimiento03 = $ingresos01 - $gastos02;
 $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
+$casilla5_prev = isset($_GET['prev_payments']) ? (float)str_replace(',', '.', (string)$_GET['prev_payments']) : 0.0;
+$casilla6_ret = isset($_GET['retenciones']) ? (float)str_replace(',', '.', (string)$_GET['retenciones']) : 0.0;
+$casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
 ?>
 <section>
   <h1>Declaraciones</h1>
@@ -127,12 +135,42 @@ $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
 
     <div class="card">
       <h3>Modelo 130 — IRPF</h3>
-      <p style="color:var(--gray-600);margin-top:-6px">MVP: ingresos desde facturas; gastos y compensaciones manuales (próximo paso).</p>
+      <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
       <div class="grid-2">
         <div><strong>Ingresos (01)</strong><br /><?= number_format($ingresos01, 2) ?> €</div>
-        <div><strong>Gastos (02)</strong><br /><span title="Pendiente de implementar">0,00 €</span></div>
+        <div>
+          <form method="get" style="display:flex;flex-direction:column;gap:6px">
+            <input type="hidden" name="page" value="declaraciones" />
+            <input type="hidden" name="year" value="<?= (int)$y ?>" />
+            <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
+            <label style="font-weight:600">Gastos (02)</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" style="width:140px" />
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;color:var(--gray-700)">
+                <input type="checkbox" name="ddj" value="1" <?= $aplicarDdj?'checked':'' ?> /> Añadir 5% gastos de difícil justificación (máx. 2.000 €/año)
+              </label>
+              <?php if ($aplicarDdj): ?>
+                <span style="color:var(--gray-600);font-size:0.9rem">Añadidos: <?= number_format($ddj, 2) ?> €</span>
+              <?php endif; ?>
+            </div>
+            <div class="grid-2">
+              <div>
+                <label style="font-weight:600">Pagos previos (5)</label>
+                <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+              </div>
+              <div>
+                <label style="font-weight:600">Retenciones acumuladas (6)</label>
+                <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+              <button type="submit" class="btn btn-sm">Recalcular</button>
+            </div>
+          </form>
+        </div>
         <div><strong>Rendimiento (03)</strong><br /><?= number_format($rendimiento03, 2) ?> €</div>
         <div><strong>20% (04)</strong><br /><?= number_format($cuota04, 2) ?> €</div>
+        <div><strong>Pago fraccionado (7)</strong><br /><?= number_format($casilla7, 2) ?> €</div>
       </div>
     </div>
   </div>

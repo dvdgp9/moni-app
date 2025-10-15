@@ -70,4 +70,46 @@ final class TaxQuarterService
             'range' => $range,
         ];
     }
+
+    /**
+     * Cumulative summary from Jan 1 to the end of the selected quarter (YTD) for 130.
+     * Returns base_total_ytd, iva_total_ytd, irpf_total_ytd and range_ytd.
+     */
+    public static function summarizeSalesYTD(int $year, int $quarter): array
+    {
+        $quarter = max(1, min(4, $quarter));
+        $endMap = [
+            1 => "$year-03-31",
+            2 => "$year-06-30",
+            3 => "$year-09-30",
+            4 => "$year-12-31",
+        ];
+        $start = "$year-01-01";
+        $end = $endMap[$quarter];
+        $pdo = Database::pdo();
+        $sql = 'SELECT it.quantity, it.unit_price, it.vat_rate, it.irpf_rate
+                FROM invoice_items it
+                INNER JOIN invoices i ON i.id = it.invoice_id
+                WHERE i.status IN (\'issued\', \'paid\')
+                  AND i.issue_date >= :start AND i.issue_date <= :end';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':start' => $start, ':end' => $end]);
+        $base = 0.0; $iva = 0.0; $irpf = 0.0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $qty = (float)($row['quantity'] ?? 0);
+            $price = (float)($row['unit_price'] ?? 0);
+            $rateVat = (float)($row['vat_rate'] ?? 0);
+            $rateIrpf = (float)($row['irpf_rate'] ?? 0);
+            $lineBase = $qty * $price;
+            $base += $lineBase;
+            $iva += $lineBase * ($rateVat / 100.0);
+            $irpf += $lineBase * ($rateIrpf / 100.0);
+        }
+        return [
+            'base_total_ytd' => round($base, 2),
+            'iva_total_ytd' => round($iva, 2),
+            'irpf_total_ytd' => round($irpf, 2),
+            'range_ytd' => ['start' => $start, 'end' => $end],
+        ];
+    }
 }
