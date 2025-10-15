@@ -36,7 +36,10 @@ $gastos02 = round($gastosManuales + $ddj, 2);
 $rendimiento03 = $ingresos01 - $gastos02;
 $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
 $casilla5_prev = isset($_GET['prev_payments']) ? (float)str_replace(',', '.', (string)$_GET['prev_payments']) : 0.0;
-$casilla6_ret = isset($_GET['retenciones']) ? (float)str_replace(',', '.', (string)$_GET['retenciones']) : 0.0;
+$autoRetenciones = (float)$ytd['irpf_total_ytd'];
+$casilla6_ret = isset($_GET['retenciones']) && $_GET['retenciones'] !== ''
+  ? (float)str_replace(',', '.', (string)$_GET['retenciones'])
+  : $autoRetenciones;
 $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
 ?>
 <section>
@@ -160,7 +163,10 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
               </div>
               <div>
                 <label style="font-weight:600">Retenciones acumuladas (6)</label>
-                <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
+                  <span style="color:var(--gray-600);font-size:0.9rem">Auto: <?= number_format($autoRetenciones, 2) ?> €</span>
+                </div>
               </div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
