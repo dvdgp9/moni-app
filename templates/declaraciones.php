@@ -121,18 +121,29 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
   </script>
 
   <div class="grid-2">
-    <div class="card" style="padding-bottom:16px">
+    <div class="card">
       <h3>Modelo 303 — IVA</h3>
-      <p style="color:var(--gray-600);margin-top:-6px;margin-bottom:12px">MVP: solo devengado por ventas registradas en Moni.</p>
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:8px">
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">Base imponible (ventas)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($base, 2) ?> €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">IVA devengado (27)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($devengado27, 2) ?> €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">IVA deducible (45)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;">0,00 €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">Resultado (46)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($resultado46, 2) ?> €</div></div>
+      <p style="color:var(--gray-600);margin-top:-6px">MVP: solo devengado por ventas registradas en Moni.</p>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:10px">
+        <div class="stat">
+          <div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">Base imponible (ventas)</div>
+          <div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($base, 2) ?> €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">IVA devengado (27)</div>
+          <div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($devengado27, 2) ?> €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">IVA deducible (45)</div>
+          <div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">Resultado (46)</div>
+          <div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($resultado46, 2) ?> €</div>
+        </div>
       </div>
-      <div style="border-top:1px solid #EEF2F6;margin:14px 0"></div>
       <?php if (!empty($byVat)): ?>
-        <div style="margin-top:8px">
+        <div style="margin-top:14px">
           <table class="table">
             <thead>
               <tr>
@@ -145,12 +156,8 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
               <?php foreach ($byVat as $rate => $t): ?>
                 <tr>
                   <td><?= htmlspecialchars($rate) ?>%</td>
-                  <td style="text-align:right;white-space:nowrap;">
-                    <?= number_format($t['base'], 2) ?> €
-                  </td>
-                  <td style="text-align:right;white-space:nowrap;">
-                    <?= number_format($t['iva'], 2) ?> €
-                  </td>
+                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['base'], 2) ?> €</td>
+                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['iva'], 2) ?> €</td>
                 </tr>
               <?php endforeach; ?>
             </tbody>
@@ -159,36 +166,39 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
       <?php endif; ?>
     </div>
 
-    <div class="card" style="padding-bottom:16px">
+    <div class="card">
       <h3>Modelo 130 — IRPF</h3>
-      <p style="color:var(--gray-600);margin-top:-6px;margin-bottom:12px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
-      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-top:8px">
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">Ingresos (01)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($ingresos01, 2) ?> €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">Gastos (02)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($gastos02, 2) ?> €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">Rendimiento (03)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($rendimiento03, 2) ?> €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">20% (04)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($cuota04, 2) ?> €</div></div>
-        <div class="stat"><div class="stat-label" style="color:var(--gray-600)">Pago fraccionado (7)</div><div class="stat-value" style="font-size:1.2rem;font-weight:700;letter-spacing:.1px;"><?= number_format($casilla7, 2) ?> €</div></div>
+      <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-top:10px">
+        <div class="stat"><div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">Ingresos (01)</div><div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($ingresos01, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">Gastos (02)</div><div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($gastos02, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">Rendimiento (03)</div><div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($rendimiento03, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">20% (04)</div><div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($cuota04, 2) ?> €</div></div>
+        <div class="stat"><div class="stat-label" style="font-size:0.85rem;color:var(--gray-600);">Pago fraccionado (7)</div><div class="stat-value" style="font-size:1.15rem;font-weight:700;white-space:nowrap;"><?= number_format($casilla7, 2) ?> €</div></div>
       </div>
-      <div style="border-top:1px solid #EEF2F6;margin:14px 0"></div>
-      <form method="get" style="margin-top:6px;padding:12px;background:var(--gray-50);border-radius:10px">
+      <div style="height:1px;background:#EEF2F7;margin:12px 0"></div>
+      <form method="get" style="padding:12px;background:var(--gray-50);border-radius:8px">
         <input type="hidden" name="page" value="declaraciones" />
         <input type="hidden" name="year" value="<?= (int)$y ?>" />
         <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:end">
           <div>
-            <label style="font-weight:600;font-size:0.92rem;display:block;margin-bottom:6px">Gastos (02)</label>
-            <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" style="width:100%" />
+            <label style="font-weight:600;font-size:0.9rem">Gastos (02)</label>
+            <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" />
+            <div style="font-size:0.85rem;color:var(--gray-600);margin-top:4px">Introduce el total acumulado del año.</div>
           </div>
           <div>
-            <label style="font-weight:600;font-size:0.92rem;display:block;margin-bottom:6px">Pagos previos (5) <span style="font-weight:400;color:var(--gray-600)">Auto: <?= number_format($autoPrev, 2) ?> €</span></label>
-            <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" style="width:100%" />
+            <label style="font-weight:600;font-size:0.9rem">Pagos previos (5)</label>
+            <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+            <div style="font-size:0.85rem;color:var(--gray-600);margin-top:4px">Auto: <?= number_format($autoPrev, 2) ?> €</div>
           </div>
           <div>
-            <label style="font-weight:600;font-size:0.92rem;display:block;margin-bottom:6px">Retenciones acumuladas (6) <span style="font-weight:400;color:var(--gray-600)">Auto: <?= number_format($autoRetenciones, 2) ?> €</span></label>
-            <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" style="width:100%" />
+            <label style="font-weight:600;font-size:0.9rem">Retenciones acumuladas (6)</label>
+            <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
+            <div style="font-size:0.85rem;color:var(--gray-600);margin-top:4px">Auto: <?= number_format($autoRetenciones, 2) ?> €</div>
           </div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:12px">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px">
           <button type="submit" class="btn btn-sm">Recalcular</button>
         </div>
       </form>
