@@ -661,3 +661,14 @@ p.form-hint {
   font-size: 12px;
   font-style: italic;
 }
+
+/* Declaraciones UI helpers */
+.grid-stats-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-top:10px; }
+.grid-stats-5 { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:16px; margin-top:10px; }
+.kpi { display:flex; flex-direction:column; min-height:56px; }
+.kpi-label { font-size:0.7rem; color: var(--gray-600); }
+.kpi-value { margin-top:auto; font-size:1rem; font-weight:700; white-space:nowrap; }
+.sep { height:1px; background:#EEF2F7; margin:12px 0; }
+.form-band { padding:12px; background: var(--gray-50); border-radius:8px; }
+.form-grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:end; }
+.hint { font-size:0.85rem; color: var(--gray-600); margin-top:4px; }
