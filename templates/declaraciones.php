@@ -17,6 +17,8 @@ $iva = $summary['iva_total'];
 $irpf = $summary['irpf_total']; // informativo
 $byVat = $summary['by_vat'];
 $range = $summary['range'];
+$rangeStartEs = (new DateTime($range['start']))->format('d/m/Y');
+$rangeEndEs = (new DateTime($range['end']))->format('d/m/Y');
 
 // Modelo 303 (MVP)
 $devengado27 = $iva; // total cuota devengada
@@ -61,11 +63,37 @@ $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
         </select>
       </div>
       <div style="margin-left:auto;display:flex;gap:12px;align-items:center">
-        <span style="color:var(--gray-600);white-space:nowrap">Rango: <?= htmlspecialchars($range['start']) ?> — <?= htmlspecialchars($range['end']) ?></span>
+        <span id="rangeLabel" style="color:var(--gray-600);white-space:nowrap">Periodo seleccionado: <?= htmlspecialchars($rangeStartEs) ?> — <?= htmlspecialchars($rangeEndEs) ?></span>
         <button type="submit" class="btn">Calcular</button>
       </div>
     </div>
   </form>
+
+  <script>
+  (function(){
+    const yearEl = document.getElementById('year');
+    const qEl = document.getElementById('quarter');
+    const label = document.getElementById('rangeLabel');
+    function fmt(d){
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yy = d.getFullYear();
+      return dd+'/'+mm+'/'+yy;
+    }
+    function update(){
+      const y = parseInt(yearEl.value,10)||new Date().getFullYear();
+      const q = parseInt(qEl.value,10)||1;
+      let start, end;
+      if (q===1){ start=new Date(y,0,1); end=new Date(y,2,31); }
+      else if (q===2){ start=new Date(y,3,1); end=new Date(y,5,30); }
+      else if (q===3){ start=new Date(y,6,1); end=new Date(y,8,30); }
+      else { start=new Date(y,9,1); end=new Date(y,11,31); }
+      if (label) label.textContent = 'Periodo seleccionado: ' + fmt(start) + ' — ' + fmt(end);
+    }
+    yearEl && yearEl.addEventListener('input', update);
+    qEl && qEl.addEventListener('change', update);
+  })();
+  </script>
 
   <div class="grid-2">
     <div class="card">
