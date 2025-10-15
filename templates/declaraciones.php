@@ -35,7 +35,26 @@ $ddj = $aplicarDdj ? min(round($baseParaDdj * 0.05, 2), 2000.0) : 0.0;
 $gastos02 = round($gastosManuales + $ddj, 2);
 $rendimiento03 = $ingresos01 - $gastos02;
 $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
-$casilla5_prev = isset($_GET['prev_payments']) ? (float)str_replace(',', '.', (string)$_GET['prev_payments']) : 0.0;
+$autoPrev = 0.0;
+if ($q > 1) {
+  $paidSoFar = 0.0;
+  for ($k = 1; $k <= $q-1; $k++) {
+    $ytdK = TaxQuarterService::summarizeSalesYTD($y, $k);
+    $ingK = (float)$ytdK['base_total_ytd'];
+    $retK = (float)$ytdK['irpf_total_ytd'];
+    // DDJ opcional aplicado también en histórico (sin otros gastos conocidos)
+    $ddjK = $aplicarDdj ? min(round(max($ingK - 0.0, 0.0) * 0.05, 2), 2000.0) : 0.0;
+    $rendK = max($ingK - $ddjK, 0.0);
+    $c4K = round($rendK * 0.20, 2);
+    // Casilla 7 del trimestre k: 04(k) - pagos previos (hasta k-1) - retenciones YTD(k)
+    $c7K = round(max(0.0, $c4K - $paidSoFar - $retK), 2);
+    $paidSoFar += $c7K;
+  }
+  $autoPrev = round($paidSoFar, 2);
+}
+$casilla5_prev = (isset($_GET['prev_payments']) && $_GET['prev_payments'] !== '')
+  ? (float)str_replace(',', '.', (string)$_GET['prev_payments'])
+  : $autoPrev;
 $autoRetenciones = (float)$ytd['irpf_total_ytd'];
 $casilla6_ret = isset($_GET['retenciones']) && $_GET['retenciones'] !== ''
   ? (float)str_replace(',', '.', (string)$_GET['retenciones'])
@@ -159,7 +178,10 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
             <div class="grid-2">
               <div>
                 <label style="font-weight:600">Pagos previos (5)</label>
-                <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+                  <span style="color:var(--gray-600);font-size:0.9rem">Auto: <?= number_format($autoPrev, 2) ?> €</span>
+                </div>
               </div>
               <div>
                 <label style="font-weight:600">Retenciones acumuladas (6)</label>
