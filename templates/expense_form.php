@@ -43,6 +43,7 @@ if ($editing) {
 
 // Handle PDF upload and extraction (AJAX or form submit)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'extract') {
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json');
     
     if (!Csrf::validate($_POST['_token'] ?? null)) {
@@ -87,11 +88,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     // Extract text
-    $text = PdfExtractorService::extractText($destPath);
-    $hasContent = PdfExtractorService::hasUsefulContent($text);
+    try {
+        $text = PdfExtractorService::extractText($destPath);
+        $hasContent = PdfExtractorService::hasUsefulContent($text);
 
-    // Parse the text
-    $parsed = InvoiceParserService::parse($text);
+        // Parse the text
+        $parsed = InvoiceParserService::parse($text);
+    } catch (\Throwable $e) {
+        error_log("Error en extracción PDF: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
+        echo json_encode(['error' => 'Error interno al procesar el PDF. Revisa los logs.']);
+        exit;
+    }
 
     echo json_encode([
         'success' => true,
