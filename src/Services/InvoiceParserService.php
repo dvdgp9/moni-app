@@ -75,59 +75,99 @@ final class InvoiceParserService
      */
     private static function extractSupplierName(string $text, ?string $nif): ?string
     {
-        // Strategy 1: Look for company name patterns near CIF
-        // Common Spanish company suffixes: S.L., S.L.U., S.A., S.COOP
-        if (preg_match('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))/u', $text, $m)) {
-            $name = trim($m[1]);
-            // Clean up status words that might be attached (like "PAGADA LucusHost S.L.U.")
-            $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $name);
-            $name = trim($name);
-            if (strlen($name) > 5 && strlen($name) < 100) {
-                return $name;
-            }
-        }
-
-        // Strategy 2: If we have a NIF, look for text immediately before it
+        // Strategy 1 (PRIORITY): If we have a NIF, look BEFORE it in the text
         if ($nif) {
-            // Pattern: "Company Name CIF: B12345678" or "Company Name\nCIF B12345678"
-            $pattern = '/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s.,]+?)\s*(?:CIF|NIF|NIF\/CIF)?[:\s]*' . preg_quote($nif, '/') . '/ui';
-            if (preg_match($pattern, $text, $m)) {
-                $name = trim($m[1]);
-                // Clean up status words
-                $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $name);
-                // Remove trailing labels
-                $name = preg_replace('/\s*(CIF|NIF|C\/|Calle|Avda|Tel|www).*$/i', '', $name);
-                $name = trim($name);
-                if (strlen($name) > 3 && strlen($name) < 100) {
-                    return $name;
+            // Find position of the NIF
+            $nifPos = stripos($text, $nif);
+            if ($nifPos !== false) {
+                // Get text before NIF (up to 300 chars back)
+                $beforeNif = substr($text, max(0, $nifPos - 300), min(300, $nifPos));
+                
+                // Look for company name with suffix S.L.U., S.L., S.A., etc. near the CIF
+                if (preg_match('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s,]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))\s*(?:CIF|NIF)?[:\s]*$/ui', $beforeNif, $m)) {
+                    $name = trim($m[1]);
+                    $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $name);
+                    $name = trim($name);
+                    // Validate it's not a technical description (avoid too many acronyms)
+                    if (strlen($name) > 5 && strlen($name) < 100 && !self::isTechnicalDescription($name)) {
+                        return $name;
+                    }
+                }
+                
+                // Alternative: just get the line or segment before CIF label
+                $lines = preg_split('/[\n\r]+/', $beforeNif);
+                $lines = array_map('trim', array_filter($lines));
+                // Get last 1-3 lines before CIF
+                $candidateLines = array_slice($lines, -3);
+                foreach (array_reverse($candidateLines) as $line) {
+                    if (strlen($line) < 5 || strlen($line) > 100) continue;
+                    if (preg_match('/^(CIF|NIF|C\/|Tel|www|http|@)/i', $line)) continue;
+                    if (self::isTechnicalDescription($line)) continue;
+                    
+                    // Clean and return
+                    $line = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $line);
+                    $line = trim($line);
+                    if (strlen($line) > 5) {
+                        return $line;
+                    }
                 }
             }
         }
 
-        // Strategy 3: Split into segments and find first one that looks like a company name
+        // Strategy 2: Look for company name patterns with S.L., S.A., etc (but validate they're not technical)
+        if (preg_match_all('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s,]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))/u', $text, $matches)) {
+            foreach ($matches[1] as $candidate) {
+                $candidate = trim($candidate);
+                $candidate = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $candidate);
+                $candidate = trim($candidate);
+                
+                if (strlen($candidate) > 5 && strlen($candidate) < 100 && !self::isTechnicalDescription($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        // Strategy 3: First meaningful segment (as last resort)
         $segments = preg_split('/[\n\r]+/', $text);
         $segments = array_map('trim', $segments);
         $segments = array_filter($segments);
         
         foreach ($segments as $segment) {
-            // Skip if too short, too long, or looks like a label/date/amount
             if (strlen($segment) < 5 || strlen($segment) > 80) continue;
             
-            // Clean up status words for inspection
             $cleanSegment = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $segment);
             $cleanSegment = trim($cleanSegment);
 
-            if (preg_match('/^(factura|fecha|invoice|cliente|total|iva|base|pagado|vencimiento)/i', $cleanSegment)) continue;
-            if (preg_match('/^\d+[\/\-]\d+/', $cleanSegment)) continue; // Dates
-            if (preg_match('/^\d+[.,]\d{2}\s*€?$/', $cleanSegment)) continue; // Amounts
+            if (preg_match('/^(factura|fecha|invoice|cliente|total|iva|base|pagado|vencimiento|descripción|cantidad|precio)/i', $cleanSegment)) continue;
+            if (preg_match('/^\d+[\/\-]\d+/', $cleanSegment)) continue;
+            if (preg_match('/^\d+[.,]\d{2}\s*€?$/', $cleanSegment)) continue;
+            if (self::isTechnicalDescription($cleanSegment)) continue;
             
-            // Looks like it could be a name
             if (preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $cleanSegment)) {
                 return $cleanSegment;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Check if a string looks like a technical product description
+     * (many uppercase acronyms, technical terms, etc.)
+     */
+    private static function isTechnicalDescription(string $text): bool
+    {
+        // If has many consecutive uppercase words or acronyms, likely technical
+        $upperWords = preg_match_all('/\b[A-Z]{2,}\b/', $text);
+        if ($upperWords > 3) return true;
+        
+        // Common technical terms to exclude
+        $techTerms = ['Windows', 'Remote', 'Desktop', 'License', 'Server', 'Cloud', 'API', 'SDK', 'ALNG', 'MVL', 'SPLA', 'RDS', 'VPS'];
+        foreach ($techTerms as $term) {
+            if (stripos($text, $term) !== false) return true;
+        }
+        
+        return false;
     }
 
     /**
