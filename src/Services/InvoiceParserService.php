@@ -172,76 +172,48 @@ final class InvoiceParserService
 
     /**
      * Extract Spanish NIF/CIF from text (SUPPLIER's NIF, not client's).
-     * Strategy: Find the CIF in the SUPPLIER section (before client/recipient sections).
+     * Prioritizes NIFs that appear in the first part of the document (supplier info).
      */
     private static function extractNif(string $text): ?string
     {
-        // Step 1: Find where the client/recipient section starts and cut the text there
-        $clientSectionPatterns = [
-            '/facturado\s+a/i',
-            '/datos\s+de\s+facturación/i',
-            '/datos\s+del?\s+cliente/i',
-            '/datos\s+de\s+envío/i',
-            '/destinatario/i',
-            '/cliente\s*:/i',
-            '/receptor/i',
-        ];
+        $nifs = [];
         
-        $supplierText = $text; // Default: use full text
-        foreach ($clientSectionPatterns as $pattern) {
-            if (preg_match($pattern, $text, $m, PREG_OFFSET_CAPTURE)) {
-                $cutPos = $m[0][1];
-                // Only cut if we're cutting less than 80% of the text (ensure we have supplier data)
-                if ($cutPos > strlen($text) * 0.15) {
-                    $supplierText = substr($text, 0, $cutPos);
-                    break;
-                }
-            }
-        }
-        
-        // Step 2: Also limit to first 40% of document as extra safety
-        $maxLen = (int)(strlen($text) * 0.4);
-        if (strlen($supplierText) > $maxLen) {
-            $supplierText = substr($supplierText, 0, $maxLen);
-        }
-        
-        // Step 3: Find CIF in supplier section, prioritizing those near contact info
+        // Find ALL CIF/NIF matches with their positions
         $patterns = [
-            '/(?:CIF|NIF)[:\s]*([ABCDEFGHJNPQRSUVW]\d{8})/i',
+            '/(?:NIF|CIF|NIF\/CIF)[:\s]*([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z])/i',
             '/\b([ABCDEFGHJNPQRSUVW]\d{8})\b/',
+            '/\b(\d{8}[A-Z])\b/',
         ];
-        
-        $bestNif = null;
-        $bestScore = -1;
         
         foreach ($patterns as $pattern) {
-            if (preg_match_all($pattern, $supplierText, $matches, PREG_OFFSET_CAPTURE)) {
+            if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE)) {
                 foreach ($matches[1] as $match) {
                     $nif = strtoupper($match[0]);
                     $position = $match[1];
                     
-                    // Score based on context - supplier NIFs are usually near contact info
-                    $contextBefore = substr($supplierText, max(0, $position - 200), 200);
-                    $score = 100 - ($position / strlen($supplierText) * 50); // Earlier = better
+                    // Check context around this NIF to see if it's the client's NIF
+                    $contextBefore = substr($text, max(0, $position - 150), 150);
+                    $contextAfter = substr($text, $position, 150);
+                    $context = $contextBefore . $contextAfter;
                     
-                    // Boost score if near contact info (typical of supplier section)
-                    if (preg_match('/(info@|www\.|https?:|Tel|Teléfono|\+34|@\w+\.\w+)/i', $contextBefore)) {
-                        $score += 30;
-                    }
-                    // Boost if near company suffix
-                    if (preg_match('/(S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP)/i', $contextBefore)) {
-                        $score += 20;
+                    // Skip if it's clearly the client/recipient NIF
+                    if (preg_match('/(facturado\s+a|cliente|destinatario|envío|receptor|datos\s+de\s+env)/i', $context)) {
+                        continue;
                     }
                     
-                    if ($score > $bestScore) {
-                        $bestScore = $score;
-                        $bestNif = $nif;
+                    // Store with position (lower position = earlier in document = likely supplier)
+                    if (!isset($nifs[$nif])) {
+                        $nifs[$nif] = $position;
                     }
                 }
             }
         }
         
-        return $bestNif;
+        if (empty($nifs)) return null;
+        
+        // Sort by position (earliest first) and return the first one
+        asort($nifs);
+        return array_key_first($nifs);
     }
 
     /**
