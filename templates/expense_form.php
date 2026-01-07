@@ -445,7 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
   }
 
   function fillForm(extracted) {
-    const fields = ['supplier_nif', 'invoice_number', 'invoice_date', 'base_amount', 'vat_rate', 'vat_amount', 'total_amount'];
+    const fields = ['supplier_name', 'supplier_nif', 'invoice_number', 'invoice_date', 'base_amount', 'vat_rate', 'vat_amount', 'total_amount'];
     
     fields.forEach(field => {
       const input = document.getElementById(field);

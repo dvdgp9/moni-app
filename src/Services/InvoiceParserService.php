@@ -75,36 +75,45 @@ final class InvoiceParserService
      */
     private static function extractSupplierName(string $text, ?string $nif): ?string
     {
-        // Clean text a bit for name extraction
-        $lines = explode("\n", str_replace(["\r", "\t"], ["\n", " "], $text));
-        $lines = array_map('trim', $lines);
-        $lines = array_values(array_filter($lines));
+        // Strategy 1: Look for company name patterns near CIF
+        // Common Spanish company suffixes: S.L., S.L.U., S.A., S.COOP
+        if (preg_match('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))/u', $text, $m)) {
+            $name = trim($m[1]);
+            if (strlen($name) > 5 && strlen($name) < 100) {
+                return $name;
+            }
+        }
 
-        // Strategy 1: If we have a NIF, look at the line before it
+        // Strategy 2: If we have a NIF, look for text immediately before it
         if ($nif) {
-            foreach ($lines as $i => $line) {
-                if (stripos($line, $nif) !== false) {
-                    if ($i > 0) {
-                        $candidate = $lines[$i-1];
-                        // If line before is short or looks like a label, maybe the line before that
-                        if (strlen($candidate) < 3 || stripos($candidate, 'factura') !== false) {
-                            if ($i > 1) $candidate = $lines[$i-2];
-                        }
-                        if (strlen($candidate) > 3) return $candidate;
-                    }
+            // Pattern: "Company Name CIF: B12345678" or "Company Name\nCIF B12345678"
+            $pattern = '/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s.,]+?)\s*(?:CIF|NIF|NIF\/CIF)?[:\s]*' . preg_quote($nif, '/') . '/ui';
+            if (preg_match($pattern, $text, $m)) {
+                $name = trim($m[1]);
+                // Remove trailing labels
+                $name = preg_replace('/\s*(CIF|NIF|C\/|Calle|Avda|Tel|www).*$/i', '', $name);
+                $name = trim($name);
+                if (strlen($name) > 3 && strlen($name) < 100) {
+                    return $name;
                 }
             }
         }
 
-        // Strategy 2: First line that isn't a common label
-        $ignoredKeywords = ['factura', 'fecha', 'invoice', 'página', 'pág', 'cliente', 'lucushost']; // Special case for brand if needed
-        foreach ($lines as $line) {
-            $isIgnored = false;
-            foreach ($ignoredKeywords as $kw) {
-                if (stripos($line, $kw) === 0) { $isIgnored = true; break; }
-            }
-            if (!$isIgnored && strlen($line) > 3 && !preg_match('/^\d+$/', $line)) {
-                return $line;
+        // Strategy 3: Split into segments and find first one that looks like a company name
+        $segments = preg_split('/[\n\r]+/', $text);
+        $segments = array_map('trim', $segments);
+        $segments = array_filter($segments);
+        
+        foreach ($segments as $segment) {
+            // Skip if too short, too long, or looks like a label/date/amount
+            if (strlen($segment) < 5 || strlen($segment) > 80) continue;
+            if (preg_match('/^(factura|fecha|invoice|cliente|total|iva|base|pagado|vencimiento)/i', $segment)) continue;
+            if (preg_match('/^\d+[\/\-]\d+/', $segment)) continue; // Dates
+            if (preg_match('/^\d+[.,]\d{2}\s*€?$/', $segment)) continue; // Amounts
+            
+            // Looks like it could be a name
+            if (preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $segment)) {
+                return $segment;
             }
         }
 
@@ -254,31 +263,45 @@ final class InvoiceParserService
 
         $textLower = strtolower($text);
 
-        // Strategy 1: Look for explicit labels
-        // Total
-        if (preg_match('/(?:total|importe|total\s+factura)[:\s]*(\d[\d.,]*)/i', $text, $m)) {
-            $val = self::parseAmount($m[1]);
-            if (in_array($val, $amounts, true)) {
-                $result['total_amount'] = $val;
-                $result['confidence']['total_amount'] = 'high';
+        // Strategy 1: Look for explicit labels with amounts
+        // Find ALL labeled amounts first, then pick the right ones
+        
+        // TOTAL - usually the largest and labeled "Total"
+        // Look for the LAST occurrence of "Total" followed by amount (final total)
+        if (preg_match_all('/(?<!sub\s)total[:\s]*(\d[\d.,]*\s*€?)/i', $text, $matches, PREG_SET_ORDER)) {
+            // Take the last match (usually the final total)
+            $lastMatch = end($matches);
+            $val = self::parseAmount($lastMatch[1]);
+            foreach ($amounts as $a) {
+                if (abs($a - $val) < 0.05) {
+                    $result['total_amount'] = $a;
+                    $result['confidence']['total_amount'] = 'high';
+                    break;
+                }
             }
         }
 
-        // Subtotal / Base
-        if (preg_match('/(?:sub\s*total|base\s*imponible|suma)[:\s]*(\d[\d.,]*)/i', $text, $m)) {
+        // SUBTOTAL / BASE - look for "Sub Total", "Subtotal", "Base imponible"
+        if (preg_match('/(?:sub\s*total|subtotal|base\s*imponible)[:\s]*(\d[\d.,]*\s*€?)/i', $text, $m)) {
             $val = self::parseAmount($m[1]);
-            if (in_array($val, $amounts, true)) {
-                $result['base_amount'] = $val;
-                $result['confidence']['base_amount'] = 'high';
+            foreach ($amounts as $a) {
+                if (abs($a - $val) < 0.05) {
+                    $result['base_amount'] = $a;
+                    $result['confidence']['base_amount'] = 'high';
+                    break;
+                }
             }
         }
 
-        // IVA amount
-        if (preg_match('/(?:cuota\s*)?iva(?:\s*\d+\s*%)?[:\s]*(\d[\d.,]*)/i', $text, $m)) {
+        // IVA amount - look for "X% IVA: amount" or "IVA: amount"
+        if (preg_match('/\d+(?:[.,]\d+)?\s*%\s*iva[:\s]*(\d[\d.,]*\s*€?)/i', $text, $m)) {
             $val = self::parseAmount($m[1]);
-            if (in_array($val, $amounts, true)) {
-                $result['vat_amount'] = $val;
-                $result['confidence']['vat_amount'] = 'medium';
+            foreach ($amounts as $a) {
+                if (abs($a - $val) < 0.05) {
+                    $result['vat_amount'] = $a;
+                    $result['confidence']['vat_amount'] = 'high';
+                    break;
+                }
             }
         }
 
@@ -367,26 +390,27 @@ final class InvoiceParserService
      */
     private static function extractVatRate(string $text): ?float
     {
-        // Look for IVA percentage
+        // Look for IVA percentage - support decimals like 21.00%
         $patterns = [
-            '/iva\s*(?:al\s*)?(\d{1,2})\s*%/i',
-            '/(\d{1,2})\s*%\s*(?:de\s*)?iva/i',
-            '/tipo\s*(?:de\s*)?iva[:\s]*(\d{1,2})/i',
+            '/(\d{1,2})(?:[.,]\d+)?\s*%\s*(?:de\s*)?iva/i',   // "21.00% IVA" or "21% IVA"
+            '/iva\s*(?:al\s*)?(\d{1,2})(?:[.,]\d+)?\s*%/i',   // "IVA al 21%" or "IVA 21.00%"
+            '/tipo\s*(?:de\s*)?iva[:\s]*(\d{1,2})/i',          // "Tipo IVA: 21"
+            '/iva\s*[(](\d{1,2})(?:[.,]\d+)?\s*%[)]/i',        // "IVA (21%)"
         ];
 
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $text, $m)) {
-                $rate = (float)$m[1];
+                $rate = (int)$m[1]; // Take integer part
                 // Common Spanish VAT rates
-                if (in_array($rate, [21.0, 10.0, 4.0, 0.0], true)) {
-                    return $rate;
+                if (in_array($rate, [21, 10, 4, 0], true)) {
+                    return (float)$rate;
                 }
             }
         }
 
-        // Default to 21% if we found IVA mention but no rate
-        if (stripos($text, 'iva') !== false) {
-            return 21.0;
+        // Check for IVA mention with amount - implies there IS IVA
+        if (preg_match('/iva[:\s]+\d/', $text, $m)) {
+            return 21.0; // Default rate
         }
 
         return null;
