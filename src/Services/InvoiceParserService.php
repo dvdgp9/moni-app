@@ -79,6 +79,9 @@ final class InvoiceParserService
         // Common Spanish company suffixes: S.L., S.L.U., S.A., S.COOP
         if (preg_match('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))/u', $text, $m)) {
             $name = trim($m[1]);
+            // Clean up status words that might be attached (like "PAGADA LucusHost S.L.U.")
+            $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $name);
+            $name = trim($name);
             if (strlen($name) > 5 && strlen($name) < 100) {
                 return $name;
             }
@@ -90,6 +93,8 @@ final class InvoiceParserService
             $pattern = '/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s.,]+?)\s*(?:CIF|NIF|NIF\/CIF)?[:\s]*' . preg_quote($nif, '/') . '/ui';
             if (preg_match($pattern, $text, $m)) {
                 $name = trim($m[1]);
+                // Clean up status words
+                $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $name);
                 // Remove trailing labels
                 $name = preg_replace('/\s*(CIF|NIF|C\/|Calle|Avda|Tel|www).*$/i', '', $name);
                 $name = trim($name);
@@ -107,13 +112,18 @@ final class InvoiceParserService
         foreach ($segments as $segment) {
             // Skip if too short, too long, or looks like a label/date/amount
             if (strlen($segment) < 5 || strlen($segment) > 80) continue;
-            if (preg_match('/^(factura|fecha|invoice|cliente|total|iva|base|pagado|vencimiento)/i', $segment)) continue;
-            if (preg_match('/^\d+[\/\-]\d+/', $segment)) continue; // Dates
-            if (preg_match('/^\d+[.,]\d{2}\s*€?$/', $segment)) continue; // Amounts
+            
+            // Clean up status words for inspection
+            $cleanSegment = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $segment);
+            $cleanSegment = trim($cleanSegment);
+
+            if (preg_match('/^(factura|fecha|invoice|cliente|total|iva|base|pagado|vencimiento)/i', $cleanSegment)) continue;
+            if (preg_match('/^\d+[\/\-]\d+/', $cleanSegment)) continue; // Dates
+            if (preg_match('/^\d+[.,]\d{2}\s*€?$/', $cleanSegment)) continue; // Amounts
             
             // Looks like it could be a name
-            if (preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $segment)) {
-                return $segment;
+            if (preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $cleanSegment)) {
+                return $cleanSegment;
             }
         }
 
