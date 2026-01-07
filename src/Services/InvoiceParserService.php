@@ -24,61 +24,109 @@ final class InvoiceParserService
             'raw_text' => $text,
         ];
 
-        // Extract NIF/CIF (Spanish tax ID)
+        // 1. Extract NIF/CIF (Spanish tax ID)
         $nif = self::extractNif($text);
         if ($nif) {
             $result['supplier_nif'] = $nif;
             $result['confidence']['supplier_nif'] = 'high';
         }
 
-        // Extract dates
+        // 2. Extract Supplier Name (Try to find it before NIF or at the beginning)
+        $supplier = self::extractSupplierName($text, $nif);
+        if ($supplier) {
+            $result['supplier_name'] = $supplier;
+            $result['confidence']['supplier_name'] = 'medium';
+        }
+
+        // 3. Extract dates
         $date = self::extractDate($text);
         if ($date) {
             $result['invoice_date'] = $date;
             $result['confidence']['invoice_date'] = 'medium';
         }
 
-        // Extract invoice number
+        // 4. Extract invoice number
         $invoiceNum = self::extractInvoiceNumber($text);
         if ($invoiceNum) {
             $result['invoice_number'] = $invoiceNum;
             $result['confidence']['invoice_number'] = 'medium';
         }
 
-        // Extract amounts
-        $amounts = self::extractAmounts($text);
-        if (!empty($amounts)) {
-            // Try to identify base, VAT, and total
-            $labeled = self::labelAmounts($text, $amounts);
-            $result = array_merge($result, $labeled);
-        }
-
-        // Try to extract VAT rate
+        // 5. Extract VAT rate first to help with math
         $vatRate = self::extractVatRate($text);
         if ($vatRate !== null) {
             $result['vat_rate'] = $vatRate;
             $result['confidence']['vat_rate'] = 'high';
         }
 
+        // 6. Extract amounts and label them
+        $amounts = self::extractAmounts($text);
+        if (!empty($amounts)) {
+            $labeled = self::labelAmounts($text, $amounts, $result['vat_rate']);
+            $result = array_merge($result, $labeled);
+        }
+
         return $result;
     }
 
     /**
+     * Try to identify the supplier name.
+     * Often at the very beginning of the text or near the CIF/NIF.
+     */
+    private static function extractSupplierName(string $text, ?string $nif): ?string
+    {
+        // Clean text a bit for name extraction
+        $lines = explode("\n", str_replace(["\r", "\t"], ["\n", " "], $text));
+        $lines = array_map('trim', $lines);
+        $lines = array_values(array_filter($lines));
+
+        // Strategy 1: If we have a NIF, look at the line before it
+        if ($nif) {
+            foreach ($lines as $i => $line) {
+                if (stripos($line, $nif) !== false) {
+                    if ($i > 0) {
+                        $candidate = $lines[$i-1];
+                        // If line before is short or looks like a label, maybe the line before that
+                        if (strlen($candidate) < 3 || stripos($candidate, 'factura') !== false) {
+                            if ($i > 1) $candidate = $lines[$i-2];
+                        }
+                        if (strlen($candidate) > 3) return $candidate;
+                    }
+                }
+            }
+        }
+
+        // Strategy 2: First line that isn't a common label
+        $ignoredKeywords = ['factura', 'fecha', 'invoice', 'página', 'pág', 'cliente', 'lucushost']; // Special case for brand if needed
+        foreach ($lines as $line) {
+            $isIgnored = false;
+            foreach ($ignoredKeywords as $kw) {
+                if (stripos($line, $kw) === 0) { $isIgnored = true; break; }
+            }
+            if (!$isIgnored && strlen($line) > 3 && !preg_match('/^\d+$/', $line)) {
+                return $line;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Extract Spanish NIF/CIF from text.
-     * Formats: B12345678 (CIF), 12345678A (NIF), X1234567A (NIE)
      */
     private static function extractNif(string $text): ?string
     {
-        // CIF: Letter + 8 digits (companies)
+        // Look for CIF/NIF labels first to be more precise
+        if (preg_match('/(?:NIF|CIF|NIF\/CIF|VAT|ID)[:\s]*([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])/i', $text, $m)) {
+            return strtoupper($m[1]);
+        }
+        
+        // CIF: Letter + 8 digits
         if (preg_match('/\b([ABCDEFGHJNPQRSUVW]\d{8})\b/i', $text, $m)) {
             return strtoupper($m[1]);
         }
-        // NIF: 8 digits + letter (individuals)
+        // NIF: 8 digits + letter
         if (preg_match('/\b(\d{8}[A-Z])\b/i', $text, $m)) {
-            return strtoupper($m[1]);
-        }
-        // NIE: X/Y/Z + 7 digits + letter (foreigners)
-        if (preg_match('/\b([XYZ]\d{7}[A-Z])\b/i', $text, $m)) {
             return strtoupper($m[1]);
         }
         return null;
@@ -191,64 +239,98 @@ final class InvoiceParserService
     /**
      * Try to label amounts as base, VAT, total based on context and math.
      */
-    private static function labelAmounts(string $text, array $amounts): array
+    private static function labelAmounts(string $text, array $amounts, ?float $detectedVatRate): array
     {
         $result = [
             'base_amount' => null,
             'vat_amount' => null,
             'total_amount' => null,
+            'confidence' => [],
         ];
 
         if (empty($amounts)) {
             return $result;
         }
 
-        // Look for labeled amounts in text
         $textLower = strtolower($text);
 
-        // Try to find total
-        if (preg_match('/total[:\s]*(\d[\d.,]*)/i', $text, $m)) {
+        // Strategy 1: Look for explicit labels
+        // Total
+        if (preg_match('/(?:total|importe|total\s+factura)[:\s]*(\d[\d.,]*)/i', $text, $m)) {
             $val = self::parseAmount($m[1]);
-            if ($val > 0) {
+            if (in_array($val, $amounts, true)) {
                 $result['total_amount'] = $val;
                 $result['confidence']['total_amount'] = 'high';
             }
         }
 
-        // Try to find base
-        if (preg_match('/base\s*(?:imponible)?[:\s]*(\d[\d.,]*)/i', $text, $m)) {
+        // Subtotal / Base
+        if (preg_match('/(?:sub\s*total|base\s*imponible|suma)[:\s]*(\d[\d.,]*)/i', $text, $m)) {
             $val = self::parseAmount($m[1]);
-            if ($val > 0) {
+            if (in_array($val, $amounts, true)) {
                 $result['base_amount'] = $val;
                 $result['confidence']['base_amount'] = 'high';
             }
         }
 
-        // Try to find IVA amount
-        if (preg_match('/(?:cuota\s*)?iva[:\s]*(\d[\d.,]*)/i', $text, $m)) {
+        // IVA amount
+        if (preg_match('/(?:cuota\s*)?iva(?:\s*\d+\s*%)?[:\s]*(\d[\d.,]*)/i', $text, $m)) {
             $val = self::parseAmount($m[1]);
-            if ($val > 0 && $val < 1000) { // IVA amount should be reasonable
+            if (in_array($val, $amounts, true)) {
                 $result['vat_amount'] = $val;
                 $result['confidence']['vat_amount'] = 'medium';
             }
         }
 
-        // If we don't have labeled values, try to infer from amounts
-        if ($result['total_amount'] === null && count($amounts) >= 1) {
-            // Largest amount is likely total
+        // Strategy 2: Mathematical verification if we have multiple amounts
+        if (count($amounts) >= 2) {
+            // Check if any two amounts sum up to a third one
+            // Or if an amount * (1 + rate) equals another
+            $rate = ($detectedVatRate ?? 21.0) / 100.0;
+
+            foreach ($amounts as $total) {
+                foreach ($amounts as $base) {
+                    if ($total <= $base) continue;
+                    
+                    $diff = round($total - $base, 2);
+                    // Check if diff is in amounts
+                    $hasDiffInAmounts = false;
+                    foreach ($amounts as $a) {
+                        if (abs($a - $diff) < 0.05) { $hasDiffInAmounts = true; break; }
+                    }
+
+                    // Check if base * rate matches diff
+                    $expectedVat = round($base * $rate, 2);
+                    $mathMatches = abs($expectedVat - $diff) < 0.10;
+
+                    if ($mathMatches || $hasDiffInAmounts) {
+                        if ($result['total_amount'] === null || $total === $result['total_amount']) {
+                            $result['total_amount'] = $total;
+                            $result['base_amount'] = $base;
+                            $result['vat_amount'] = $diff;
+                            $result['confidence']['total_amount'] = 'high';
+                            $result['confidence']['base_amount'] = 'high';
+                            $result['confidence']['vat_amount'] = 'calculated';
+                            return $result;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: Largest is total, second largest is base if it looks like it
+        if ($result['total_amount'] === null) {
             $result['total_amount'] = $amounts[0];
             $result['confidence']['total_amount'] = 'low';
         }
 
-        // Try to calculate missing values
-        if ($result['total_amount'] && $result['base_amount'] && !$result['vat_amount']) {
-            $result['vat_amount'] = round($result['total_amount'] - $result['base_amount'], 2);
-            $result['confidence']['vat_amount'] = 'calculated';
-        }
-
-        if ($result['total_amount'] && $result['vat_amount'] && !$result['base_amount']) {
-            $result['base_amount'] = round($result['total_amount'] - $result['vat_amount'], 2);
-            $result['confidence']['base_amount'] = 'calculated';
+        if ($result['base_amount'] === null && count($amounts) > 1) {
+            // If we have total and another amount, check if it could be base
+            $potentialBase = $amounts[1];
+            if ($result['total_amount'] > $potentialBase) {
+                $result['base_amount'] = $potentialBase;
+                $result['confidence']['base_amount'] = 'low';
+            }
         }
 
         return $result;
