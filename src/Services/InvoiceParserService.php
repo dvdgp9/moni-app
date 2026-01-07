@@ -75,77 +75,42 @@ final class InvoiceParserService
      */
     private static function extractSupplierName(string $text, ?string $nif): ?string
     {
-        // Strategy 1 (PRIORITY): If we have a NIF, look BEFORE it in the text
-        if ($nif) {
-            // Find position of the NIF
-            $nifPos = stripos($text, $nif);
-            if ($nifPos !== false) {
-                // Get text before NIF (up to 300 chars back)
-                $beforeNif = substr($text, max(0, $nifPos - 300), min(300, $nifPos));
-                
-                // Look for company name with suffix S.L.U., S.L., S.A., etc. near the CIF
-                if (preg_match('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s,]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))\s*(?:CIF|NIF)?[:\s]*$/ui', $beforeNif, $m)) {
-                    $name = trim($m[1]);
-                    $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $name);
-                    $name = trim($name);
-                    // Validate it's not a technical description (avoid too many acronyms)
-                    if (strlen($name) > 5 && strlen($name) < 100 && !self::isTechnicalDescription($name)) {
-                        return $name;
-                    }
-                }
-                
-                // Alternative: just get the line or segment before CIF label
-                $lines = preg_split('/[\n\r]+/', $beforeNif);
-                $lines = array_map('trim', array_filter($lines));
-                // Get last 1-3 lines before CIF
-                $candidateLines = array_slice($lines, -3);
-                foreach (array_reverse($candidateLines) as $line) {
-                    if (strlen($line) < 5 || strlen($line) > 100) continue;
-                    if (preg_match('/^(CIF|NIF|C\/|Tel|www|http|@)/i', $line)) continue;
-                    if (self::isTechnicalDescription($line)) continue;
-                    
-                    // Clean and return
-                    $line = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $line);
-                    $line = trim($line);
-                    if (strlen($line) > 5) {
-                        return $line;
-                    }
-                }
-            }
-        }
-
-        // Strategy 2: Look for company name patterns with S.L., S.A., etc (but validate they're not technical)
-        if (preg_match_all('/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s,]+(?:S\.?L\.?U?\.?|S\.?A\.?|S\.?COOP\.?))/u', $text, $matches)) {
-            foreach ($matches[1] as $candidate) {
-                $candidate = trim($candidate);
-                $candidate = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $candidate);
-                $candidate = trim($candidate);
-                
-                if (strlen($candidate) > 5 && strlen($candidate) < 100 && !self::isTechnicalDescription($candidate)) {
-                    return $candidate;
-                }
-            }
-        }
-
-        // Strategy 3: First meaningful segment (as last resort)
-        $segments = preg_split('/[\n\r]+/', $text);
-        $segments = array_map('trim', $segments);
-        $segments = array_filter($segments);
+        // Limpiamos el texto de ruidos comunes al inicio
+        $cleanText = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', trim($text));
         
-        foreach ($segments as $segment) {
-            if (strlen($segment) < 5 || strlen($segment) > 80) continue;
-            
-            $cleanSegment = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $segment);
-            $cleanSegment = trim($cleanSegment);
-
-            if (preg_match('/^(factura|fecha|invoice|cliente|total|iva|base|pagado|vencimiento|descripción|cantidad|precio)/i', $cleanSegment)) continue;
-            if (preg_match('/^\d+[\/\-]\d+/', $cleanSegment)) continue;
-            if (preg_match('/^\d+[.,]\d{2}\s*€?$/', $cleanSegment)) continue;
-            if (self::isTechnicalDescription($cleanSegment)) continue;
-            
-            if (preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $cleanSegment)) {
-                return $cleanSegment;
+        // Estrategia 0: Si tenemos el NIF, buscar el nombre que está justo antes o en la misma línea
+        if ($nif) {
+            $lines = explode("\n", $text);
+            foreach ($lines as $line) {
+                if (stripos($line, $nif) !== false) {
+                    // Si el NIF está en una línea, el nombre suele estar en esa misma línea al principio 
+                    // o en la línea inmediatamente superior.
+                    $cleanLine = preg_replace('/(CIF|NIF|NIF\/CIF)[:\s]*' . preg_quote($nif, '/') . '.*$/i', '', $line);
+                    $cleanLine = trim(preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', trim($cleanLine)));
+                    
+                    if (strlen($cleanLine) > 4 && !self::isTechnicalDescription($cleanLine)) {
+                        return $cleanLine;
+                    }
+                }
             }
+        }
+
+        // Estrategia 1 (PRIORITY): Buscar en el bloque superior del documento (primeros 500 caracteres)
+        $header = substr($text, 0, 500);
+        $lines = explode("\n", $header);
+        $lines = array_map('trim', array_filter($lines));
+
+        foreach ($lines as $line) {
+            // Saltamos líneas que son claramente etiquetas o datos irrelevantes
+            if (strlen($line) < 4 || strlen($line) > 80) continue;
+            if (preg_match('/^(factura|fecha|invoice|n[uú]mero|nº|página|pág|tel|www|http|@|cliente|facturado|dirección|cp|provincia|fecha|vencimiento)/i', $line)) continue;
+            if (preg_match('/^\d+[\/\-]\d+/', $line)) continue; // Fechas
+            if (preg_match('/^\d+[.,]\d{2}/', $line)) continue; // Importes
+            if (self::isTechnicalDescription($line)) continue;
+
+            // El primer candidato serio en el header suele ser el proveedor
+            $name = preg_replace('/^(PAGADA|VENCIDA|COBRADA|EMITIDA|FACTURA|FRA|RECIBO)\s+/i', '', $line);
+            return trim($name);
         }
 
         return null;
@@ -176,44 +141,45 @@ final class InvoiceParserService
      */
     private static function extractNif(string $text): ?string
     {
-        $nifs = [];
+        $potentialNifs = [];
         
-        // Find ALL CIF/NIF matches with their positions
-        $patterns = [
-            '/(?:NIF|CIF|NIF\/CIF)[:\s]*([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z])/i',
-            '/\b([ABCDEFGHJNPQRSUVW]\d{8})\b/',
-            '/\b(\d{8}[A-Z])\b/',
-        ];
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE)) {
-                foreach ($matches[1] as $match) {
-                    $nif = strtoupper($match[0]);
-                    $position = $match[1];
-                    
-                    // Check context around this NIF to see if it's the client's NIF
-                    $contextBefore = substr($text, max(0, $position - 150), 150);
-                    $contextAfter = substr($text, $position, 150);
-                    $context = $contextBefore . $contextAfter;
-                    
-                    // Skip if it's clearly the client/recipient NIF
-                    if (preg_match('/(facturado\s+a|cliente|destinatario|envío|receptor|datos\s+de\s+env)/i', $context)) {
-                        continue;
-                    }
-                    
-                    // Store with position (lower position = earlier in document = likely supplier)
-                    if (!isset($nifs[$nif])) {
-                        $nifs[$nif] = $position;
+        // Buscamos todos los NIF/CIF con su posición
+        if (preg_match_all('/\b([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z])\b/i', $text, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[1] as $match) {
+                $nif = strtoupper($match[0]);
+                $pos = $match[1];
+                
+                // Contexto extendido antes
+                $contextBefore = substr($text, max(0, $pos - 150), 150);
+
+                // Si detectamos palabras de cliente/receptor muy cerca ANTES del NIF, es el receptor
+                // "Facturado a:", "Cliente:", "Datos de facturación", etc.
+                $isClient = preg_match('/(facturado\s+a|cliente|destinatario|datos\s+de\s+fact|receptor|dirección\s+de\s+fact|población|vencimiento)/i', $contextBefore);
+                
+                if (!$isClient) {
+                    // Si no parece cliente, lo guardamos con su posición
+                    if (!isset($potentialNifs[$nif])) {
+                        $potentialNifs[$nif] = $pos;
                     }
                 }
             }
         }
+
+        if (empty($potentialNifs)) {
+            // Si no hemos encontrado ninguno "limpio", probamos con todos pero priorizando la posición 0
+            if (preg_match_all('/\b([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z])\b/i', $text, $matches, PREG_OFFSET_CAPTURE)) {
+                foreach ($matches[1] as $match) {
+                    $nif = strtoupper($match[0]);
+                    if (!isset($potentialNifs[$nif])) $potentialNifs[$nif] = $match[1];
+                }
+            }
+        }
         
-        if (empty($nifs)) return null;
+        if (empty($potentialNifs)) return null;
         
-        // Sort by position (earliest first) and return the first one
-        asort($nifs);
-        return array_key_first($nifs);
+        // El proveedor siempre es el primero que aparece en la parte superior del documento
+        asort($potentialNifs);
+        return array_key_first($potentialNifs);
     }
 
     /**
