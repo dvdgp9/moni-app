@@ -112,4 +112,82 @@ final class TaxQuarterService
             'range_ytd' => ['start' => $start, 'end' => $end],
         ];
     }
+
+    /**
+     * Summarize expenses (purchases/costs) for a quarter.
+     * Returns base_total, vat_total (deductible), by_vat breakdown.
+     */
+    public static function summarizeExpenses(int $year, int $quarter): array
+    {
+        $range = self::quarterRange($year, $quarter);
+        $pdo = Database::pdo();
+        
+        $sql = 'SELECT base_amount, vat_rate, vat_amount
+                FROM expenses
+                WHERE invoice_date >= :start AND invoice_date <= :end';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':start' => $range['start'], ':end' => $range['end']]);
+        
+        $base = 0.0;
+        $vat = 0.0;
+        $byVat = [];
+        
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $lineBase = (float)($row['base_amount'] ?? 0);
+            $lineVat = (float)($row['vat_amount'] ?? 0);
+            $rateVat = (float)($row['vat_rate'] ?? 0);
+            
+            $base += $lineBase;
+            $vat += $lineVat;
+            
+            $key = number_format($rateVat, 2, '.', '');
+            if (!isset($byVat[$key])) {
+                $byVat[$key] = ['base' => 0.0, 'vat' => 0.0];
+            }
+            $byVat[$key]['base'] += $lineBase;
+            $byVat[$key]['vat'] += $lineVat;
+        }
+        
+        foreach ($byVat as $k => $v) {
+            $byVat[$k]['base'] = round($v['base'], 2);
+            $byVat[$k]['vat'] = round($v['vat'], 2);
+        }
+        
+        return [
+            'base_total' => round($base, 2),
+            'vat_total' => round($vat, 2),
+            'by_vat' => $byVat,
+            'range' => $range,
+        ];
+    }
+
+    /**
+     * Summarize expenses YTD (year to date) for modelo 130.
+     */
+    public static function summarizeExpensesYTD(int $year, int $quarter): array
+    {
+        $quarter = max(1, min(4, $quarter));
+        $endMap = [
+            1 => "$year-03-31",
+            2 => "$year-06-30",
+            3 => "$year-09-30",
+            4 => "$year-12-31",
+        ];
+        $start = "$year-01-01";
+        $end = $endMap[$quarter];
+        
+        $pdo = Database::pdo();
+        $sql = 'SELECT SUM(base_amount) as base_total, SUM(vat_amount) as vat_total
+                FROM expenses
+                WHERE invoice_date >= :start AND invoice_date <= :end';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':start' => $start, ':end' => $end]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return [
+            'base_total_ytd' => round((float)($row['base_total'] ?? 0), 2),
+            'vat_total_ytd' => round((float)($row['vat_total'] ?? 0), 2),
+            'range_ytd' => ['start' => $start, 'end' => $end],
+        ];
+    }
 }

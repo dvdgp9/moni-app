@@ -52,6 +52,8 @@ $routes = [
     'invoices'  => $root . '/templates/invoices_list.php',
     'invoice_form' => $root . '/templates/invoices_form.php',
     'invoice_pdf' => $root . '/templates/invoices_pdf.php',
+    'expenses'  => $root . '/templates/expenses.php',
+    'expense_form' => $root . '/templates/expense_form.php',
     'login' => $root . '/templates/login.php',
     'register' => $root . '/templates/register.php',
     'logout' => $root . '/templates/logout.php',
@@ -67,6 +69,7 @@ $protected = [
     'dashboard',
     'settings', 'clients', 'client_form',
     'invoices', 'invoice_form', 'invoice_pdf',
+    'expenses', 'expense_form',
     'profile', 'reminders', 'declaraciones'
 ];
 if (in_array($page, $protected, true)) {

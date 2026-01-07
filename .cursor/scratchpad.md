@@ -8,6 +8,18 @@ Moni es una web-app para la gestión de finanzas de autónomos en España. Objet
 - Notificaciones por email cuando abra el plazo de declaración trimestral (1/4, 1/7, 1/10, 1/1) y otras fechas configurables.
 - UI moderna (colores azules), dashboard con resumen y próximos eventos. Enfoque desktop-first, usable en móvil.
 
+### Nueva funcionalidad: Gastos/Facturas recibidas (Expenses)
+**Necesidad:** Registrar facturas de compras/gastos que afecten a las declaraciones:
+- **Modelo 303:** IVA soportado deducible (casilla 45)
+- **Modelo 130:** Gastos acumulados (casilla 02)
+
+**Requisitos:**
+- Subir PDFs de facturas de proveedores
+- Extraer automáticamente: proveedor, NIF, fecha, base imponible, IVA, total
+- Rellenar formulario con datos extraídos (editable antes de guardar)
+- Almacenar PDF original para referencia
+- Integrar totales en página de declaraciones
+
 Stack y despliegue:
 - Backend: PHP 8.3, MySQL.
 - Frontend: HTML, CSS, JS (sin build tooling complejo inicialmente).
@@ -32,6 +44,37 @@ Valores por defecto (editables):
 - Cron y ventanas fiscales: cálculo de próximos eventos con zona horaria Europe/Madrid y logs de envío para idempotencia.
 - Seguridad básica: autenticación simple (login), protección CSRF mínima y saneo de entradas.
 - TDD pragmático: pruebas unitarias ligeras (servicios de cálculo, lógica de fechas) y pruebas manuales guiadas para UI.
+
+### Análisis: Extracción de datos de PDFs de facturas
+
+**Opciones evaluadas (ordenadas por coste):**
+
+| Opción | Coste estimado | Precisión | Complejidad | Notas |
+|--------|---------------|-----------|-------------|-------|
+| 1. **Smalot/pdfparser (PHP)** | Gratis | Media-Alta* | Baja | Extrae texto de PDFs digitales. No funciona con escaneados. |
+| 2. **Regex + patrones** | Gratis | Media | Media | Parsear texto extraído buscando patrones (NIF, fechas, totales). |
+| 3. **Tesseract OCR** | Gratis | Media | Alta | Requiere instalación en servidor. Funciona con escaneados. |
+| 4. **Google Cloud Vision** | ~€1.50/1000 págs | Alta | Media | OCR en la nube, muy preciso. |
+| 5. **OpenAI GPT-4o-mini** | ~€0.003/factura | Muy Alta | Media | Visión + extracción estructurada. Entiende contexto. |
+| 6. **Claude/GPT-4o** | ~€0.01-0.03/fact | Muy Alta | Media | Más preciso pero más caro. |
+
+*Solo para PDFs digitales (generados por software, no escaneados).
+
+**Recomendación COST-EFFECTIVE (híbrida):**
+
+Para uso personal con pocas facturas/mes (~10-30), la mejor relación coste/precisión es:
+
+1. **Capa 1 (gratis):** `smalot/pdfparser` para extraer texto de PDFs digitales
+2. **Capa 2 (€0.003/factura):** Si el texto está vacío o es ilegible → enviar imagen a **GPT-4o-mini** para OCR + extracción estructurada
+
+**Coste estimado mensual:** €0.03-0.10 (10-30 facturas, asumiendo ~30% necesitan OCR)
+
+**Alternativa 100% gratis (menor precisión):**
+- Solo `smalot/pdfparser` + regex para patrones comunes
+- Formulario manual como fallback cuando falle la extracción
+- Limitación: no funcionará con PDFs escaneados
+
+**Decisión recomendada:** Enfoque híbrido con GPT-4o-mini como fallback. Es prácticamente gratis para volumen personal y ofrece la mejor precisión.
 
 ## High-level Task Breakdown (with Success Criteria)
 
@@ -105,6 +148,71 @@ Valores por defecto (editables):
 - [x] H3: Facturas (CRUD + cálculos + numeración)
 - [x] H4: PDF de facturas (Dompdf)
 - [ ] H5: Asistencia declaraciones trimestrales
+- [ ] H5.1: **Gastos/Expenses con extracción de PDF** (NUEVA FUNCIONALIDAD)
+
+### H5.1 - Desglose detallado
+
+**Tarea 1: Migración BD + estructura de archivos**
+- Crear `database/migrations/006_create_expenses.sql`
+- Tabla `expenses`: id, supplier_name, supplier_nif, invoice_number, invoice_date, base_amount, vat_rate, vat_amount, total_amount, category, pdf_path, notes, status (pending/validated), created_at
+- Crear directorio `storage/expenses/` con `.gitkeep`
+- Success: Migración ejecutable sin errores, directorio creado
+
+**Tarea 2: Upload de PDFs**
+- Endpoint en `public/index.php` para `page=expenses&action=upload`
+- Validar tipo MIME (application/pdf), tamaño max (10MB)
+- Guardar con nombre único (UUID o timestamp) en `storage/expenses/`
+- Success: PDF se sube y almacena correctamente
+
+**Tarea 3: Servicio de extracción de texto (capa gratis)**
+- Instalar `smalot/pdfparser` via Composer
+- Crear `src/Services/PdfExtractorService.php`
+- Método `extractText(string $pdfPath): string`
+- Success: Extraer texto plano de PDF digital de prueba
+
+**Tarea 4: Parser de datos de factura (regex)**
+- Crear `src/Services/InvoiceParserService.php`
+- Patrones regex para: NIF español (B12345678, 12345678A), fechas (dd/mm/yyyy, yyyy-mm-dd), importes (1.234,56 €), "Base imponible", "IVA", "Total"
+- Método `parse(string $text): array` → devuelve campos encontrados + confianza
+- Success: Parsear correctamente 2-3 facturas de prueba
+
+**Tarea 5: Fallback con GPT-4o-mini (opcional, configurable)**
+- Crear `src/Services/AiExtractorService.php`
+- Convertir PDF a imagen (primera página) con Imagick o pdftoppm
+- Llamar API OpenAI con imagen + prompt estructurado
+- Devolver JSON con campos extraídos
+- Guardar API key en `.env` (`OPENAI_API_KEY`)
+- Toggle en settings para activar/desactivar AI extraction
+- Success: Extraer datos de PDF escaneado correctamente
+
+**Tarea 6: Formulario de gastos con pre-llenado**
+- Template `templates/expenses_form.php`
+- Flujo: subir PDF → extraer datos → mostrar formulario pre-llenado → editar si necesario → guardar
+- Campos: proveedor, NIF, nº factura, fecha, base, %IVA, IVA, total, categoría (dropdown), notas
+- Indicador visual de "campos auto-detectados" vs "introducidos manualmente"
+- Success: Formulario funcional con datos pre-llenados editables
+
+**Tarea 7: CRUD completo de gastos**
+- `ExpensesRepository.php`: all(), find(), create(), update(), delete()
+- Template `templates/expenses.php` (listado con filtros por fecha/categoría)
+- Acciones: ver PDF original, editar, eliminar
+- Success: CRUD completo funcional
+
+**Tarea 8: Integración en declaraciones**
+- Modificar `TaxQuarterService.php`:
+  - `summarizeExpenses(year, quarter)`: base_total, iva_total (deducible)
+  - `summarizeExpensesYTD(year, quarter)`: gastos acumulados
+- Actualizar `templates/declaraciones.php`:
+  - Casilla 45 (IVA deducible) con datos reales
+  - Casilla 02 (Gastos) con datos reales
+- Success: Declaraciones muestran IVA deducible y gastos reales
+
+**Dependencias a instalar:**
+```
+composer require smalot/pdfparser
+```
+
+**Estimación de esfuerzo:** 6-8 horas de desarrollo
 - [x] H6: Auth básica
 - [x] H7: Despliegue y cron en cPanel
   - [x] Crear repo GitHub y primer push (COMPLETADO 2025-09-20)
@@ -112,6 +220,17 @@ Valores por defecto (editables):
   - [x] Configurar cron diario 08:00 Europe/Madrid
 
 ## Current Status / Progress Tracking
+- 2026-01-07: **H5.1 COMPLETADO** - Funcionalidad de Gastos con extracción de PDF implementada:
+  - Tabla `expenses` creada (migración 006)
+  - Upload de PDFs con validación MIME y tamaño
+  - Servicio `PdfExtractorService` con smalot/pdfparser
+  - Servicio `InvoiceParserService` con regex para NIF, fechas, importes españoles
+  - Formulario con pre-llenado automático y cálculo base/IVA/total
+  - CRUD completo con filtros por año/categoría
+  - Integración en declaraciones: IVA deducible (casilla 45) y gastos acumulados (casilla 02)
+  - Enlace "Gastos" añadido al menú de navegación
+  - **Pendiente usuario:** Ejecutar migración BD en local/producción
+
 - 2025-09-20: Planificación inicial completada (Planner). Aprobado pasar a Executor.
 - 2025-09-20: Executor ha creado el esqueleto del proyecto:
   - Archivos clave: `composer.json`, `public/index.php`, `src/bootstrap.php`, `src/support/Config.php`, `src/Database.php`, `src/Services/EmailService.php`, `templates/*`, `assets/css/styles.css`, `scripts/run_reminders.php`, `database/migrations/001_init.sql`, `.env.example` y `.gitignore`.

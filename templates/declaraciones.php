@@ -11,6 +11,7 @@ $defaultQ = (int)ceil($m / 3);
 $q = isset($_GET['quarter']) ? (int)$_GET['quarter'] : $defaultQ;
 $q = max(1, min(4, $q));
 
+// Ventas (facturas emitidas)
 $summary = TaxQuarterService::summarizeSales($y, $q);
 $base = $summary['base_total'];
 $iva = $summary['iva_total'];
@@ -20,15 +21,26 @@ $range = $summary['range'];
 $rangeStartEs = (new DateTime($range['start']))->format('d/m/Y');
 $rangeEndEs = (new DateTime($range['end']))->format('d/m/Y');
 
-// Modelo 303 (MVP)
+// Gastos (facturas recibidas) - trimestre
+$expensesSummary = TaxQuarterService::summarizeExpenses($y, $q);
+$expensesBase = $expensesSummary['base_total'];
+$expensesVat = $expensesSummary['vat_total'];
+$expensesByVat = $expensesSummary['by_vat'];
+
+// Modelo 303 - con IVA deducible real
 $devengado27 = $iva; // total cuota devengada
-$deducible45 = 0.00; // manual en futuras iteraciones
+$deducible45 = $expensesVat; // IVA soportado deducible (de gastos)
 $resultado46 = $devengado27 - $deducible45;
 
 // Modelo 130 (YTD acumulado)
 $ytd = TaxQuarterService::summarizeSalesYTD($y, $q);
+$expensesYtd = TaxQuarterService::summarizeExpensesYTD($y, $q);
 $ingresos01 = $ytd['base_total_ytd'];
-$gastosManuales = isset($_GET['gastos_ytd']) ? (float)str_replace(',', '.', (string)$_GET['gastos_ytd']) : 0.0;
+// Gastos: usar los registrados o permitir override manual
+$gastosRegistrados = $expensesYtd['base_total_ytd'];
+$gastosManuales = isset($_GET['gastos_ytd']) && $_GET['gastos_ytd'] !== '' 
+    ? (float)str_replace(',', '.', (string)$_GET['gastos_ytd']) 
+    : $gastosRegistrados;
 $gastos02 = round($gastosManuales, 2);
 $rendimiento03 = $ingresos01 - $gastos02;
 $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
@@ -123,19 +135,23 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
   <div class="grid-2">
     <div class="card">
       <h3>Modelo 303 — IVA</h3>
-      <p style="color:var(--gray-600);margin-top:-6px">MVP: solo devengado por ventas registradas en Moni.</p>
+      <p style="color:var(--gray-600);margin-top:-6px">IVA devengado (ventas) menos IVA soportado deducible (gastos) del trimestre.</p>
       <div class="grid-stats-4">
         <div class="kpi"><div class="kpi-label">Base imponible (ventas)</div><div class="kpi-value"><?= number_format($base, 2) ?> €</div></div>
         <div class="kpi"><div class="kpi-label">IVA devengado (27)</div><div class="kpi-value"><?= number_format($devengado27, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">IVA deducible (45)</div><div class="kpi-value">0,00 €</div></div>
-        <div class="kpi"><div class="kpi-label">Resultado (46)</div><div class="kpi-value"><?= number_format($resultado46, 2) ?> €</div></div>
+        <div class="kpi"><div class="kpi-label">IVA deducible (45)</div><div class="kpi-value"><?= number_format($deducible45, 2) ?> €</div></div>
+        <div class="kpi"><div class="kpi-label">Resultado (46)</div><div class="kpi-value" style="<?= $resultado46 < 0 ? 'color:var(--success-600)' : '' ?>"><?= number_format($resultado46, 2) ?> €</div></div>
       </div>
-      <?php if (!empty($byVat)): ?>
-        <div style="margin-top:14px">
-          <table class="table">
+
+      <?php if (!empty($byVat) || !empty($expensesByVat)): ?>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px">
+        <?php if (!empty($byVat)): ?>
+        <div>
+          <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA Repercutido (ventas)</h4>
+          <table class="table" style="font-size:0.9rem">
             <thead>
               <tr>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600">Tipo IVA</th>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600">Tipo</th>
                 <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Base</th>
                 <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Cuota</th>
               </tr>
@@ -151,7 +167,36 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
             </tbody>
           </table>
         </div>
+        <?php endif; ?>
+        <?php if (!empty($expensesByVat)): ?>
+        <div>
+          <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA Soportado (gastos)</h4>
+          <table class="table" style="font-size:0.9rem">
+            <thead>
+              <tr>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600">Tipo</th>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Base</th>
+                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Cuota</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($expensesByVat as $rate => $t): ?>
+                <tr>
+                  <td><?= htmlspecialchars($rate) ?>%</td>
+                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['base'], 2) ?> €</td>
+                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['vat'], 2) ?> €</td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php endif; ?>
+      </div>
       <?php endif; ?>
+
+      <div style="margin-top:12px;text-align:right">
+        <a href="/?page=expenses" class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)">Ver gastos →</a>
+      </div>
     </div>
 
     <div class="card">
@@ -173,7 +218,7 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
           <div>
             <label style="font-weight:600;font-size:0.9rem">Gastos (02)</label>
             <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" />
-            <div class="hint">Introduce el total acumulado del año.</div>
+            <div class="hint">Auto: <?= number_format($gastosRegistrados, 2) ?> € (de gastos registrados)</div>
           </div>
           <div>
             <label style="font-weight:600;font-size:0.9rem">Pagos previos (5)</label>
