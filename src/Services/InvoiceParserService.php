@@ -171,24 +171,49 @@ final class InvoiceParserService
     }
 
     /**
-     * Extract Spanish NIF/CIF from text.
+     * Extract Spanish NIF/CIF from text (SUPPLIER's NIF, not client's).
+     * Prioritizes NIFs that appear in the first part of the document (supplier info).
      */
     private static function extractNif(string $text): ?string
     {
-        // Look for CIF/NIF labels first to be more precise
-        if (preg_match('/(?:NIF|CIF|NIF\/CIF|VAT|ID)[:\s]*([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])/i', $text, $m)) {
-            return strtoupper($m[1]);
+        $nifs = [];
+        
+        // Find ALL CIF/NIF matches with their positions
+        $patterns = [
+            '/(?:NIF|CIF|NIF\/CIF)[:\s]*([ABCDEFGHJNPQRSUVW]\d{8}|\d{8}[A-Z])/i',
+            '/\b([ABCDEFGHJNPQRSUVW]\d{8})\b/',
+            '/\b(\d{8}[A-Z])\b/',
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE)) {
+                foreach ($matches[1] as $match) {
+                    $nif = strtoupper($match[0]);
+                    $position = $match[1];
+                    
+                    // Check context around this NIF to see if it's the client's NIF
+                    $contextBefore = substr($text, max(0, $position - 150), 150);
+                    $contextAfter = substr($text, $position, 150);
+                    $context = $contextBefore . $contextAfter;
+                    
+                    // Skip if it's clearly the client/recipient NIF
+                    if (preg_match('/(facturado\s+a|cliente|destinatario|envío|receptor|datos\s+de\s+env)/i', $context)) {
+                        continue;
+                    }
+                    
+                    // Store with position (lower position = earlier in document = likely supplier)
+                    if (!isset($nifs[$nif])) {
+                        $nifs[$nif] = $position;
+                    }
+                }
+            }
         }
         
-        // CIF: Letter + 8 digits
-        if (preg_match('/\b([ABCDEFGHJNPQRSUVW]\d{8})\b/i', $text, $m)) {
-            return strtoupper($m[1]);
-        }
-        // NIF: 8 digits + letter
-        if (preg_match('/\b(\d{8}[A-Z])\b/i', $text, $m)) {
-            return strtoupper($m[1]);
-        }
-        return null;
+        if (empty($nifs)) return null;
+        
+        // Sort by position (earliest first) and return the first one
+        asort($nifs);
+        return array_key_first($nifs);
     }
 
     /**
