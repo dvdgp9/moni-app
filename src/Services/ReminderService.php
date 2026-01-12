@@ -79,7 +79,8 @@ final class ReminderService
     }
 
     /**
-     * Send reminders for today to configured notify email, if not already sent (idempotent by event title+date+recipient)
+     * Send reminders for today to configured notify email, if not already sent.
+     * For events with a date range, ensures only one email is sent per period.
      */
     public static function runForToday(): array
     {
@@ -98,26 +99,42 @@ final class ReminderService
         $pdo = Database::pdo();
 
         foreach ($events as $title) {
-            // Preload reminder info (also gives us its ID to use for idempotency in legacy schemas)
-            $info = $pdo->prepare('SELECT id, event_date, end_date, links FROM reminders WHERE enabled = 1 AND title = :t LIMIT 1');
+            // Preload reminder info
+            $info = $pdo->prepare('SELECT id, event_date, end_date, recurring, links FROM reminders WHERE enabled = 1 AND title = :t LIMIT 1');
             $info->execute([':t' => $title]);
             $rowInfo = $info->fetch(PDO::FETCH_ASSOC) ?: [];
 
-            // Check if already sent today for this recipient
-            $stmt = $pdo->prepare('SELECT id FROM reminder_logs WHERE event_date = :d AND sent_to = :to AND reminder_id IS NULL AND title = :t LIMIT 1');
-            // In case older schema lacks title column, fallback to reminder_id-based idempotency if we know it
-            try {
-                $stmt->execute([':d' => $todayStr, ':to' => $notify, ':t' => $title]);
-                $exists = $stmt->fetchColumn();
-            } catch (\Throwable $e) {
-                $rid = isset($rowInfo['id']) ? (int)$rowInfo['id'] : 0;
-                if ($rid > 0) {
-                    $stmt2 = $pdo->prepare('SELECT id FROM reminder_logs WHERE event_date = :d AND sent_to = :to AND reminder_id = :rid LIMIT 1');
-                    $stmt2->execute([':d' => $todayStr, ':to' => $notify, ':rid' => $rid]);
-                    $exists = $stmt2->fetchColumn();
+            if (!$rowInfo) {
+                continue;
+            }
+
+            $rid = (int)$rowInfo['id'];
+            $rec = (string)($rowInfo['recurring'] ?? 'yearly');
+            $hasRange = !empty($rowInfo['end_date']);
+
+            // Idempotency check:
+            // 1. If it has NO range, check if sent TODAY.
+            // 2. If it HAS a range and is yearly, check if sent in the current YEAR's window.
+            // 3. If it HAS a range and is one-off, check if sent ever during that range.
+
+            $exists = false;
+            if (!$hasRange) {
+                // Legacy / Simple check: sent today
+                $stmt = $pdo->prepare('SELECT id FROM reminder_logs WHERE (reminder_id = :rid OR title = :t) AND event_date = :d AND sent_to = :to LIMIT 1');
+                $stmt->execute([':rid' => $rid, ':t' => $title, ':d' => $todayStr, ':to' => $notify]);
+                $exists = (bool)$stmt->fetchColumn();
+            } else {
+                if ($rec === 'yearly') {
+                    // Check if sent in the current year
+                    $year = $today->format('Y');
+                    $stmt = $pdo->prepare('SELECT id FROM reminder_logs WHERE (reminder_id = :rid OR title = :t) AND sent_to = :to AND event_date LIKE :year LIMIT 1');
+                    $stmt->execute([':rid' => $rid, ':t' => $title, ':to' => $notify, ':year' => $year . '-%']);
+                    $exists = (bool)$stmt->fetchColumn();
                 } else {
-                    // No title column and no reminder_id to match: do not globally skip by date (would block other reminders)
-                    $exists = false;
+                    // One-off with range: sent at any point
+                    $stmt = $pdo->prepare('SELECT id FROM reminder_logs WHERE (reminder_id = :rid OR title = :t) AND sent_to = :to LIMIT 1');
+                    $stmt->execute([':rid' => $rid, ':t' => $title, ':to' => $notify]);
+                    $exists = (bool)$stmt->fetchColumn();
                 }
             }
 
@@ -149,14 +166,10 @@ final class ReminderService
                 ];
                 $subject = 'Recordatorio: ' . $title;
                 EmailService::sendReminder($notify, $subject, $payload);
-                $rid = isset($rowInfo['id']) ? (int)$rowInfo['id'] : null;
-                if ($rid && $rid > 0) {
-                    $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, event_date, sent_to) VALUES (:rid, :d, :to)');
-                    $ins->execute([':rid' => $rid, ':d' => $todayStr, ':to' => $notify]);
-                } else {
-                    $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, event_date, sent_to) VALUES (NULL, :d, :to)');
-                    $ins->execute([':d' => $todayStr, ':to' => $notify]);
-                }
+                
+                $ins = $pdo->prepare('INSERT INTO reminder_logs (reminder_id, title, event_date, sent_to) VALUES (:rid, :t, :d, :to)');
+                $ins->execute([':rid' => $rid, ':t' => $title, ':d' => $todayStr, ':to' => $notify]);
+                
                 $results['sent'][] = $title;
             } catch (\Throwable $e) {
                 $results['errors'][] = $title . ' => ' . $e->getMessage();

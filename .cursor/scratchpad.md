@@ -1,3 +1,31 @@
+# Scratchpad: Corrección de recordatorios duplicados (Cierre T4 / Resumen Anual)
+
+## Background and Motivation
+El usuario informa que está recibiendo recordatorios diarios del "cierre de T4" y "resumen anual" desde principios de año (12 de enero), cuando solo deberían enviarse una vez. El sistema parece estar detectando estos eventos como "activos" durante un rango de fechas y enviando el correo cada vez que se ejecuta el script de recordatorios porque la validación de duplicados solo mira el día actual.
+
+## Key Challenges and Analysis
+- **Lógica de Rango**: `ReminderService::getDueEventsForToday` identifica eventos si la fecha actual está entre `event_date` y `end_date`.
+- **Idempotencia Insuficiente**: `ReminderService::runForToday` verifica `reminder_logs` usando `event_date = :todayStr`. Si un evento tiene un rango (ej: del 1 al 20 de enero), el sistema envía el correo hoy, registra que se envió "hoy", pero mañana vuelve a ver que está en rango y no encuentra un log para "mañana", enviándolo de nuevo.
+- **Ciclo de Recurrencia**: Para recordatorios anuales, la validación debería comprobar si se ha enviado ya en la "ventana" actual del evento para ese año.
+
+## High-level Task Breakdown
+1. **Analizar `ReminderService.php`**: Confirmar que la consulta de logs solo filtra por el día actual. (COMPLETADO)
+2. **Solicitar información de la DB**: Pedir al usuario que verifique la configuración de los recordatorios "Cierre T4" y "Resumen Anual".
+3. **Corregir la lógica de validación**: Modificar `ReminderService::runForToday` para que busque si el recordatorio ya fue enviado durante el periodo de vigencia actual del evento, no solo hoy.
+4. **Validar la solución**: Asegurar que los recordatorios de un solo día sigan funcionando y los de rango se detengan tras el primer envío exitoso.
+
+## Project Status Board
+- [x] Analizar código de `ReminderService.php` <!-- id: 10 -->
+- [ ] Obtener datos de la DB del usuario (SQL) <!-- id: 11 -->
+- [ ] Implementar corrección de idempotencia por periodo <!-- id: 12 -->
+- [ ] Verificar con el usuario <!-- id: 13 -->
+
+## Executor's Feedback or Assistance Requests
+- He identificado que el problema es que la tabla `reminder_logs` se usa para evitar duplicados **en el mismo día**, pero no para evitar duplicados **dentro del mismo rango de fechas** del evento.
+- Necesito que el usuario ejecute un SQL para confirmar las fechas de inicio y fin de esos recordatorios.
+
+---
+
 # Moni - Scratchpad
 
 ## Background and Motivation
