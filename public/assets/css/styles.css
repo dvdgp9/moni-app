@@ -1163,7 +1163,7 @@ h3 { font-size: 1.5rem; }
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   gap: 1rem;
   align-items: stretch;
-  padding: 1.2rem;
+  padding: 1.25rem;
   border-radius: 1.8rem;
   background: linear-gradient(145deg, #113934, #1c4a44);
   box-shadow: 0 24px 60px rgba(13, 33, 29, 0.22);
@@ -1172,6 +1172,8 @@ h3 { font-size: 1.5rem; }
 .pricing-copy,
 .pricing-panel {
   background: rgba(255, 255, 255, 0.96);
+  border-radius: 1.45rem;
+  padding: 1.5rem;
 }
 
 .pricing-price {
