@@ -88,6 +88,12 @@ if ($page === 'reminders' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ((
     exit;
 }
 
+// Short-circuit invoices partial HTML responses for AJAX filters/sorting
+if ($page === 'invoices' && (($_GET['ajax'] ?? '') === '1')) {
+    include $template; // the template returns only the invoices results block
+    exit;
+}
+
 // Render PDF endpoints without the normal layout (and require auth)
 if ($page === 'invoice_pdf') {
     if (empty($_SESSION['user_id'])) {

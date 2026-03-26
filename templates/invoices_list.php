@@ -107,6 +107,7 @@ function sort_indicator(?string $currentBy, string $currentDir, string $column):
 
 $availableYears = InvoicesRepository::issueYearRange();
 $invoices = InvoicesRepository::all($q, $years, $quarters, $effectiveSortBy, $effectiveSortDir);
+$isAjax = (($_GET['ajax'] ?? '') === '1');
 
 $today = date('Y-m-d');
 $upcomingLimit = date('Y-m-d', strtotime('+7 days'));
@@ -146,74 +147,10 @@ if (!empty($years)) {
 if (!empty($quarters)) {
   $baseQuery['quarters'] = $quarters;
 }
+
+ob_start();
 ?>
-<section>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
-    <div>
-      <h1 style="margin-bottom:8px">Facturas</h1>
-      <p style="margin:0;color:var(--gray-600);max-width:760px">
-        Filtra por año y trimestre para ver lo relevante del periodo. Haz clic en los encabezados para ordenar.
-      </p>
-    </div>
-    <a href="/?page=invoice_form" class="btn">+ Nueva factura</a>
-  </div>
-
-  <?php if (!empty($flashAll)): ?>
-    <?php foreach ($flashAll as $type => $messages): ?>
-      <?php foreach ($messages as $msg): ?>
-        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
-      <?php endforeach; ?>
-    <?php endforeach; ?>
-  <?php endif; ?>
-
-  <div class="card" style="margin-bottom:16px">
-    <form id="invoiceFiltersForm" method="get" class="invoices-filter-grid invoices-filter-grid-compact">
-      <input type="hidden" name="page" value="invoices" />
-
-      <div class="invoices-filter-block invoices-filter-search">
-        <label for="q">Buscar</label>
-        <input id="q" type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Número o cliente" />
-      </div>
-
-      <div class="invoices-filter-block">
-        <div class="invoices-group-head">
-          <label style="margin:0">Año</label>
-          <button type="button" class="group-clear-btn" data-clear-group="years" title="Limpiar años">×</button>
-        </div>
-        <div class="check-pills" data-group="years">
-          <?php foreach ($availableYears as $y): ?>
-            <label class="check-pill">
-              <input type="checkbox" name="years[]" value="<?= (int)$y ?>" <?= in_array((int)$y, $years, true) ? 'checked' : '' ?> />
-              <span><?= htmlspecialchars(year_short_label((int)$y)) ?></span>
-            </label>
-          <?php endforeach; ?>
-        </div>
-      </div>
-
-      <div class="invoices-filter-block">
-        <div class="invoices-group-head">
-          <label style="margin:0">Periodo</label>
-          <button type="button" class="group-clear-btn" data-clear-group="quarters" title="Limpiar trimestres">×</button>
-        </div>
-        <div class="check-pills" data-group="quarters">
-          <?php for ($quarter = 1; $quarter <= 4; $quarter++): ?>
-            <label class="check-pill">
-              <input type="checkbox" name="quarters[]" value="<?= $quarter ?>" <?= in_array($quarter, $quarters, true) ? 'checked' : '' ?> />
-              <span>T<?= $quarter ?></span>
-            </label>
-          <?php endfor; ?>
-        </div>
-      </div>
-
-      <div class="invoices-filter-actions">
-        <button type="submit" class="btn">Filtrar</button>
-        <?php if ($filtersActive): ?>
-          <a href="/?page=invoices" class="btn btn-secondary">Limpiar todo</a>
-        <?php endif; ?>
-      </div>
-    </form>
-  </div>
-
+<div id="invoicesResults">
   <div class="card invoices-summary-card">
     <div class="invoices-summary-grid">
       <div class="stat-card">
@@ -357,23 +294,148 @@ if (!empty($quarters)) {
       </div>
     </div>
   <?php endif; ?>
+</div>
+<?php
+$resultsHtml = (string)ob_get_clean();
+if ($isAjax) {
+  while (ob_get_level()) { ob_end_clean(); }
+  header('Content-Type: text/html; charset=UTF-8');
+  echo $resultsHtml;
+  exit;
+}
+?>
+
+<section>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+    <div>
+      <h1 style="margin-bottom:8px">Facturas</h1>
+      <p style="margin:0;color:var(--gray-600);max-width:760px">
+        Filtra por año y trimestre para ver lo relevante del periodo. Haz clic en los encabezados para ordenar.
+      </p>
+    </div>
+    <a href="/?page=invoice_form" class="btn">+ Nueva factura</a>
+  </div>
+
+  <?php if (!empty($flashAll)): ?>
+    <?php foreach ($flashAll as $type => $messages): ?>
+      <?php foreach ($messages as $msg): ?>
+        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
+  <div class="card" style="margin-bottom:16px">
+    <form id="invoiceFiltersForm" method="get" class="invoices-filter-grid invoices-filter-grid-compact">
+      <input type="hidden" name="page" value="invoices" />
+      <input type="hidden" name="sort_by" value="<?= htmlspecialchars($sortByReq) ?>" />
+      <input type="hidden" name="sort_dir" value="<?= htmlspecialchars($sortDirReq) ?>" />
+
+      <div class="invoices-filter-block invoices-filter-search">
+        <label for="q">Buscar</label>
+        <input id="q" type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Número o cliente" />
+      </div>
+
+      <div class="invoices-filter-block">
+        <div class="invoices-group-head">
+          <label style="margin:0">Año</label>
+          <button type="button" class="group-clear-btn" data-clear-group="years" title="Limpiar años">×</button>
+        </div>
+        <div class="check-pills" data-group="years">
+          <?php foreach ($availableYears as $y): ?>
+            <label class="check-pill">
+              <input type="checkbox" name="years[]" value="<?= (int)$y ?>" <?= in_array((int)$y, $years, true) ? 'checked' : '' ?> />
+              <span><?= htmlspecialchars(year_short_label((int)$y)) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <div class="invoices-filter-block">
+        <div class="invoices-group-head">
+          <label style="margin:0">Periodo</label>
+          <button type="button" class="group-clear-btn" data-clear-group="quarters" title="Limpiar trimestres">×</button>
+        </div>
+        <div class="check-pills" data-group="quarters">
+          <?php for ($quarter = 1; $quarter <= 4; $quarter++): ?>
+            <label class="check-pill">
+              <input type="checkbox" name="quarters[]" value="<?= $quarter ?>" <?= in_array($quarter, $quarters, true) ? 'checked' : '' ?> />
+              <span>T<?= $quarter ?></span>
+            </label>
+          <?php endfor; ?>
+        </div>
+      </div>
+
+      <div class="invoices-filter-actions">
+        <button type="submit" class="btn">Filtrar</button>
+        <?php if ($filtersActive): ?>
+          <a href="/?page=invoices" class="btn btn-secondary js-clear-all">Limpiar todo</a>
+        <?php endif; ?>
+      </div>
+    </form>
+  </div>
+
+  <?= $resultsHtml ?>
 </section>
 
 <script>
 (function () {
   const form = document.getElementById('invoiceFiltersForm');
   if (!form) return;
+  const resultsId = 'invoicesResults';
+  let requestController = null;
 
   let timer = null;
-  const submitWithDelay = function () {
+  const refreshByAjax = function () {
+    const container = document.getElementById(resultsId);
+    if (!container) {
+      form.submit();
+      return;
+    }
+    if (requestController) {
+      requestController.abort();
+    }
+    requestController = new AbortController();
+    container.classList.add('invoices-loading');
+    const params = new URLSearchParams(new FormData(form));
+    params.set('ajax', '1');
+    fetch('/?' + params.toString(), {
+      method: 'GET',
+      credentials: 'same-origin',
+      signal: requestController.signal,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (resp) {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.text();
+      })
+      .then(function (html) {
+        container.outerHTML = html;
+        bindSortLinks();
+      })
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') return;
+        form.submit();
+      })
+      .finally(function () {
+        const liveContainer = document.getElementById(resultsId);
+        if (liveContainer) liveContainer.classList.remove('invoices-loading');
+      });
+  };
+
+  const submitWithDelay = function (ms) {
     if (timer) clearTimeout(timer);
     timer = setTimeout(function () {
-      form.submit();
-    }, 220);
+      refreshByAjax();
+    }, ms);
   };
 
   form.querySelectorAll('input[type="checkbox"]').forEach(function (el) {
-    el.addEventListener('change', submitWithDelay);
+    el.addEventListener('change', function () { submitWithDelay(220); });
+  });
+
+  const qInput = form.querySelector('input[name="q"]');
+  if (qInput) {
+    qInput.addEventListener('input', function () { submitWithDelay(260); });
   });
 
   form.querySelectorAll('.group-clear-btn').forEach(function (btn) {
@@ -383,8 +445,52 @@ if (!empty($quarters)) {
       form.querySelectorAll('.check-pills[data-group="' + group + '"] input[type="checkbox"]').forEach(function (cb) {
         cb.checked = false;
       });
-      submitWithDelay();
+      submitWithDelay(120);
     });
   });
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    refreshByAjax();
+  });
+
+  const clearAll = form.querySelector('.js-clear-all');
+  if (clearAll) {
+    clearAll.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      const q = form.querySelector('input[name="q"]');
+      if (q) q.value = '';
+      form.querySelectorAll('input[name="years[]"], input[name="quarters[]"]').forEach(function (cb) {
+        cb.checked = false;
+      });
+      const byInput = form.querySelector('input[name="sort_by"]');
+      const dirInput = form.querySelector('input[name="sort_dir"]');
+      if (byInput) byInput.value = '';
+      if (dirInput) dirInput.value = 'asc';
+      refreshByAjax();
+    });
+  }
+
+  const bindSortLinks = function () {
+    document.querySelectorAll('#' + resultsId + ' .table-sort-link').forEach(function (a) {
+      a.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        try {
+          const nextUrl = new URL(a.href, window.location.origin);
+          const nextBy = nextUrl.searchParams.get('sort_by') || '';
+          const nextDir = nextUrl.searchParams.get('sort_dir') || '';
+          const byInput = form.querySelector('input[name="sort_by"]');
+          const dirInput = form.querySelector('input[name="sort_dir"]');
+          if (byInput) byInput.value = nextBy;
+          if (dirInput) dirInput.value = nextDir;
+          refreshByAjax();
+        } catch (e) {
+          window.location.href = a.href;
+        }
+      });
+    });
+  };
+
+  bindSortLinks();
 })();
 </script>

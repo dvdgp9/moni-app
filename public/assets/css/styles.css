@@ -682,6 +682,11 @@ input[type="color"]::-moz-color-swatch {
   overflow-x: auto;
 }
 
+.invoices-loading {
+  opacity: 0.6;
+  transition: opacity 0.16s ease;
+}
+
 .table-sort-link {
   display: inline-flex;
   align-items: center;
