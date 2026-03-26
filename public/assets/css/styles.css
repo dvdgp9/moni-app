@@ -834,6 +834,15 @@ h3 { font-size: 1.5rem; }
   font-weight: 600;
 }
 
+.public-nav .btn {
+  color: #ffffff;
+}
+
+.public-nav .btn:hover,
+.public-nav .btn:focus {
+  color: #ffffff;
+}
+
 .public-main {
   min-height: calc(100vh - 176px);
 }
