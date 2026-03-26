@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             Flash::add('error', 'No se pudo eliminar el gasto.');
         }
     }
-    header('Location: /?page=expenses');
+    header('Location: ' . route_path('expenses'));
     exit;
 }
 
@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             Flash::add('success', 'Gasto validado.');
         }
     }
-    header('Location: /?page=expenses');
+    header('Location: ' . route_path('expenses'));
     exit;
 }
 
@@ -55,7 +55,7 @@ foreach ($expenses as $e) {
 <section>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <h1 style="margin:0">Gastos</h1>
-    <a href="/?page=expense_form" class="btn btn-primary">
+    <a href="<?= route_path('expense_form') ?>" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-3px"><path d="M12 5v14M5 12h14"/></svg>
       Nuevo gasto
     </a>
@@ -71,7 +71,6 @@ foreach ($expenses as $e) {
 
   <div class="card" style="margin-bottom:16px">
     <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-      <input type="hidden" name="page" value="expenses" />
       <div>
         <label for="year">Año</label>
         <select id="year" name="year" style="min-width:100px">
@@ -95,7 +94,7 @@ foreach ($expenses as $e) {
       </div>
       <button type="submit" class="btn btn-sm">Filtrar</button>
       <?php if ($filterYear || $filterCategory): ?>
-        <a href="/?page=expenses" class="btn btn-sm" style="background:var(--gray-200);color:var(--gray-700)">Limpiar</a>
+        <a href="<?= route_path('expenses') ?>" class="btn btn-sm" style="background:var(--gray-200);color:var(--gray-700)">Limpiar</a>
       <?php endif; ?>
     </form>
   </div>
@@ -120,7 +119,7 @@ foreach ($expenses as $e) {
         <line x1="16" y1="17" x2="8" y2="17"/>
       </svg>
       <p style="color:var(--gray-600);margin:0">No hay gastos registrados<?= $filterYear || $filterCategory ? ' con estos filtros' : '' ?>.</p>
-      <a href="/?page=expense_form" class="btn btn-primary" style="margin-top:16px">Registrar primer gasto</a>
+      <a href="<?= route_path('expense_form') ?>" class="btn btn-primary" style="margin-top:16px">Registrar primer gasto</a>
     </div>
   <?php else: ?>
     <div class="table-responsive">
@@ -169,7 +168,7 @@ foreach ($expenses as $e) {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </a>
                   <?php endif; ?>
-                  <a href="/?page=expense_form&id=<?= $e['id'] ?>" class="btn btn-sm" title="Editar" style="padding:4px 8px">
+                  <a href="<?= route_path('expense_form', ['id' => (int)$e['id']]) ?>" class="btn btn-sm" title="Editar" style="padding:4px 8px">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </a>
                   <?php if ($e['status'] !== 'validated'): ?>

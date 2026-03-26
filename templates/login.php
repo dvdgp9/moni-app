@@ -10,7 +10,7 @@ $flashAll = Flash::getAll();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido');
-        header('Location: /?page=login');
+        header('Location: ' . route_path('login'));
         exit;
     }
     $email = trim((string)($_POST['email'] ?? ''));
@@ -19,29 +19,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = UsersRepository::findByEmail($email);
     if ($user && password_verify($password, $user['password_hash'])) {
         AuthService::login((int)$user['id'], $remember);
-        $to = $_SESSION['_intended'] ?? '/?page=dashboard';
+        $to = $_SESSION['_intended'] ?? route_path('dashboard');
         unset($_SESSION['_intended']);
         header('Location: ' . $to);
         exit;
     }
     Flash::add('error', 'Credenciales inválidas');
-    header('Location: /?page=login');
+    header('Location: ' . route_path('login'));
     exit;
 }
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Entrar - Moni</title>
-  <link rel="stylesheet" href="/assets/css/styles.css?v=3">
-</head>
-<body>
-  <div class="login-container fade-in-up">
-    <div class="login-card">
-      <h1 class="login-title">Moni</h1>
-      <p class="login-subtitle">Gestión financiera para autónomos</p>
+<section class="auth-shell fade-in-up">
+  <div class="login-container">
+    <div class="login-card login-card-public">
+      <span class="auth-kicker">Acceso</span>
+      <h1 class="login-title">Entra en tu espacio de trabajo</h1>
+      <p class="login-subtitle">Gestiona clientes, facturas, gastos y recordatorios desde una zona separada de la web pública.</p>
 
       <?php if (!empty($flashAll)): ?>
         <?php foreach ($flashAll as $type => $messages): ?>
@@ -69,9 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
 
       <p style="margin-top:1rem;font-size:0.9rem;color:var(--gray-600)">
-        ¿No tienes cuenta? <a href="/?page=register">Crear una cuenta</a>
+        ¿No tienes cuenta? <a href="<?= route_path('register') ?>">Crear una cuenta</a>
       </p>
     </div>
   </div>
-</body>
-</html>
+</section>

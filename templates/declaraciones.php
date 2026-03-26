@@ -84,7 +84,6 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
   <?php endif; ?>
 
   <form method="get" class="card">
-    <input type="hidden" name="page" value="declaraciones" />
     <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
       <div>
         <label for="year">Año</label>
@@ -195,7 +194,7 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
       <?php endif; ?>
 
       <div style="margin-top:12px;text-align:right">
-        <a href="/?page=expenses" class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)">Ver gastos →</a>
+        <a href="<?= route_path('expenses') ?>" class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)">Ver gastos →</a>
       </div>
     </div>
 
@@ -211,7 +210,6 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
       </div>
       <div class="sep"></div>
       <form method="get" class="form-band">
-        <input type="hidden" name="page" value="declaraciones" />
         <input type="hidden" name="year" value="<?= (int)$y ?>" />
         <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
         <div class="form-grid-3">

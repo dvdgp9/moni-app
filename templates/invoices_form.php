@@ -59,7 +59,7 @@ if ($editing) {
     }
   } else {
     Flash::add('error', 'Factura no encontrada o sin acceso.');
-    header('Location: /?page=invoices');
+    header('Location: ' . route_path('invoices'));
     exit;
   }
 }
@@ -93,7 +93,7 @@ function parse_items_from_post(): array {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: /?page=invoices');
+    header('Location: ' . route_path('invoices'));
     exit;
   }
   $invoice['client_id'] = (int)($_POST['client_id'] ?? 0);
@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
 
       // Ir al listado de facturas tras guardar
-      header('Location: /?page=invoices');
+      header('Location: ' . route_path('invoices'));
       exit;
     } catch (Throwable $e) {
       error_log('[invoice_form] ' . $e->getMessage());
@@ -280,9 +280,9 @@ $totals = InvoiceService::computeTotals($items);
 
     <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
       <button type="submit" class="btn">Guardar</button>
-      <a class="btn btn-secondary" href="/?page=invoices">Cancelar</a>
+      <a class="btn btn-secondary" href="<?= route_path('invoices') ?>">Cancelar</a>
       <?php if ($editing): ?>
-        <form method="post" action="/?page=invoices" onsubmit="return confirm('¿Eliminar la factura?');" style="margin-left:auto">
+        <form method="post" action="<?= route_path('invoices') ?>" onsubmit="return confirm('¿Eliminar la factura?');" style="margin-left:auto">
           <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
           <input type="hidden" name="_action" value="delete" />
           <input type="hidden" name="id" value="<?= (int)$id ?>" />

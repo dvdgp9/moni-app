@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       echo json_encode(['ok' => false, 'error' => 'CSRF inválido']);
       exit;
     } else {
-      header('Location: /?page=reminders');
+      header('Location: ' . route_path('reminders'));
       exit;
     }
   }
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo json_encode(['ok' => true]);
     exit;
   }
-  header('Location: /?page=reminders');
+  header('Location: ' . route_path('reminders'));
   exit;
 }
 
@@ -177,8 +177,7 @@ function format_range(?string $start, ?string $end): string {
     personalizados indicando título y fecha.
   </p>
   <div style="display:flex;align-items:center;gap:10px;margin:-4px 0 14px 0">
-    <form method="get" action="/" style="display:flex;align-items:center;gap:6px">
-      <input type="hidden" name="page" value="reminders" />
+    <form method="get" action="<?= route_path('reminders') ?>" style="display:flex;align-items:center;gap:6px">
       <label for="order" style="font-size:0.9rem;color:var(--gray-700)">Orden:</label>
       <select id="order" name="order" onchange="this.form.submit()" style="padding:6px 8px">
         <option value="next" <?= $order==='next'?'selected':'' ?>>Próximos primero</option>
@@ -368,7 +367,7 @@ function format_range(?string $start, ?string $end): string {
       }
     });
     body.append('ajax', '1');
-    return fetch('/?page=reminders', {
+    return fetch('<?= route_path('reminders') ?>', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       credentials: 'same-origin',

@@ -79,3 +79,37 @@ try {
 // Ajustar zona horaria final según ajustes
 $timezone = Config::get('settings.timezone', Config::get('timezone', 'Europe/Madrid'));
 @date_default_timezone_set($timezone);
+
+if (!function_exists('route_path')) {
+    function route_path(string $name, array $params = []): string
+    {
+        $path = match ($name) {
+            'home' => '/',
+            'login' => '/login',
+            'register' => '/register',
+            'logout' => '/logout',
+            'dashboard' => '/dashboard',
+            'settings' => '/ajustes',
+            'clients' => '/clientes',
+            'client_form' => isset($params['id']) ? '/clientes/editar' : '/clientes/nuevo',
+            'invoices' => '/facturas',
+            'invoice_form' => isset($params['id']) ? '/facturas/editar' : '/facturas/nueva',
+            'invoice_pdf' => '/facturas/pdf',
+            'expenses' => '/gastos',
+            'expense_form' => isset($params['id']) ? '/gastos/editar' : '/gastos/nuevo',
+            'profile' => '/perfil',
+            'reminders' => '/notificaciones',
+            'declaraciones' => '/declaraciones',
+            default => '/dashboard',
+        };
+
+        if (!empty($params)) {
+            $query = http_build_query($params);
+            if ($query !== '') {
+                return $path . '?' . $query;
+            }
+        }
+
+        return $path;
+    }
+}

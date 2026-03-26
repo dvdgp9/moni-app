@@ -10,7 +10,7 @@ $flashAll = Flash::getAll();
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido');
-        header('Location: /?page=register');
+        header('Location: ' . route_path('register'));
         exit;
     }
     $name = trim((string)($_POST['name'] ?? ''));
@@ -20,39 +20,32 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         Flash::add('error', 'Email inválido');
-        header('Location: /?page=register');
+        header('Location: ' . route_path('register'));
         exit;
     }
     if ($password === '' || $password !== $password2) {
         Flash::add('error', 'Las contraseñas no coinciden');
-        header('Location: /?page=register');
+        header('Location: ' . route_path('register'));
         exit;
     }
     if (UsersRepository::existsByEmail($email)) {
         Flash::add('error', 'Ya existe un usuario con ese email');
-        header('Location: /?page=register');
+        header('Location: ' . route_path('register'));
         exit;
     }
     $uid = UsersRepository::create($email, $password, $name !== '' ? $name : null);
     AuthService::login((int)$uid);
     Flash::add('success', 'Bienvenido a Moni');
-    header('Location: /?page=dashboard');
+    header('Location: ' . route_path('dashboard'));
     exit;
 }
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Crear cuenta - Moni</title>
-  <link rel="stylesheet" href="/assets/css/styles.css?v=3">
-</head>
-<body>
-  <div class="login-container fade-in-up">
-    <div class="login-card">
-      <h1 class="login-title">Crear cuenta</h1>
-      <p class="login-subtitle">Empieza a usar Moni en segundos</p>
+<section class="auth-shell fade-in-up">
+  <div class="login-container">
+    <div class="login-card login-card-public">
+      <span class="auth-kicker">Registro beta</span>
+      <h1 class="login-title">Crea tu cuenta gratis</h1>
+      <p class="login-subtitle">La beta es gratuita mientras construimos la plataforma. A cambio, te pedimos feedback y avisos de errores.</p>
 
       <?php if (!empty($flashAll)): ?>
         <?php foreach ($flashAll as $type => $messages): ?>
@@ -80,9 +73,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       </form>
 
       <p style="margin-top:1rem;font-size:0.9rem;color:var(--gray-600)">
-        ¿Ya tienes cuenta? <a href="/?page=login">Entrar</a>
+        ¿Ya tienes cuenta? <a href="<?= route_path('login') ?>">Entrar</a>
       </p>
     </div>
   </div>
-</body>
-</html>
+</section>

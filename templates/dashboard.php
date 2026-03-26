@@ -67,8 +67,8 @@ $nextReminders = array_slice($nextReminders, 0, 3);
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
   <h1 style="margin:0">Dashboard</h1>
   <div style="display:flex;gap:8px">
-    <a href="/?page=invoice_form" class="btn btn-sm">+ Factura</a>
-    <a href="/?page=client_form" class="btn btn-secondary btn-sm">+ Cliente</a>
+    <a href="<?= route_path('invoice_form') ?>" class="btn btn-sm">+ Factura</a>
+    <a href="<?= route_path('client_form') ?>" class="btn btn-secondary btn-sm">+ Cliente</a>
   </div>
 </div>
 
@@ -129,8 +129,8 @@ $nextReminders = array_slice($nextReminders, 0, 3);
       </ul>
     <?php endif; ?>
     <div style="display:flex;gap:6px;margin-top:12px">
-      <a href="/?page=reminders" class="btn btn-sm btn-secondary">Gestionar avisos</a>
-      <a href="/?page=invoices" class="btn btn-sm btn-secondary">Ver facturas</a>
+      <a href="<?= route_path('reminders') ?>" class="btn btn-sm btn-secondary">Gestionar avisos</a>
+      <a href="<?= route_path('invoices') ?>" class="btn btn-sm btn-secondary">Ver facturas</a>
     </div>
   </div>
 </div>

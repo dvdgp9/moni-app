@@ -4,7 +4,6 @@ use Moni\Support\Flash;
 use Moni\Support\Csrf;
 use Moni\Services\InvoiceNumberingService;
 use Moni\Repositories\InvoiceItemsRepository;
-use Moni\Database;
 
 $flashAll = Flash::getAll();
 
@@ -27,7 +26,7 @@ $effectiveSortDir = $sortByReq !== '' ? $sortDirReq : 'desc';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: /?page=invoices');
+    header('Location: ' . route_path('invoices'));
     exit;
   }
   $id = (int)($_POST['id'] ?? 0);
@@ -53,15 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Flash::add('success', 'Factura Cancelada.');
       } elseif ($action === 'delete') {
         InvoiceItemsRepository::deleteByInvoice($id);
-        $pdo = Database::pdo();
-        $del = $pdo->prepare('DELETE FROM invoices WHERE id = :id');
-        $del->execute([':id' => $id]);
+        InvoicesRepository::delete($id);
         Flash::add('success', 'Factura eliminada.');
       }
     } catch (Throwable $e) {
       Flash::add('error', 'Acción fallida: ' . $e->getMessage());
     }
-    header('Location: /?page=invoices');
+    header('Location: ' . route_path('invoices'));
     exit;
   }
 }
@@ -137,10 +134,7 @@ foreach ($invoices as &$invoiceRow) {
 unset($invoiceRow);
 
 $filtersActive = $q !== '' || !empty($years) || !empty($quarters);
-$baseQuery = [
-  'page' => 'invoices',
-  'q' => $q,
-];
+$baseQuery = ['q' => $q];
 if (!empty($years)) {
   $baseQuery['years'] = $years;
 }
@@ -176,8 +170,8 @@ ob_start();
     <div class="card" style="text-align:center;padding:48px">
       <p style="color:var(--gray-600);margin:0">No hay facturas con los filtros actuales.</p>
       <div style="margin-top:16px">
-        <a href="/?page=invoices" class="btn btn-secondary">Ver todas</a>
-        <a href="/?page=invoice_form" class="btn">Crear factura</a>
+        <a href="<?= route_path('invoices') ?>" class="btn btn-secondary">Ver todas</a>
+        <a href="<?= route_path('invoice_form') ?>" class="btn">Crear factura</a>
       </div>
     </div>
   <?php else: ?>
@@ -202,7 +196,7 @@ ob_start();
                   $query['sort_by'] = $next['by'];
                   $query['sort_dir'] = $next['dir'];
                 }
-                $href = '/?' . http_build_query($query);
+                $href = route_path('invoices', $query);
             ?>
               <th>
                 <a class="table-sort-link" href="<?= htmlspecialchars($href) ?>">
@@ -257,8 +251,8 @@ ob_start();
                 <div style="font-weight:700;color:var(--gray-800)"><?= number_format((float)$i['total_amount'], 2, ',', '.') ?> €</div>
               </td>
               <td class="table-actions">
-                <a class="btn" href="/?page=invoice_form&id=<?= (int)$i['id'] ?>">Editar</a>
-                <a class="btn btn-secondary" href="/?page=invoice_pdf&id=<?= (int)$i['id'] ?>" target="_blank" rel="noopener">PDF</a>
+                <a class="btn" href="<?= route_path('invoice_form', ['id' => (int)$i['id']]) ?>">Editar</a>
+                <a class="btn btn-secondary" href="<?= route_path('invoice_pdf', ['id' => (int)$i['id']]) ?>" target="_blank" rel="noopener">PDF</a>
                 <?php if ($i['status'] === 'draft'): ?>
                   <form method="post" style="display:inline">
                     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
@@ -313,7 +307,7 @@ if ($isAjax) {
         Filtra por año y trimestre para ver lo relevante del periodo. Haz clic en los encabezados para ordenar.
       </p>
     </div>
-    <a href="/?page=invoice_form" class="btn">+ Nueva factura</a>
+    <a href="<?= route_path('invoice_form') ?>" class="btn">+ Nueva factura</a>
   </div>
 
   <?php if (!empty($flashAll)): ?>
@@ -326,7 +320,6 @@ if ($isAjax) {
 
   <div class="card" style="margin-bottom:16px">
     <form id="invoiceFiltersForm" method="get" class="invoices-filter-grid invoices-filter-grid-compact">
-      <input type="hidden" name="page" value="invoices" />
       <input type="hidden" name="sort_by" value="<?= htmlspecialchars($sortByReq) ?>" />
       <input type="hidden" name="sort_dir" value="<?= htmlspecialchars($sortDirReq) ?>" />
 
@@ -368,7 +361,7 @@ if ($isAjax) {
       <div class="invoices-filter-actions">
         <span class="invoices-auto-hint">Se aplica automaticamente</span>
         <?php if ($filtersActive): ?>
-          <a href="/?page=invoices" class="btn btn-secondary js-clear-all">Limpiar todo</a>
+          <a href="<?= route_path('invoices') ?>" class="btn btn-secondary js-clear-all">Limpiar todo</a>
         <?php endif; ?>
       </div>
     </form>
@@ -397,7 +390,7 @@ if ($isAjax) {
     container.classList.add('invoices-loading');
     const params = new URLSearchParams(new FormData(form));
     params.set('ajax', '1');
-    fetch('/?' + params.toString(), {
+    fetch('<?= route_path('invoices') ?>?' + params.toString(), {
       method: 'GET',
       credentials: 'same-origin',
       signal: requestController.signal,

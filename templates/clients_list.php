@@ -13,7 +13,7 @@ $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido. Inténtalo de nuevo.');
-        header('Location: /?page=clients');
+        header('Location: ' . route_path('clients'));
         exit;
     }
     $id = (int)($_POST['id'] ?? 0);
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'dele
             ClientsRepository::delete($id);
             Flash::add('success', 'Cliente eliminado.');
         }
-        header('Location: /?page=clients');
+        header('Location: ' . route_path('clients'));
         exit;
     }
 }
@@ -48,13 +48,12 @@ $clients = ClientsRepository::all($q);
   <?php endif; ?>
 
   <form method="get" class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <input type="hidden" name="page" value="clients" />
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Buscar por nombre, NIF, email o teléfono" style="flex:1" />
     <button type="submit" class="btn">Buscar</button>
     <?php if ($q !== ''): ?>
-      <a href="/?page=clients" class="btn btn-secondary">Limpiar</a>
+      <a href="<?= route_path('clients') ?>" class="btn btn-secondary">Limpiar</a>
     <?php endif; ?>
-    <a href="/?page=client_form" class="btn" style="margin-left:auto">+ Nuevo cliente</a>
+    <a href="<?= route_path('client_form') ?>" class="btn" style="margin-left:auto">+ Nuevo cliente</a>
   </form>
 
   <?php if (empty($clients)): ?>
@@ -80,7 +79,7 @@ $clients = ClientsRepository::all($q);
               <td><?= htmlspecialchars($c['email'] ?? '') ?></td>
               <td><?= htmlspecialchars($c['phone'] ?? '') ?></td>
               <td class="table-actions">
-                <a href="/?page=client_form&id=<?= (int)$c['id'] ?>" class="btn">Editar</a>
+                <a href="<?= route_path('client_form', ['id' => (int)$c['id']]) ?>" class="btn">Editar</a>
                 <form method="post" onsubmit="return canDeleteClient(this, <?= (int)$invCount ?>);">
                   <input type="hidden" name="_action" value="delete" />
                   <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />

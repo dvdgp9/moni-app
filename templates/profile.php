@@ -30,7 +30,7 @@ $values = [
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido.');
-        header('Location: /?page=profile');
+        header('Location: ' . route_path('profile'));
         exit;
     }
     $values['name'] = trim((string)($_POST['name'] ?? ''));
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Limit 2MB
         if ($size > 2 * 1024 * 1024) {
             Flash::add('error', 'El logo supera el tamaño máximo (2MB).');
-            header('Location: /?page=profile');
+            header('Location: ' . route_path('profile'));
             exit;
         }
         // Validate mime
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         if (!isset($allowed[$mime])) {
             Flash::add('error', 'Formato de logo no soportado. Usa PNG, JPG o WEBP.');
-            header('Location: /?page=profile');
+            header('Location: ' . route_path('profile'));
             exit;
         }
         $ext = $allowed[$mime];
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dest = $uploadDir . '/' . $fileName;
         if (!@move_uploaded_file($tmp, $dest)) {
             Flash::add('error', 'No se pudo guardar el logo.');
-            header('Location: /?page=profile');
+            header('Location: ' . route_path('profile'));
             exit;
         }
         // Public URL
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     UsersRepository::updateProfile($userId, $values);
     Flash::add('success', 'Perfil actualizado.');
-    header('Location: /?page=profile');
+    header('Location: ' . route_path('profile'));
     exit;
 }
 ?>
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div style="display:flex;gap:10px">
       <button type="submit" class="btn">Guardar perfil</button>
-      <a href="/?page=dashboard" class="btn btn-secondary">Cancelar</a>
+      <a href="<?= route_path('dashboard') ?>" class="btn btn-secondary">Cancelar</a>
     </div>
   </form>
 </section>

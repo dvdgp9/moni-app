@@ -205,6 +205,13 @@ final class InvoicesRepository
         $stmt->execute([':id' => $id, ':status' => $status, ':user_id' => self::currentUserId()]);
     }
 
+    public static function delete(int $id): void
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('DELETE FROM invoices WHERE id = :id AND user_id = :user_id');
+        $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
+    }
+
     /**
      * Count invoices linked to a given client id.
      */

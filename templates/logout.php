@@ -2,5 +2,5 @@
 use Moni\Services\AuthService;
 
 AuthService::logout();
-header('Location: /?page=login');
+header('Location: ' . route_path('login'));
 exit;

@@ -22,7 +22,7 @@ if ($editing) {
     $values = array_merge($values, $found);
   } else {
     Flash::add('error', 'Cliente no encontrado o sin acceso.');
-    header('Location: /?page=clients');
+    header('Location: ' . route_path('clients'));
     exit;
   }
 }
@@ -39,7 +39,7 @@ function valid_phone(?string $p): bool {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: /?page=clients');
+    header('Location: ' . route_path('clients'));
     exit;
   }
   $values['name'] = trim((string)($_POST['name'] ?? ''));
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ClientsRepository::create($payload);
       Flash::add('success', 'Cliente creado.');
     }
-    header('Location: /?page=clients');
+    header('Location: ' . route_path('clients'));
     exit;
   }
 }
@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
       <button type="submit" class="btn">Guardar</button>
-      <a class="btn btn-secondary" href="/?page=clients">Cancelar</a>
+      <a class="btn btn-secondary" href="<?= route_path('clients') ?>">Cancelar</a>
     </div>
   </form>
 </section>

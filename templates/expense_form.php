@@ -36,7 +36,7 @@ if ($editing) {
         $expense = array_merge($expense, $found);
     } else {
         Flash::add('error', 'Gasto no encontrado.');
-        header('Location: /?page=expenses');
+        header('Location: ' . route_path('expenses'));
         exit;
     }
 }
@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST['action'] === 'save')) {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'Token CSRF inválido.');
-        header('Location: /?page=expenses');
+        header('Location: ' . route_path('expenses'));
         exit;
     }
 
@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
             ExpensesRepository::create($expense);
             Flash::add('success', 'Gasto registrado correctamente.');
         }
-        header('Location: /?page=expenses');
+        header('Location: ' . route_path('expenses'));
         exit;
     }
 }
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
 <section>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <h1 style="margin:0"><?= $editing ? 'Editar gasto' : 'Nuevo gasto' ?></h1>
-    <a href="/?page=expenses" class="btn" style="background:var(--gray-200);color:var(--gray-700)">← Volver</a>
+    <a href="<?= route_path('expenses') ?>" class="btn" style="background:var(--gray-200);color:var(--gray-700)">← Volver</a>
   </div>
 
   <?php if (!empty($flashAll)): ?>
@@ -325,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     <div class="sep"></div>
 
     <div style="display:flex;gap:12px;justify-content:flex-end">
-      <a href="/?page=expenses" class="btn" style="background:var(--gray-200);color:var(--gray-700)">Cancelar</a>
+      <a href="<?= route_path('expenses') ?>" class="btn" style="background:var(--gray-200);color:var(--gray-700)">Cancelar</a>
       <button type="submit" class="btn btn-primary"><?= $editing ? 'Guardar cambios' : 'Registrar gasto' ?></button>
     </div>
   </form>
@@ -413,7 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     formData.append('_token', '<?= Csrf::token() ?>');
     formData.append('action', 'extract');
 
-    fetch('/?page=expense_form', {
+    fetch('<?= route_path('expense_form') ?>', {
       method: 'POST',
       body: formData
     })
