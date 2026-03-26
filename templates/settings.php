@@ -2,11 +2,15 @@
 use Moni\Support\Config;
 use Moni\Services\EmailService;
 use Moni\Repositories\SettingsRepository;
+use Moni\Support\Csrf;
 
 $flash = null;
 
 // Guardado de ajustes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
+    if (!Csrf::validate($_POST['_token'] ?? null)) {
+        $flash = 'CSRF inválido.';
+    } else {
     $notify = isset($_POST['notify_email']) ? trim((string)$_POST['notify_email']) : null;
     $tz = isset($_POST['timezone']) ? trim((string)$_POST['timezone']) : null;
     $enabled = isset($_POST['reminders_enabled']) ? '1' : null; // null means no change
@@ -46,43 +50,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     } catch (Throwable $e) {
         $flash = 'Error guardando ajustes: ' . htmlspecialchars($e->getMessage());
     }
+    }
 }
 
 // Envío de prueba
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
-    $to = trim($_POST['test_email']);
-    try {
-        $ok = EmailService::sendTest($to);
-        $flash = $ok ? 'Email de prueba enviado a ' . htmlspecialchars($to) : 'Error al enviar el email de prueba';
-    } catch (Throwable $e) {
-        $flash = 'Excepción enviando email: ' . htmlspecialchars($e->getMessage());
+    if (!Csrf::validate($_POST['_token'] ?? null)) {
+        $flash = 'CSRF inválido.';
+    } else {
+        $to = trim($_POST['test_email']);
+        try {
+            $ok = EmailService::sendTest($to);
+            $flash = $ok ? 'Email de prueba enviado a ' . htmlspecialchars($to) : 'Error al enviar el email de prueba';
+        } catch (Throwable $e) {
+            $flash = 'Excepción enviando email: ' . htmlspecialchars($e->getMessage());
+        }
     }
 }
 
 // Vista previa de recordatorio
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preview_reminder'])) {
-    // Leer directamente desde BD/Config para evitar dependencia del orden de carga
-    $currentNotify = SettingsRepository::get('notify_email') ?? (string)Config::get('settings.notify_email');
-    $to = trim((string)$currentNotify);
-    if ($to === '') {
-        $flash = 'Configura primero un Email de notificación para enviar la vista previa.';
+    if (!Csrf::validate($_POST['_token'] ?? null)) {
+        $flash = 'CSRF inválido.';
     } else {
-        try {
-            $subject = 'Vista previa · Recordatorio: Cierre trimestral';
-            $data = [
-                'title' => 'Cierre T3',
-                'range' => '01/10 — 20/10',
-                'links' => [
-                    ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
-                    ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
-                ],
-                'brandName' => (string)(Config::get('app_name') ?? 'Moni'),
-                'appUrl' => (string)(Config::get('app_url') ?? '#'),
-            ];
-            EmailService::sendReminder($to, $subject, $data);
-            $flash = 'Vista previa enviada a ' . htmlspecialchars($to);
-        } catch (Throwable $e) {
-            $flash = 'Error enviando vista previa: ' . htmlspecialchars($e->getMessage());
+        // Leer directamente desde BD/Config para evitar dependencia del orden de carga
+        $currentNotify = SettingsRepository::get('notify_email') ?? (string)Config::get('settings.notify_email');
+        $to = trim((string)$currentNotify);
+        if ($to === '') {
+            $flash = 'Configura primero un Email de notificación para enviar la vista previa.';
+        } else {
+            try {
+                $subject = 'Vista previa · Recordatorio: Cierre trimestral';
+                $data = [
+                    'title' => 'Cierre T3',
+                    'range' => '01/10 — 20/10',
+                    'links' => [
+                        ['label' => 'IVA · Modelo 303', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml'],
+                        ['label' => 'IRPF · Modelo 130', 'url' => 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml'],
+                    ],
+                    'brandName' => (string)(Config::get('app_name') ?? 'Moni'),
+                    'appUrl' => (string)(Config::get('app_url') ?? '#'),
+                ];
+                EmailService::sendReminder($to, $subject, $data);
+                $flash = 'Vista previa enviada a ' . htmlspecialchars($to);
+            } catch (Throwable $e) {
+                $flash = 'Error enviando vista previa: ' . htmlspecialchars($e->getMessage());
+            }
         }
     }
 }
@@ -111,6 +124,7 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
       </div>
       <form method="post">
         <input type="hidden" name="save_settings" value="1" />
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <span style="font-weight:600;color:var(--gray-800)">Activar recordatorios por email</span>
@@ -145,6 +159,7 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
       </div>
       <form method="post" style="margin-bottom:12px">
         <input type="hidden" name="save_settings" value="1" />
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <label>Plazo por defecto (días)</label>
         <input type="number" name="invoice_due_days" min="1" max="90" value="<?= (int)$s_due_days ?>" />
         <div style="display:flex;justify-content:flex-end">
@@ -156,6 +171,7 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
         <h3 class="section-title">Email de prueba</h3>
       </div>
       <form method="post">
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <label>Email destino</label>
         <input type="email" name="test_email" required value="<?= htmlspecialchars($s_notify) ?>" placeholder="tu@correo.com" />
         <div style="display:flex;justify-content:flex-end">
@@ -169,6 +185,7 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
       </div>
       <form method="post">
         <input type="hidden" name="preview_reminder" value="1" />
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <p class="form-hint">Se enviará un ejemplo a tu Email de notificación.</p>
         <div style="display:flex;justify-content:flex-end">
           <button type="submit" class="btn btn-secondary">Enviar vista previa</button>

@@ -4,10 +4,27 @@ declare(strict_types=1);
 namespace Moni\Repositories;
 
 use Moni\Database;
+use Moni\Services\AuthService;
 use PDO;
 
 final class InvoicesRepository
 {
+    private static function currentUserId(): int
+    {
+        $userId = AuthService::userId();
+        if ($userId === null) {
+            throw new \RuntimeException('Usuario no autenticado');
+        }
+        return $userId;
+    }
+
+    private static function assertOwnedClientId(int $clientId): void
+    {
+        if (ClientsRepository::find($clientId) === null) {
+            throw new \RuntimeException('Cliente no encontrado');
+        }
+    }
+
     public static function all(
         ?string $q = null,
         array $years = [],
@@ -17,6 +34,7 @@ final class InvoicesRepository
     ): array
     {
         $pdo = Database::pdo();
+        $userId = self::currentUserId();
         $sql = 'SELECT
                     i.id,
                     i.invoice_number,
@@ -28,10 +46,11 @@ final class InvoicesRepository
                     c.name AS client_name,
                     COALESCE(SUM((it.quantity * it.unit_price) + ((it.quantity * it.unit_price) * (it.vat_rate / 100)) - ((it.quantity * it.unit_price) * (it.irpf_rate / 100))), 0) AS total_amount
                 FROM invoices i
-                LEFT JOIN clients c ON c.id = i.client_id
+                LEFT JOIN clients c ON c.id = i.client_id AND c.user_id = i.user_id
                 LEFT JOIN invoice_items it ON it.invoice_id = i.id';
-        $conds = [];
+        $conds = ['i.user_id = :user_id'];
         $params = [];
+        $params[':user_id'] = $userId;
         if ($q !== null && trim($q) !== '') {
             $like = '%' . str_replace(['%','_'], ['\\%','\\_'], trim($q)) . '%';
             $conds[] = '(i.invoice_number LIKE :k OR c.name LIKE :k)';
@@ -94,7 +113,10 @@ final class InvoicesRepository
     public static function issueYearRange(): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT MIN(YEAR(issue_date)) AS min_y, MAX(YEAR(issue_date)) AS max_y FROM invoices');
+        $stmt = $pdo->prepare('SELECT MIN(YEAR(issue_date)) AS min_y, MAX(YEAR(issue_date)) AS max_y
+            FROM invoices
+            WHERE user_id = :user_id');
+        $stmt->execute([':user_id' => self::currentUserId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $min = isset($row['min_y']) ? (int)$row['min_y'] : 0;
         $max = isset($row['max_y']) ? (int)$row['max_y'] : 0;
@@ -108,8 +130,10 @@ final class InvoicesRepository
     public static function find(int $id): ?array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('SELECT id, invoice_number, client_id, status, issue_date, due_date, notes FROM invoices WHERE id = :id');
-        $stmt->execute([':id' => $id]);
+        $stmt = $pdo->prepare('SELECT id, invoice_number, client_id, status, issue_date, due_date, notes
+            FROM invoices
+            WHERE id = :id AND user_id = :user_id');
+        $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
@@ -117,8 +141,11 @@ final class InvoicesRepository
     public static function create(array $data): int
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('INSERT INTO invoices (invoice_number, client_id, status, issue_date, due_date, notes) VALUES (:invoice_number, :client_id, :status, :issue_date, :due_date, :notes)');
+        self::assertOwnedClientId((int)$data['client_id']);
+        $stmt = $pdo->prepare('INSERT INTO invoices (user_id, invoice_number, client_id, status, issue_date, due_date, notes)
+            VALUES (:user_id, :invoice_number, :client_id, :status, :issue_date, :due_date, :notes)');
         $stmt->execute([
+            ':user_id' => self::currentUserId(),
             ':invoice_number' => $data['invoice_number'],
             ':client_id' => (int)$data['client_id'],
             ':status' => $data['status'],
@@ -132,8 +159,11 @@ final class InvoicesRepository
     public static function createDraft(array $data): int
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('INSERT INTO invoices (invoice_number, client_id, status, issue_date, due_date, notes) VALUES ("", :client_id, "draft", :issue_date, :due_date, :notes)');
+        self::assertOwnedClientId((int)$data['client_id']);
+        $stmt = $pdo->prepare('INSERT INTO invoices (user_id, invoice_number, client_id, status, issue_date, due_date, notes)
+            VALUES (:user_id, NULL, :client_id, "draft", :issue_date, :due_date, :notes)');
         $stmt->execute([
+            ':user_id' => self::currentUserId(),
             ':client_id' => (int)$data['client_id'],
             ':issue_date' => $data['issue_date'],
             ':due_date' => $data['due_date'] ?? null,
@@ -145,11 +175,13 @@ final class InvoicesRepository
     public static function updateDraft(int $id, array $data): void
     {
         $pdo = Database::pdo();
+        self::assertOwnedClientId((int)$data['client_id']);
         $stmt = $pdo->prepare('UPDATE invoices
             SET client_id = :client_id, issue_date = :issue_date, due_date = :due_date, notes = :notes
-            WHERE id = :id AND status = "draft"');
+            WHERE id = :id AND user_id = :user_id AND status = "draft"');
         $stmt->execute([
             ':id' => $id,
+            ':user_id' => self::currentUserId(),
             ':client_id' => (int)$data['client_id'],
             ':issue_date' => $data['issue_date'],
             ':due_date' => $data['due_date'] ?? null,
@@ -160,15 +192,17 @@ final class InvoicesRepository
     public static function setNumberAndStatusIssued(int $id, string $number): void
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('UPDATE invoices SET invoice_number = :num, status = "issued" WHERE id = :id AND status = "draft"');
-        $stmt->execute([':id' => $id, ':num' => $number]);
+        $stmt = $pdo->prepare('UPDATE invoices
+            SET invoice_number = :num, status = "issued"
+            WHERE id = :id AND user_id = :user_id AND status = "draft"');
+        $stmt->execute([':id' => $id, ':num' => $number, ':user_id' => self::currentUserId()]);
     }
 
     public static function setStatus(int $id, string $status): void
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('UPDATE invoices SET status = :status WHERE id = :id');
-        $stmt->execute([':id' => $id, ':status' => $status]);
+        $stmt = $pdo->prepare('UPDATE invoices SET status = :status WHERE id = :id AND user_id = :user_id');
+        $stmt->execute([':id' => $id, ':status' => $status, ':user_id' => self::currentUserId()]);
     }
 
     /**
@@ -177,8 +211,8 @@ final class InvoicesRepository
     public static function countByClient(int $clientId): int
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('SELECT COUNT(*) AS c FROM invoices WHERE client_id = :cid');
-        $stmt->execute([':cid' => $clientId]);
+        $stmt = $pdo->prepare('SELECT COUNT(*) AS c FROM invoices WHERE client_id = :cid AND user_id = :user_id');
+        $stmt->execute([':cid' => $clientId, ':user_id' => self::currentUserId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return (int)($row['c'] ?? 0);
     }

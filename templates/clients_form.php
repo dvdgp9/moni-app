@@ -20,6 +20,10 @@ if ($editing) {
   $found = ClientsRepository::find($id);
   if ($found) {
     $values = array_merge($values, $found);
+  } else {
+    Flash::add('error', 'Cliente no encontrado o sin acceso.');
+    header('Location: /?page=clients');
+    exit;
   }
 }
 

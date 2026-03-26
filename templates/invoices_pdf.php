@@ -76,10 +76,6 @@ function embed_logo_src(string $logoUrl, string $root): ?string {
         }
         return null;
     }
-    // Remote URL http(s) — Dompdf will fetch if isRemoteEnabled
-    if (preg_match('~^https?://~i', $logoUrl)) {
-        return $logoUrl;
-    }
     return null;
 }
 
@@ -198,7 +194,7 @@ $html .= '<div class="totals">
 $html .= '</body></html>';
 
 $options = new Options();
-$options->set('isRemoteEnabled', true);
+$options->set('isRemoteEnabled', false);
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html, 'UTF-8');
 $dompdf->setPaper('A4', 'portrait');

@@ -61,11 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowed = [
             'image/png' => 'png',
             'image/jpeg' => 'jpg',
-            'image/svg+xml' => 'svg',
             'image/webp' => 'webp',
         ];
         if (!isset($allowed[$mime])) {
-            Flash::add('error', 'Formato de logo no soportado. Usa PNG, JPG, SVG o WEBP.');
+            Flash::add('error', 'Formato de logo no soportado. Usa PNG, JPG o WEBP.');
             header('Location: /?page=profile');
             exit;
         }
@@ -148,8 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span style="color:var(--gray-600);font-size:0.85rem">Se guardará en tu perfil y en el PDF</span>
           </div>
         <?php endif; ?>
-        <input type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
-        <p style="color:var(--gray-500);font-size:0.8rem;margin-bottom:10px">Tamaño recomendado 600×600 (cuadrado). Máx. 2MB. Formatos: PNG, JPG, SVG, WEBP.</p>
+        <input type="file" name="logo_file" accept="image/png,image/jpeg,image/webp" />
+        <p style="color:var(--gray-500);font-size:0.8rem;margin-bottom:10px">Tamaño recomendado 600×600 (cuadrado). Máx. 2MB. Formatos: PNG, JPG, WEBP.</p>
       </div>
       <div>
         <label>Colores</label>

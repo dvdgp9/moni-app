@@ -1,12 +1,18 @@
 <?php
 use Moni\Repositories\UsersRepository;
 use Moni\Services\AuthService;
+use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 $flashAll = Flash::getAll();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    if (!Csrf::validate($_POST['_token'] ?? null)) {
+        Flash::add('error', 'CSRF inválido');
+        header('Location: /?page=register');
+        exit;
+    }
     $name = trim((string)($_POST['name'] ?? ''));
     $email = trim((string)($_POST['email'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
@@ -57,6 +63,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       <?php endif; ?>
 
       <form method="post">
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
         <label>Nombre (opcional)</label>
         <input type="text" name="name" placeholder="Tu nombre" />
 

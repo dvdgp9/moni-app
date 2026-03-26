@@ -4,15 +4,25 @@ declare(strict_types=1);
 namespace Moni\Repositories;
 
 use Moni\Database;
+use Moni\Services\AuthService;
 use PDO;
 
 final class ExpensesRepository
 {
+    private static function currentUserId(): int
+    {
+        $userId = AuthService::userId();
+        if ($userId === null) {
+            throw new \RuntimeException('Usuario no autenticado');
+        }
+        return $userId;
+    }
+
     public static function all(?int $year = null, ?string $category = null): array
     {
         $pdo = Database::pdo();
-        $sql = 'SELECT * FROM expenses WHERE 1=1';
-        $params = [];
+        $sql = 'SELECT * FROM expenses WHERE user_id = :user_id';
+        $params = [':user_id' => self::currentUserId()];
 
         if ($year !== null) {
             $sql .= ' AND YEAR(invoice_date) = :year';
@@ -34,8 +44,8 @@ final class ExpensesRepository
     public static function find(int $id): ?array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('SELECT * FROM expenses WHERE id = :id');
-        $stmt->execute([':id' => $id]);
+        $stmt = $pdo->prepare('SELECT * FROM expenses WHERE id = :id AND user_id = :user_id');
+        $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
@@ -45,11 +55,12 @@ final class ExpensesRepository
         $pdo = Database::pdo();
         $stmt = $pdo->prepare('
             INSERT INTO expenses 
-            (supplier_name, supplier_nif, invoice_number, invoice_date, base_amount, vat_rate, vat_amount, total_amount, category, pdf_path, notes, status)
+            (user_id, supplier_name, supplier_nif, invoice_number, invoice_date, base_amount, vat_rate, vat_amount, total_amount, category, pdf_path, notes, status)
             VALUES 
-            (:supplier_name, :supplier_nif, :invoice_number, :invoice_date, :base_amount, :vat_rate, :vat_amount, :total_amount, :category, :pdf_path, :notes, :status)
+            (:user_id, :supplier_name, :supplier_nif, :invoice_number, :invoice_date, :base_amount, :vat_rate, :vat_amount, :total_amount, :category, :pdf_path, :notes, :status)
         ');
         $stmt->execute([
+            ':user_id' => self::currentUserId(),
             ':supplier_name' => $data['supplier_name'],
             ':supplier_nif' => $data['supplier_nif'] ?? null,
             ':invoice_number' => $data['invoice_number'] ?? null,
@@ -82,10 +93,11 @@ final class ExpensesRepository
                 category = :category,
                 notes = :notes,
                 status = :status
-            WHERE id = :id
+            WHERE id = :id AND user_id = :user_id
         ');
         return $stmt->execute([
             ':id' => $id,
+            ':user_id' => self::currentUserId(),
             ':supplier_name' => $data['supplier_name'],
             ':supplier_nif' => $data['supplier_nif'] ?? null,
             ':invoice_number' => $data['invoice_number'] ?? null,
@@ -112,15 +124,15 @@ final class ExpensesRepository
         }
 
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('DELETE FROM expenses WHERE id = :id');
-        return $stmt->execute([':id' => $id]);
+        $stmt = $pdo->prepare('DELETE FROM expenses WHERE id = :id AND user_id = :user_id');
+        return $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
     }
 
     public static function validate(int $id): bool
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('UPDATE expenses SET status = :status WHERE id = :id');
-        return $stmt->execute([':id' => $id, ':status' => 'validated']);
+        $stmt = $pdo->prepare('UPDATE expenses SET status = :status WHERE id = :id AND user_id = :user_id');
+        return $stmt->execute([':id' => $id, ':status' => 'validated', ':user_id' => self::currentUserId()]);
     }
 
     /**
@@ -136,9 +148,9 @@ final class ExpensesRepository
                 SUM(total_amount) as total_amount,
                 COUNT(*) as count
             FROM expenses 
-            WHERE invoice_date >= :start AND invoice_date <= :end
+            WHERE user_id = :user_id AND invoice_date >= :start AND invoice_date <= :end
         ');
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->execute([':start' => $startDate, ':end' => $endDate, ':user_id' => self::currentUserId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return [
             'base_total' => round((float)($row['base_total'] ?? 0), 2),
@@ -160,11 +172,11 @@ final class ExpensesRepository
                 SUM(base_amount) as base,
                 SUM(vat_amount) as vat
             FROM expenses 
-            WHERE invoice_date >= :start AND invoice_date <= :end
+            WHERE user_id = :user_id AND invoice_date >= :start AND invoice_date <= :end
             GROUP BY vat_rate
             ORDER BY vat_rate DESC
         ');
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->execute([':start' => $startDate, ':end' => $endDate, ':user_id' => self::currentUserId()]);
         $result = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $rate = number_format((float)$row['vat_rate'], 2, '.', '');
@@ -182,7 +194,8 @@ final class ExpensesRepository
     public static function getYears(): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->query('SELECT DISTINCT YEAR(invoice_date) as y FROM expenses ORDER BY y DESC');
+        $stmt = $pdo->prepare('SELECT DISTINCT YEAR(invoice_date) as y FROM expenses WHERE user_id = :user_id ORDER BY y DESC');
+        $stmt->execute([':user_id' => self::currentUserId()]);
         return array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'y');
     }
 

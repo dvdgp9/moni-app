@@ -13,6 +13,7 @@ final class AuthService
         if (session_status() !== \PHP_SESSION_ACTIVE) {
             @session_start();
         }
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $userId;
         if ($remember) {
             self::issueRememberCookie($userId);
@@ -25,6 +26,7 @@ final class AuthService
             @session_start();
         }
         unset($_SESSION['user_id']);
+        $_SESSION = [];
         // clear remember cookie
         setcookie(self::COOKIE_NAME, '', [
             'expires' => time() - 3600,
@@ -33,6 +35,18 @@ final class AuthService
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', [
+                'expires' => time() - 3600,
+                'path' => $params['path'] ?: '/',
+                'domain' => $params['domain'] ?: '',
+                'secure' => (bool)$params['secure'],
+                'httponly' => (bool)$params['httponly'],
+                'samesite' => $params['samesite'] ?? 'Lax',
+            ]);
+        }
+        session_destroy();
     }
 
     public static function userId(): ?int
@@ -46,6 +60,8 @@ final class AuthService
     public static function autoLoginFromCookie(): bool
     {
         if (self::userId() !== null) { return true; }
+        $key = self::appKey();
+        if ($key === null) { return false; }
         $cookie = $_COOKIE[self::COOKIE_NAME] ?? null;
         if (!$cookie) { return false; }
         $data = json_decode(base64_decode($cookie), true);
@@ -54,21 +70,25 @@ final class AuthService
         $exp = (int)($data['exp'] ?? 0);
         $sig = (string)($data['sig'] ?? '');
         if ($uid <= 0 || $exp < time()) { return false; }
-        $key = self::appKey();
         $payload = $uid . '|' . $exp;
         $calc = hash_hmac('sha256', $payload, $key);
         if (!hash_equals($calc, $sig)) { return false; }
         // all good, set session
         if (session_status() !== \PHP_SESSION_ACTIVE) { @session_start(); }
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $uid;
         return true;
     }
 
     private static function issueRememberCookie(int $userId): void
     {
+        $key = self::appKey();
+        if ($key === null) {
+            return;
+        }
         $exp = time() + (self::COOKIE_DAYS * 24 * 60 * 60);
         $payload = $userId . '|' . $exp;
-        $sig = hash_hmac('sha256', $payload, self::appKey());
+        $sig = hash_hmac('sha256', $payload, $key);
         $value = base64_encode(json_encode(['uid' => $userId, 'exp' => $exp, 'sig' => $sig]));
         setcookie(self::COOKIE_NAME, $value, [
             'expires' => $exp,
@@ -79,12 +99,9 @@ final class AuthService
         ]);
     }
 
-    private static function appKey(): string
+    private static function appKey(): ?string
     {
         $k = $_ENV['APP_KEY'] ?? '';
-        if ($k === '') {
-            $k = hash('sha256', __FILE__ . php_uname());
-        }
-        return $k;
+        return $k !== '' ? $k : null;
     }
 }

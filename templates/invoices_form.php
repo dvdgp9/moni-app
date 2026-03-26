@@ -57,6 +57,10 @@ if ($editing) {
         'description' => '', 'quantity' => '1', 'unit_price' => '0.00', 'vat_rate' => '21', 'irpf_rate' => '15'
       ]];
     }
+  } else {
+    Flash::add('error', 'Factura no encontrada o sin acceso.');
+    header('Location: /?page=invoices');
+    exit;
   }
 }
 
@@ -126,32 +130,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   if (empty($errors)) {
-    $savedId = $id;
-    if ($editing) {
-      // Guardar datos en borrador si es borrador
-      InvoicesRepository::updateDraft($id, $invoice);
-      InvoiceItemsRepository::deleteByInvoice($id);
-      InvoiceItemsRepository::insertMany($id, $items);
-    } else {
-      $savedId = InvoicesRepository::createDraft($invoice);
-      InvoiceItemsRepository::insertMany($savedId, $items);
-    }
-
-    // Emitir y/o marcar pagada según selección
-    if ($targetStatus === 'issued' || $targetStatus === 'paid') {
-      // Emitir número si sigue en borrador
-      $num = InvoiceNumberingService::issue($savedId, $invoice['issue_date']);
-      if ($targetStatus === 'paid') {
-        InvoicesRepository::setStatus($savedId, 'paid');
+    try {
+      $savedId = $id;
+      if ($editing) {
+        // Guardar datos en borrador si es borrador
+        InvoicesRepository::updateDraft($id, $invoice);
+        InvoiceItemsRepository::deleteByInvoice($id);
+        InvoiceItemsRepository::insertMany($id, $items);
+      } else {
+        $savedId = InvoicesRepository::createDraft($invoice);
+        InvoiceItemsRepository::insertMany($savedId, $items);
       }
-      Flash::add('success', 'Factura ' . ($targetStatus==='paid' ? 'emitida y marcada pagada' : 'emitida') . (isset($num) && $num ? ' (' . $num . ')' : '') . '.');
-    } else {
-      Flash::add('success', 'Factura guardada como borrador.');
-    }
 
-    // Ir al listado de facturas tras guardar
-    header('Location: /?page=invoices');
-    exit;
+      // Emitir y/o marcar pagada según selección
+      if ($targetStatus === 'issued' || $targetStatus === 'paid') {
+        // Emitir número si sigue en borrador
+        $num = InvoiceNumberingService::issue($savedId, $invoice['issue_date']);
+        if ($targetStatus === 'paid') {
+          InvoicesRepository::setStatus($savedId, 'paid');
+        }
+        Flash::add('success', 'Factura ' . ($targetStatus==='paid' ? 'emitida y marcada pagada' : 'emitida') . (isset($num) && $num ? ' (' . $num . ')' : '') . '.');
+      } else {
+        Flash::add('success', 'Factura guardada como borrador.');
+      }
+
+      // Ir al listado de facturas tras guardar
+      header('Location: /?page=invoices');
+      exit;
+    } catch (Throwable $e) {
+      error_log('[invoice_form] ' . $e->getMessage());
+      $errors['general'] = Config::get('debug')
+        ? 'No se pudo guardar la factura: ' . $e->getMessage()
+        : 'No se pudo guardar la factura. Revisa los datos e inténtalo de nuevo.';
+    }
   }
 }
 
@@ -162,6 +173,9 @@ $totals = InvoiceService::computeTotals($items);
 
   <?php if (!empty($errors)): ?>
     <div class="alert error">Por favor, corrige los errores marcados.</div>
+  <?php endif; ?>
+  <?php if (!empty($errors['general'])): ?>
+    <div class="alert error"><?= htmlspecialchars($errors['general']) ?></div>
   <?php endif; ?>
 
   <form method="post" class="card">

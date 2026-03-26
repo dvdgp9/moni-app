@@ -44,7 +44,7 @@ if (Config::get('debug')) {
     @ini_set('display_errors', '0');
 }
 
-// Cargar overrides desde BD (single-user por ahora => user_id null)
+// Cargar overrides desde BD del usuario autenticado cuando exista sesión.
 try {
     $raw = SettingsRepository::all(null);
     $over = [];
