@@ -189,8 +189,8 @@ foreach ($expenses as $e) {
               <td style="white-space:nowrap"><?= date('d/m/Y', strtotime($e['invoice_date'])) ?></td>
               <td>
                 <strong><?= htmlspecialchars($e['supplier_name']) ?></strong>
-                <?php if (!empty($e['supplier_id'])): ?>
-                  <br><small style="color:var(--primary-dark);font-weight:600">Proveedor guardado</small>
+                <?php if (empty($e['supplier_id'])): ?>
+                  <br><small style="color:var(--warning);font-weight:600">Sin vincular a proveedor</small>
                 <?php endif; ?>
                 <?php if ($e['supplier_nif']): ?>
                   <br><small style="color:var(--gray-500)"><?= htmlspecialchars($e['supplier_nif']) ?></small>
