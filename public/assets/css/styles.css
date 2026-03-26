@@ -602,6 +602,11 @@ input[type="color"]::-moz-color-swatch {
   flex-wrap: wrap;
 }
 
+.invoices-auto-hint {
+  font-size: 0.82rem;
+  color: var(--gray-500);
+}
+
 .invoices-group-head {
   display: flex;
   align-items: center;

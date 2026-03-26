@@ -366,7 +366,7 @@ if ($isAjax) {
       </div>
 
       <div class="invoices-filter-actions">
-        <button type="submit" class="btn">Filtrar</button>
+        <span class="invoices-auto-hint">Se aplica automaticamente</span>
         <?php if ($filtersActive): ?>
           <a href="/?page=invoices" class="btn btn-secondary js-clear-all">Limpiar todo</a>
         <?php endif; ?>
@@ -433,8 +433,8 @@ if ($isAjax) {
 
   const qInput = form.querySelector('input[name="q"]');
   if (qInput) {
-    qInput.addEventListener('input', function () { submitWithDelay(260); });
-  });
+    qInput.addEventListener('input', function () { submitWithDelay(340); });
+  }
 
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
