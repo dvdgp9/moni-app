@@ -31,7 +31,7 @@ final class AuthService
         setcookie(self::COOKIE_NAME, '', [
             'expires' => time() - 3600,
             'path' => '/',
-            'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'secure' => self::isHttpsRequest(),
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
@@ -93,7 +93,7 @@ final class AuthService
         setcookie(self::COOKIE_NAME, $value, [
             'expires' => $exp,
             'path' => '/',
-            'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'secure' => self::isHttpsRequest(),
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
@@ -103,5 +103,22 @@ final class AuthService
     {
         $k = $_ENV['APP_KEY'] ?? '';
         return $k !== '' ? $k : null;
+    }
+
+    private static function isHttpsRequest(): bool
+    {
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            return true;
+        }
+        if (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) {
+            return true;
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && str_contains(strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']), 'https')) {
+            return true;
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
+            return true;
+        }
+        return false;
     }
 }

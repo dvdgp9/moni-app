@@ -27,8 +27,65 @@ try {
 $timezone = $_ENV['TIMEZONE'] ?? 'Europe/Madrid';
 @date_default_timezone_set($timezone);
 
+if (!function_exists('moni_request_is_https')) {
+    function moni_request_is_https(): bool
+    {
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            return true;
+        }
+        if (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) {
+            return true;
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $proto = strtolower(trim((string)$_SERVER['HTTP_X_FORWARDED_PROTO']));
+            if (in_array($proto, ['https', 'https,http'], true) || str_contains($proto, 'https')) {
+                return true;
+            }
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
+            return true;
+        }
+        return false;
+    }
+}
+
+if (!function_exists('moni_should_force_https')) {
+    function moni_should_force_https(): bool
+    {
+        $force = strtolower((string)($_ENV['FORCE_HTTPS'] ?? ''));
+        if (in_array($force, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        $appUrl = trim((string)($_ENV['APP_URL'] ?? ''));
+        return $appUrl !== '' && strtolower((string)parse_url($appUrl, PHP_URL_SCHEME)) === 'https';
+    }
+}
+
+if (PHP_SAPI !== 'cli' && moni_should_force_https() && !moni_request_is_https()) {
+    $appUrl = trim((string)($_ENV['APP_URL'] ?? ''));
+    $target = $appUrl !== ''
+        ? rtrim($appUrl, '/') . ($_SERVER['REQUEST_URI'] ?? '/')
+        : 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['REQUEST_URI'] ?? '/');
+    header('Location: ' . $target, true, 302);
+    exit;
+}
+
+ini_set('session.use_only_cookies', '1');
+ini_set('session.use_strict_mode', '1');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => moni_request_is_https(),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     @session_start();
+}
+
+if (moni_request_is_https()) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
 require_once $root . '/src/bootstrap.php';
