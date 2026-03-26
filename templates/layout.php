@@ -68,7 +68,7 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
     </div>
   </header>
   <main class="container">
-    <div class="main-container fade-in-up">
+    <div class="main-container<?= $page === 'invoices' ? '' : ' fade-in-up' ?>">
       <?php include $view; ?>
     </div>
   </main>

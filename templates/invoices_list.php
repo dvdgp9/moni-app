@@ -388,7 +388,6 @@ if ($isAjax) {
   const refreshByAjax = function () {
     const container = document.getElementById(resultsId);
     if (!container) {
-      form.submit();
       return;
     }
     if (requestController) {
@@ -410,11 +409,10 @@ if ($isAjax) {
       })
       .then(function (html) {
         container.outerHTML = html;
-        bindSortLinks();
       })
       .catch(function (err) {
         if (err && err.name === 'AbortError') return;
-        form.submit();
+        console.warn('Invoices AJAX failed', err && err.message ? err.message : err);
       })
       .finally(function () {
         const liveContainer = document.getElementById(resultsId);
@@ -438,25 +436,26 @@ if ($isAjax) {
     qInput.addEventListener('input', function () { submitWithDelay(260); });
   });
 
-  form.querySelectorAll('.group-clear-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      const group = btn.getAttribute('data-clear-group');
-      if (!group) return;
-      form.querySelectorAll('.check-pills[data-group="' + group + '"] input[type="checkbox"]').forEach(function (cb) {
-        cb.checked = false;
-      });
-      submitWithDelay(120);
-    });
-  });
-
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     refreshByAjax();
   });
 
-  const clearAll = form.querySelector('.js-clear-all');
-  if (clearAll) {
-    clearAll.addEventListener('click', function (ev) {
+  document.addEventListener('click', function (ev) {
+    const groupClear = ev.target.closest('.group-clear-btn');
+    if (groupClear && form.contains(groupClear)) {
+      ev.preventDefault();
+      const group = groupClear.getAttribute('data-clear-group');
+      if (!group) return;
+      form.querySelectorAll('.check-pills[data-group="' + group + '"] input[type="checkbox"]').forEach(function (cb) {
+        cb.checked = false;
+      });
+      submitWithDelay(120);
+      return;
+    }
+
+    const clearAll = ev.target.closest('.js-clear-all');
+    if (clearAll && form.contains(clearAll)) {
       ev.preventDefault();
       const q = form.querySelector('input[name="q"]');
       if (q) q.value = '';
@@ -468,29 +467,25 @@ if ($isAjax) {
       if (byInput) byInput.value = '';
       if (dirInput) dirInput.value = 'asc';
       refreshByAjax();
-    });
-  }
+      return;
+    }
 
-  const bindSortLinks = function () {
-    document.querySelectorAll('#' + resultsId + ' .table-sort-link').forEach(function (a) {
-      a.addEventListener('click', function (ev) {
-        ev.preventDefault();
-        try {
-          const nextUrl = new URL(a.href, window.location.origin);
-          const nextBy = nextUrl.searchParams.get('sort_by') || '';
-          const nextDir = nextUrl.searchParams.get('sort_dir') || '';
-          const byInput = form.querySelector('input[name="sort_by"]');
-          const dirInput = form.querySelector('input[name="sort_dir"]');
-          if (byInput) byInput.value = nextBy;
-          if (dirInput) dirInput.value = nextDir;
-          refreshByAjax();
-        } catch (e) {
-          window.location.href = a.href;
-        }
-      });
-    });
-  };
-
-  bindSortLinks();
+    const sortLink = ev.target.closest('#' + resultsId + ' .table-sort-link');
+    if (sortLink) {
+      ev.preventDefault();
+      try {
+        const nextUrl = new URL(sortLink.href, window.location.origin);
+        const nextBy = nextUrl.searchParams.get('sort_by') || '';
+        const nextDir = nextUrl.searchParams.get('sort_dir') || '';
+        const byInput = form.querySelector('input[name="sort_by"]');
+        const dirInput = form.querySelector('input[name="sort_dir"]');
+        if (byInput) byInput.value = nextBy;
+        if (dirInput) dirInput.value = nextDir;
+        refreshByAjax();
+      } catch (err) {
+        console.warn('Invoices sort link failed', err && err.message ? err.message : err);
+      }
+    }
+  });
 })();
 </script>
