@@ -315,6 +315,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
           <label>&nbsp;</label>
           <div class="expense-inline-actions">
             <span class="expense-selected-supplier" id="selectedSupplierBadge"><?= $selectedSupplier ? htmlspecialchars($selectedSupplier['name']) : 'Sin proveedor seleccionado' ?></span>
+            <a href="<?= route_path('suppliers') ?>" class="btn btn-secondary btn-sm">Gestionar</a>
             <button type="button" class="btn btn-secondary btn-sm" id="clearSupplierSelection">Quitar selección</button>
           </div>
         </div>
@@ -423,7 +424,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
       </svg>
-      <span>PDF adjunto: <a href="/<?= htmlspecialchars($expense['pdf_path']) ?>" target="_blank" style="color:var(--primary-600)"><?= basename($expense['pdf_path']) ?></a></span>
+      <span>PDF adjunto: <a href="<?= route_path('expense_pdf', ['id' => (int)$id]) ?>" target="_blank" style="color:var(--primary-600)"><?= basename((string)$expense['pdf_path']) ?></a></span>
     </div>
     <?php endif; ?>
 

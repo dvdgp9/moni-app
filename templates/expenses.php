@@ -69,10 +69,13 @@ foreach ($expenses as $e) {
 <section>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <h1 style="margin:0">Gastos</h1>
-    <a href="<?= route_path('expense_form') ?>" class="btn btn-primary">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-3px"><path d="M12 5v14M5 12h14"/></svg>
-      Nuevo gasto
-    </a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="<?= route_path('suppliers') ?>" class="btn btn-secondary">Ver proveedores</a>
+      <a href="<?= route_path('expense_form') ?>" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-3px"><path d="M12 5v14M5 12h14"/></svg>
+        Nuevo gasto
+      </a>
+    </div>
   </div>
 
   <?php if (!empty($flashAll)): ?>
@@ -210,7 +213,7 @@ foreach ($expenses as $e) {
               <td>
                 <div style="display:flex;gap:6px;justify-content:flex-end">
                   <?php if ($e['pdf_path']): ?>
-                    <a href="/<?= htmlspecialchars($e['pdf_path']) ?>" target="_blank" class="btn btn-sm" title="Ver PDF" style="padding:4px 8px">
+                    <a href="<?= route_path('expense_pdf', ['id' => (int)$e['id']]) ?>" target="_blank" class="btn btn-sm" title="Ver PDF" style="padding:4px 8px">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </a>
                   <?php endif; ?>

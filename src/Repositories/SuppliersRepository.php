@@ -26,16 +26,38 @@ final class SuppliersRepository
         return trim($name);
     }
 
-    public static function all(): array
+    public static function all(?string $q = null): array
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('
-            SELECT id, name, nif, default_category, default_vat_rate, notes, last_used_at, created_at
-            FROM suppliers
-            WHERE user_id = :user_id
-            ORDER BY COALESCE(last_used_at, created_at) DESC, name ASC
-        ');
-        $stmt->execute([':user_id' => self::currentUserId()]);
+        $sql = '
+            SELECT
+                s.id,
+                s.name,
+                s.nif,
+                s.default_category,
+                s.default_vat_rate,
+                s.notes,
+                s.last_used_at,
+                s.created_at,
+                COUNT(e.id) AS expense_count,
+                COALESCE(SUM(e.total_amount), 0) AS total_spend,
+                MAX(e.invoice_date) AS last_expense_date
+            FROM suppliers s
+            LEFT JOIN expenses e ON e.supplier_id = s.id AND e.user_id = s.user_id
+            WHERE s.user_id = :user_id
+        ';
+        $params = [':user_id' => self::currentUserId()];
+        if ($q !== null && trim($q) !== '') {
+            $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($q)) . '%';
+            $sql .= ' AND (s.name LIKE :q OR s.nif LIKE :q)';
+            $params[':q'] = $like;
+        }
+        $sql .= '
+            GROUP BY s.id, s.name, s.nif, s.default_category, s.default_vat_rate, s.notes, s.last_used_at, s.created_at
+            ORDER BY COALESCE(s.last_used_at, MAX(e.invoice_date), s.created_at) DESC, s.name ASC
+        ';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -66,6 +88,77 @@ final class SuppliersRepository
         $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
+    }
+
+    public static function create(array $data): int
+    {
+        $pdo = Database::pdo();
+        $name = trim((string)($data['name'] ?? ''));
+        if ($name === '') {
+            throw new \RuntimeException('El nombre del proveedor es obligatorio.');
+        }
+        $stmt = $pdo->prepare('
+            INSERT INTO suppliers
+            (user_id, name, nif, normalized_name, default_category, default_vat_rate, notes, last_used_at)
+            VALUES
+            (:user_id, :name, :nif, :normalized_name, :default_category, :default_vat_rate, :notes, :last_used_at)
+        ');
+        $stmt->execute([
+            ':user_id' => self::currentUserId(),
+            ':name' => $name,
+            ':nif' => ($nif = strtoupper(trim((string)($data['nif'] ?? '')))) !== '' ? $nif : null,
+            ':normalized_name' => self::normalizeName($name),
+            ':default_category' => (string)($data['default_category'] ?? 'otros'),
+            ':default_vat_rate' => (float)($data['default_vat_rate'] ?? 21),
+            ':notes' => ($notes = trim((string)($data['notes'] ?? ''))) !== '' ? $notes : null,
+            ':last_used_at' => null,
+        ]);
+        return (int)$pdo->lastInsertId();
+    }
+
+    public static function update(int $id, array $data): void
+    {
+        $pdo = Database::pdo();
+        $name = trim((string)($data['name'] ?? ''));
+        if ($name === '') {
+            throw new \RuntimeException('El nombre del proveedor es obligatorio.');
+        }
+        $stmt = $pdo->prepare('
+            UPDATE suppliers
+            SET
+                name = :name,
+                nif = :nif,
+                normalized_name = :normalized_name,
+                default_category = :default_category,
+                default_vat_rate = :default_vat_rate,
+                notes = :notes
+            WHERE id = :id AND user_id = :user_id
+        ');
+        $stmt->execute([
+            ':id' => $id,
+            ':user_id' => self::currentUserId(),
+            ':name' => $name,
+            ':nif' => ($nif = strtoupper(trim((string)($data['nif'] ?? '')))) !== '' ? $nif : null,
+            ':normalized_name' => self::normalizeName($name),
+            ':default_category' => (string)($data['default_category'] ?? 'otros'),
+            ':default_vat_rate' => (float)($data['default_vat_rate'] ?? 21),
+            ':notes' => ($notes = trim((string)($data['notes'] ?? ''))) !== '' ? $notes : null,
+        ]);
+    }
+
+    public static function countExpenses(int $id): int
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM expenses WHERE supplier_id = :id AND user_id = :user_id');
+        $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public static function delete(int $id): void
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare('DELETE FROM suppliers WHERE id = :id AND user_id = :user_id');
+        $stmt->execute([':id' => $id, ':user_id' => self::currentUserId()]);
     }
 
     public static function findMatch(?string $name, ?string $nif): ?array

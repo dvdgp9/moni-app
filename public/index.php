@@ -104,6 +104,9 @@ $legacyRoutes = [
     'invoice_pdf' => 'invoice_pdf',
     'expenses' => 'expenses',
     'expense_form' => 'expense_form',
+    'expense_pdf' => 'expense_pdf',
+    'suppliers' => 'suppliers',
+    'supplier_form' => 'supplier_form',
     'login' => 'login',
     'register' => 'register',
     'logout' => 'logout',
@@ -129,6 +132,10 @@ $pathRoutes = [
     '/gastos' => 'expenses',
     '/gastos/nuevo' => 'expense_form',
     '/gastos/editar' => 'expense_form',
+    '/gastos/pdf' => 'expense_pdf',
+    '/proveedores' => 'suppliers',
+    '/proveedores/nuevo' => 'supplier_form',
+    '/proveedores/editar' => 'supplier_form',
     '/perfil' => 'profile',
     '/notificaciones' => 'reminders',
     '/declaraciones' => 'declaraciones',
@@ -167,6 +174,9 @@ $routes = [
     'invoice_pdf' => $root . '/templates/invoices_pdf.php',
     'expenses' => $root . '/templates/expenses.php',
     'expense_form' => $root . '/templates/expense_form.php',
+    'expense_pdf' => $root . '/templates/expense_pdf.php',
+    'suppliers' => $root . '/templates/suppliers_list.php',
+    'supplier_form' => $root . '/templates/suppliers_form.php',
     'login' => $root . '/templates/login.php',
     'register' => $root . '/templates/register.php',
     'logout' => $root . '/templates/logout.php',
@@ -181,7 +191,8 @@ $protected = [
     'dashboard',
     'settings', 'clients', 'client_form',
     'invoices', 'invoice_form', 'invoice_pdf',
-    'expenses', 'expense_form',
+    'expenses', 'expense_form', 'expense_pdf',
+    'suppliers', 'supplier_form',
     'profile', 'reminders', 'declaraciones',
 ];
 
@@ -207,7 +218,7 @@ if ($page === 'invoices' && (($_GET['ajax'] ?? '') === '1')) {
     exit;
 }
 
-if ($page === 'invoice_pdf') {
+if ($page === 'invoice_pdf' || $page === 'expense_pdf') {
     if (empty($_SESSION['user_id'])) {
         http_response_code(403);
         echo 'Inicia sesión para acceder al PDF';
