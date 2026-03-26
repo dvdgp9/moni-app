@@ -1,5 +1,6 @@
 <?php
 use Moni\Repositories\ExpensesRepository;
+use Moni\Repositories\SuppliersRepository;
 use Moni\Support\Flash;
 use Moni\Support\Csrf;
 
@@ -39,17 +40,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Filters
 $filterYear = isset($_GET['year']) ? (int)$_GET['year'] : null;
 $filterCategory = $_GET['category'] ?? null;
+$filterSupplier = isset($_GET['supplier_id']) ? (int)$_GET['supplier_id'] : null;
+$filterQ = trim((string)($_GET['q'] ?? ''));
 
-$expenses = ExpensesRepository::all($filterYear, $filterCategory);
+$expenses = ExpensesRepository::all($filterYear, $filterCategory, $filterSupplier, $filterQ);
 $years = ExpensesRepository::getYears();
 $categories = ExpensesRepository::getCategories();
+$suppliers = SuppliersRepository::all();
 
 // Calculate totals for current filter
-$totals = ['base' => 0, 'vat' => 0, 'total' => 0];
+$totals = ['base' => 0, 'vat' => 0, 'total' => 0, 'pending' => 0, 'validated' => 0];
+$uniqueSuppliers = [];
 foreach ($expenses as $e) {
     $totals['base'] += (float)$e['base_amount'];
     $totals['vat'] += (float)$e['vat_amount'];
     $totals['total'] += (float)$e['total_amount'];
+    if (($e['status'] ?? '') === 'validated') {
+        $totals['validated']++;
+    } else {
+        $totals['pending']++;
+    }
+    $supplierKey = (string)($e['supplier_id'] ?: strtolower(trim((string)$e['supplier_name'])));
+    if ($supplierKey !== '') {
+        $uniqueSuppliers[$supplierKey] = true;
+    }
 }
 ?>
 <section>
@@ -71,6 +85,10 @@ foreach ($expenses as $e) {
 
   <div class="card" style="margin-bottom:16px">
     <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+      <div style="min-width:220px;flex:1 1 240px">
+        <label for="q">Buscar</label>
+        <input id="q" name="q" value="<?= htmlspecialchars($filterQ) ?>" placeholder="Proveedor, NIF, factura o nota" />
+      </div>
       <div>
         <label for="year">Año</label>
         <select id="year" name="year" style="min-width:100px">
@@ -92,20 +110,45 @@ foreach ($expenses as $e) {
           <?php endforeach; ?>
         </select>
       </div>
+      <div>
+        <label for="supplier_id">Proveedor</label>
+        <select id="supplier_id" name="supplier_id" style="min-width:220px">
+          <option value="">Todos</option>
+          <?php foreach ($suppliers as $supplier): ?>
+            <option value="<?= (int)$supplier['id'] ?>" <?= $filterSupplier === (int)$supplier['id'] ? 'selected' : '' ?>>
+              <?= htmlspecialchars($supplier['name']) ?><?= !empty($supplier['nif']) ? ' · ' . htmlspecialchars($supplier['nif']) : '' ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
       <button type="submit" class="btn btn-sm">Filtrar</button>
-      <?php if ($filterYear || $filterCategory): ?>
+      <?php if ($filterYear || $filterCategory || $filterSupplier || $filterQ !== ''): ?>
         <a href="<?= route_path('expenses') ?>" class="btn btn-sm" style="background:var(--gray-200);color:var(--gray-700)">Limpiar</a>
       <?php endif; ?>
     </form>
   </div>
 
   <?php if (!empty($expenses)): ?>
-    <div class="card" style="margin-bottom:16px;background:var(--primary-50)">
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
-        <div><strong>Base total:</strong> <?= number_format($totals['base'], 2, ',', '.') ?> €</div>
-        <div><strong>IVA soportado:</strong> <?= number_format($totals['vat'], 2, ',', '.') ?> €</div>
-        <div><strong>Total gastos:</strong> <?= number_format($totals['total'], 2, ',', '.') ?> €</div>
-        <div style="color:var(--gray-600)">(<?= count($expenses) ?> registros)</div>
+    <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--gray-800)"><?= count($expenses) ?></div>
+        <div class="stat-label">Gastos visibles</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--primary)"><?= number_format($totals['total'], 0, ',', '.') ?>€</div>
+        <div class="stat-label">Total filtrado</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:#D97706"><?= $totals['pending'] ?></div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--success)"><?= $totals['validated'] ?></div>
+        <div class="stat-label">Validados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:var(--gray-700)"><?= count($uniqueSuppliers) ?></div>
+        <div class="stat-label">Proveedores en resultado</div>
       </div>
     </div>
   <?php endif; ?>
@@ -118,7 +161,7 @@ foreach ($expenses as $e) {
         <line x1="16" y1="13" x2="8" y2="13"/>
         <line x1="16" y1="17" x2="8" y2="17"/>
       </svg>
-      <p style="color:var(--gray-600);margin:0">No hay gastos registrados<?= $filterYear || $filterCategory ? ' con estos filtros' : '' ?>.</p>
+      <p style="color:var(--gray-600);margin:0">No hay gastos registrados<?= $filterYear || $filterCategory || $filterSupplier || $filterQ !== '' ? ' con estos filtros' : '' ?>.</p>
       <a href="<?= route_path('expense_form') ?>" class="btn btn-primary" style="margin-top:16px">Registrar primer gasto</a>
     </div>
   <?php else: ?>
@@ -143,6 +186,9 @@ foreach ($expenses as $e) {
               <td style="white-space:nowrap"><?= date('d/m/Y', strtotime($e['invoice_date'])) ?></td>
               <td>
                 <strong><?= htmlspecialchars($e['supplier_name']) ?></strong>
+                <?php if (!empty($e['supplier_id'])): ?>
+                  <br><small style="color:var(--primary-dark);font-weight:600">Proveedor guardado</small>
+                <?php endif; ?>
                 <?php if ($e['supplier_nif']): ?>
                   <br><small style="color:var(--gray-500)"><?= htmlspecialchars($e['supplier_nif']) ?></small>
                 <?php endif; ?>

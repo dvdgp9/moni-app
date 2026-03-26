@@ -1,5 +1,6 @@
 <?php
 use Moni\Repositories\ExpensesRepository;
+use Moni\Repositories\SuppliersRepository;
 use Moni\Services\PdfExtractorService;
 use Moni\Services\InvoiceParserService;
 use Moni\Support\Csrf;
@@ -13,9 +14,12 @@ $editing = $id > 0;
 $errors = [];
 $extracted = [];
 $categories = ExpensesRepository::getCategories();
+$allSuppliers = SuppliersRepository::all();
+$recentSuppliers = SuppliersRepository::recent();
 
 // Default values
 $expense = [
+    'supplier_id' => 0,
     'supplier_name' => '',
     'supplier_nif' => '',
     'invoice_number' => '',
@@ -29,11 +33,18 @@ $expense = [
     'notes' => '',
     'status' => 'pending',
 ];
+$selectedSupplier = null;
+$selectedSupplierId = 0;
+$supplierSync = true;
 
 if ($editing) {
     $found = ExpensesRepository::find($id);
     if ($found) {
         $expense = array_merge($expense, $found);
+        $selectedSupplierId = (int)($expense['supplier_id'] ?? 0);
+        if ($selectedSupplierId > 0) {
+            $selectedSupplier = SuppliersRepository::find($selectedSupplierId);
+        }
     } else {
         Flash::add('error', 'Gasto no encontrado.');
         header('Location: ' . route_path('expenses'));
@@ -94,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         // Parse the text
         $parsed = InvoiceParserService::parse($text);
+        $supplierMatch = SuppliersRepository::findMatch($parsed['supplier_name'] ?? null, $parsed['supplier_nif'] ?? null);
     } catch (\Throwable $e) {
         error_log("Error en extracción PDF: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
         echo json_encode(['error' => 'Error interno al procesar el PDF. Revisa los logs.']);
@@ -105,6 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'pdf_path' => 'storage/expenses/' . $filename,
         'has_content' => $hasContent,
         'extracted' => $parsed,
+        'supplier_match' => $supplierMatch ? [
+            'id' => (int)$supplierMatch['id'],
+            'name' => (string)$supplierMatch['name'],
+            'nif' => (string)($supplierMatch['nif'] ?? ''),
+            'default_category' => (string)($supplierMatch['default_category'] ?? 'otros'),
+            'default_vat_rate' => (float)($supplierMatch['default_vat_rate'] ?? 21),
+            'notes' => (string)($supplierMatch['notes'] ?? ''),
+        ] : null,
     ]);
     exit;
 }
@@ -119,6 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
 
     $expense['supplier_name'] = trim($_POST['supplier_name'] ?? '');
     $expense['supplier_nif'] = trim($_POST['supplier_nif'] ?? '');
+    $expense['supplier_id'] = (int)($_POST['supplier_id'] ?? 0);
     $expense['invoice_number'] = trim($_POST['invoice_number'] ?? '');
     $expense['invoice_date'] = trim($_POST['invoice_date'] ?? '');
     $expense['base_amount'] = str_replace(',', '.', trim($_POST['base_amount'] ?? '0'));
@@ -129,6 +150,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     $expense['pdf_path'] = $_POST['pdf_path'] ?? '';
     $expense['notes'] = trim($_POST['notes'] ?? '');
     $expense['status'] = $_POST['status'] ?? 'pending';
+    $supplierSync = isset($_POST['supplier_sync']) && $_POST['supplier_sync'] === '1';
+    $selectedSupplierId = (int)$expense['supplier_id'];
+    $selectedSupplier = $selectedSupplierId > 0 ? SuppliersRepository::find($selectedSupplierId) : null;
+
+    if ($selectedSupplier && $expense['supplier_name'] === '') {
+        $expense['supplier_name'] = (string)$selectedSupplier['name'];
+    }
+    if ($selectedSupplier && $expense['supplier_nif'] === '') {
+        $expense['supplier_nif'] = (string)($selectedSupplier['nif'] ?? '');
+    }
+    if ($selectedSupplier && $expense['category'] === 'otros' && !empty($selectedSupplier['default_category'])) {
+        $expense['category'] = (string)$selectedSupplier['default_category'];
+    }
+    if ($selectedSupplier && ((float)$expense['vat_rate']) <= 0 && isset($selectedSupplier['default_vat_rate'])) {
+        $expense['vat_rate'] = (string)$selectedSupplier['default_vat_rate'];
+    }
 
     // Validation
     if (empty($expense['supplier_name'])) {
@@ -142,17 +179,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     }
 
     if (empty($errors)) {
-        if ($editing) {
-            ExpensesRepository::update($id, $expense);
-            Flash::add('success', 'Gasto actualizado correctamente.');
-        } else {
-            ExpensesRepository::create($expense);
-            Flash::add('success', 'Gasto registrado correctamente.');
+        try {
+            $expense['supplier_id'] = SuppliersRepository::ensureFromExpense($expense, $selectedSupplierId > 0 ? $selectedSupplierId : null, $supplierSync);
+
+            if ($editing) {
+                ExpensesRepository::update($id, $expense);
+                Flash::add('success', 'Gasto actualizado correctamente.');
+            } else {
+                ExpensesRepository::create($expense);
+                Flash::add('success', 'Gasto registrado correctamente.');
+            }
+            header('Location: ' . route_path('expenses'));
+            exit;
+        } catch (\Throwable $e) {
+            error_log('[expense_form] ' . $e->getMessage());
+            $errors['general'] = 'No se pudo guardar el gasto. Revisa proveedor y datos fiscales.';
         }
-        header('Location: ' . route_path('expenses'));
-        exit;
     }
 }
+
+$supplierLookupValue = '';
+if ($selectedSupplier) {
+    $supplierLookupValue = $selectedSupplier['name'] . (!empty($selectedSupplier['nif']) ? ' · ' . $selectedSupplier['nif'] : '');
+}
+$suppliersJson = array_map(static function (array $supplier): array {
+    return [
+        'id' => (int)$supplier['id'],
+        'name' => (string)$supplier['name'],
+        'nif' => (string)($supplier['nif'] ?? ''),
+        'default_category' => (string)($supplier['default_category'] ?? 'otros'),
+        'default_vat_rate' => (float)($supplier['default_vat_rate'] ?? 21),
+        'notes' => (string)($supplier['notes'] ?? ''),
+        'label' => (string)$supplier['name'] . (!empty($supplier['nif']) ? ' · ' . (string)$supplier['nif'] : ''),
+    ];
+}, $allSuppliers);
 ?>
 <section>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -170,13 +230,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
 
   <?php if (!empty($errors)): ?>
     <div class="alert error">
-      <strong>Por favor, corrige los siguientes errores:</strong>
-      <ul style="margin:8px 0 0 20px">
-        <?php foreach ($errors as $err): ?>
+        <strong>Por favor, corrige los siguientes errores:</strong>
+        <ul style="margin:8px 0 0 20px">
+        <?php foreach ($errors as $key => $err): ?>
+          <?php if ($key === 'general') { continue; } ?>
           <li><?= htmlspecialchars($err) ?></li>
         <?php endforeach; ?>
-      </ul>
+        </ul>
     </div>
+  <?php endif; ?>
+  <?php if (!empty($errors['general'])): ?>
+    <div class="alert error"><?= htmlspecialchars($errors['general']) ?></div>
   <?php endif; ?>
 
   <?php if (!$editing): ?>
@@ -230,6 +294,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
     <input type="hidden" name="action" value="save" />
     <input type="hidden" name="pdf_path" id="pdf_path" value="<?= htmlspecialchars($expense['pdf_path']) ?>" />
+    <input type="hidden" name="supplier_id" id="supplier_id" value="<?= (int)($expense['supplier_id'] ?? 0) ?>" />
+
+    <div class="card expense-supplier-assist">
+      <div class="section-header" style="margin-bottom:8px">
+        <h3 class="section-title" style="margin:0">Proveedor conocido</h3>
+      </div>
+      <div class="form-grid-2">
+        <div>
+          <label for="supplier_lookup">Buscar proveedor guardado</label>
+          <input type="text" id="supplier_lookup" list="supplier_suggestions" value="<?= htmlspecialchars($supplierLookupValue) ?>" placeholder="Escribe nombre o NIF para reutilizar datos" autocomplete="off" />
+          <datalist id="supplier_suggestions">
+            <?php foreach ($allSuppliers as $supplier): ?>
+              <option value="<?= htmlspecialchars($supplier['name'] . (!empty($supplier['nif']) ? ' · ' . $supplier['nif'] : '')) ?>"></option>
+            <?php endforeach; ?>
+          </datalist>
+          <div class="field-hint">Selecciona uno existente para rellenar nombre, NIF y valores habituales.</div>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <div class="expense-inline-actions">
+            <span class="expense-selected-supplier" id="selectedSupplierBadge"><?= $selectedSupplier ? htmlspecialchars($selectedSupplier['name']) : 'Sin proveedor seleccionado' ?></span>
+            <button type="button" class="btn btn-secondary btn-sm" id="clearSupplierSelection">Quitar selección</button>
+          </div>
+        </div>
+      </div>
+      <?php if (!empty($recentSuppliers)): ?>
+        <div class="expense-chip-row">
+          <?php foreach ($recentSuppliers as $supplier): ?>
+            <button
+              type="button"
+              class="expense-chip"
+              data-supplier-quick="<?= (int)$supplier['id'] ?>"
+            ><?= htmlspecialchars($supplier['name']) ?></button>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+      <label class="expense-checkline">
+        <input type="checkbox" name="supplier_sync" value="1" <?= $supplierSync ? 'checked' : '' ?> />
+        Guardar o actualizar este proveedor para reutilizar sus datos en próximos gastos.
+      </label>
+    </div>
 
     <div class="form-grid-2">
       <div>
@@ -339,6 +444,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
   min-height: 18px;
 }
 .field-hint:empty { display: none; }
+.expense-supplier-assist {
+  background: linear-gradient(180deg, rgba(15, 163, 177, 0.06), rgba(255,255,255,0.95));
+}
+.expense-inline-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.expense-selected-supplier {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(15, 163, 177, 0.12);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.expense-chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+.expense-chip {
+  border: 1px solid rgba(15, 163, 177, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  color: var(--gray-700);
+  font-weight: 600;
+}
+.expense-checkline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0.9rem;
+}
+.expense-checkline input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
 .form-grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -346,6 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
 }
 @media (max-width: 768px) {
   .form-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .expense-inline-actions { flex-direction: column; align-items: stretch; }
 }
 #dropzone.dragover {
   border-color: var(--primary-500);
@@ -364,31 +515,134 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
 
 <script>
 (function() {
+  const suppliers = <?= json_encode($suppliersJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  const supplierById = new Map(suppliers.map(supplier => [String(supplier.id), supplier]));
+  const supplierByLabel = new Map(suppliers.map(supplier => [supplier.label, supplier]));
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('pdf-input');
-  const uploadSection = document.getElementById('upload-section');
   const progressDiv = document.getElementById('upload-progress');
   const resultDiv = document.getElementById('extraction-result');
   const warningDiv = document.getElementById('extraction-warning');
-  const form = document.getElementById('expense-form');
-
-  if (!dropzone) return; // Skip if editing
+  const supplierLookup = document.getElementById('supplier_lookup');
+  const supplierIdInput = document.getElementById('supplier_id');
+  const supplierNameInput = document.getElementById('supplier_name');
+  const supplierNifInput = document.getElementById('supplier_nif');
+  const categoryInput = document.getElementById('category');
+  const selectedSupplierBadge = document.getElementById('selectedSupplierBadge');
+  const clearSupplierSelection = document.getElementById('clearSupplierSelection');
 
   // Drag and drop
-  ['dragenter', 'dragover'].forEach(e => {
-    dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.add('dragover'); });
+  if (dropzone) {
+    ['dragenter', 'dragover'].forEach(e => {
+      dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(e => {
+      dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', ev => {
+      const files = ev.dataTransfer.files;
+      if (files.length) handleFile(files[0]);
+    });
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+  }
+
+  function normalizeName(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function updateSelectedBadge(text) {
+    if (selectedSupplierBadge) {
+      selectedSupplierBadge.textContent = text || 'Sin proveedor seleccionado';
+    }
+  }
+
+  function applySupplierSelection(supplier, options) {
+    const opts = Object.assign({ fillFields: true }, options || {});
+    if (!supplier) {
+      supplierIdInput.value = '';
+      updateSelectedBadge('');
+      return;
+    }
+
+    supplierIdInput.value = supplier.id;
+    if (supplierLookup) {
+      supplierLookup.value = supplier.label;
+    }
+    updateSelectedBadge(supplier.name);
+
+    if (opts.fillFields) {
+      supplierNameInput.value = supplier.name || supplierNameInput.value;
+      supplierNifInput.value = supplier.nif || supplierNifInput.value;
+      if ((!categoryInput.value || categoryInput.value === 'otros') && supplier.default_category) {
+        categoryInput.value = supplier.default_category;
+      }
+      if ((!vatRateInput.value || parseFloat(vatRateInput.value || '0') <= 0) && supplier.default_vat_rate) {
+        vatRateInput.value = String(Math.round(parseFloat(supplier.default_vat_rate)));
+      }
+    }
+  }
+
+  function clearSupplierSelectionState() {
+    supplierIdInput.value = '';
+    if (supplierLookup) {
+      supplierLookup.value = '';
+    }
+    updateSelectedBadge('');
+  }
+
+  function matchSupplierFromFields() {
+    const nif = String(supplierNifInput.value || '').trim().toUpperCase();
+    const name = normalizeName(supplierNameInput.value);
+    const match = suppliers.find(function(supplier) {
+      if (nif !== '' && supplier.nif && String(supplier.nif).toUpperCase() === nif) {
+        return true;
+      }
+      return name !== '' && normalizeName(supplier.name) === name;
+    });
+
+    if (match) {
+      applySupplierSelection(match, { fillFields: false });
+    } else if (supplierIdInput.value) {
+      updateSelectedBadge('');
+      supplierIdInput.value = '';
+    }
+  }
+
+  if (supplierLookup) {
+    supplierLookup.addEventListener('change', function() {
+      const supplier = supplierByLabel.get(supplierLookup.value);
+      if (supplier) {
+        applySupplierSelection(supplier);
+      }
+    });
+    supplierLookup.addEventListener('input', function() {
+      if (supplierByLabel.has(supplierLookup.value)) {
+        applySupplierSelection(supplierByLabel.get(supplierLookup.value));
+      } else if (supplierLookup.value.trim() === '') {
+        clearSupplierSelectionState();
+      }
+    });
+  }
+
+  document.querySelectorAll('[data-supplier-quick]').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const supplier = supplierById.get(button.getAttribute('data-supplier-quick'));
+      if (supplier) {
+        applySupplierSelection(supplier);
+      }
+    });
   });
-  ['dragleave', 'drop'].forEach(e => {
-    dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.remove('dragover'); });
-  });
-  dropzone.addEventListener('drop', ev => {
-    const files = ev.dataTransfer.files;
-    if (files.length) handleFile(files[0]);
-  });
-  dropzone.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files.length) handleFile(fileInput.files[0]);
-  });
+
+  if (clearSupplierSelection) {
+    clearSupplierSelection.addEventListener('click', clearSupplierSelectionState);
+  }
 
   function handleFile(file) {
     if (file.type !== 'application/pdf') {
@@ -432,7 +686,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
 
       if (data.has_content) {
         resultDiv.style.display = 'block';
-        fillForm(data.extracted);
+        fillForm(data.extracted, data.supplier_match || null);
       } else {
         warningDiv.style.display = 'block';
       }
@@ -444,7 +698,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     });
   }
 
-  function fillForm(extracted) {
+  function fillForm(extracted, supplierMatch) {
     const fields = ['supplier_name', 'supplier_nif', 'invoice_number', 'invoice_date', 'base_amount', 'vat_rate', 'vat_amount', 'total_amount'];
     
     fields.forEach(field => {
@@ -474,6 +728,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
         }
       }
     });
+
+    if (supplierMatch) {
+      applySupplierSelection(supplierMatch);
+    } else {
+      matchSupplierFromFields();
+    }
 
     // Auto-calculate if we have total but not base/vat
     recalculate();
@@ -525,5 +785,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
   baseInput.addEventListener('input', () => recalculate('base'));
   vatRateInput.addEventListener('change', () => recalculate('rate'));
   totalInput.addEventListener('input', () => recalculate('total'));
+  supplierNameInput.addEventListener('blur', matchSupplierFromFields);
+  supplierNifInput.addEventListener('blur', matchSupplierFromFields);
+  if (supplierIdInput.value) {
+    updateSelectedBadge('<?= htmlspecialchars($selectedSupplier['name'] ?? '', ENT_QUOTES) ?>');
+  }
 })();
 </script>

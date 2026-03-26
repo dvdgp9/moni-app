@@ -18,23 +18,48 @@ final class ExpensesRepository
         return $userId;
     }
 
-    public static function all(?int $year = null, ?string $category = null): array
+    public static function all(?int $year = null, ?string $category = null, ?int $supplierId = null, ?string $q = null): array
     {
         $pdo = Database::pdo();
-        $sql = 'SELECT * FROM expenses WHERE user_id = :user_id';
+        $sql = '
+            SELECT
+                e.*,
+                s.name AS linked_supplier_name,
+                s.nif AS linked_supplier_nif
+            FROM expenses e
+            LEFT JOIN suppliers s ON s.id = e.supplier_id AND s.user_id = e.user_id
+            WHERE e.user_id = :user_id
+        ';
         $params = [':user_id' => self::currentUserId()];
 
         if ($year !== null) {
-            $sql .= ' AND YEAR(invoice_date) = :year';
+            $sql .= ' AND YEAR(e.invoice_date) = :year';
             $params[':year'] = $year;
         }
 
         if ($category !== null && $category !== '') {
-            $sql .= ' AND category = :category';
+            $sql .= ' AND e.category = :category';
             $params[':category'] = $category;
         }
 
-        $sql .= ' ORDER BY invoice_date DESC, id DESC';
+        if ($supplierId !== null && $supplierId > 0) {
+            $sql .= ' AND e.supplier_id = :supplier_id';
+            $params[':supplier_id'] = $supplierId;
+        }
+
+        if ($q !== null && trim($q) !== '') {
+            $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($q)) . '%';
+            $sql .= ' AND (
+                e.supplier_name LIKE :q
+                OR e.supplier_nif LIKE :q
+                OR e.invoice_number LIKE :q
+                OR e.notes LIKE :q
+                OR s.name LIKE :q
+            )';
+            $params[':q'] = $like;
+        }
+
+        $sql .= ' ORDER BY e.invoice_date DESC, e.id DESC';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -55,12 +80,13 @@ final class ExpensesRepository
         $pdo = Database::pdo();
         $stmt = $pdo->prepare('
             INSERT INTO expenses 
-            (user_id, supplier_name, supplier_nif, invoice_number, invoice_date, base_amount, vat_rate, vat_amount, total_amount, category, pdf_path, notes, status)
+            (user_id, supplier_id, supplier_name, supplier_nif, invoice_number, invoice_date, base_amount, vat_rate, vat_amount, total_amount, category, pdf_path, notes, status)
             VALUES 
-            (:user_id, :supplier_name, :supplier_nif, :invoice_number, :invoice_date, :base_amount, :vat_rate, :vat_amount, :total_amount, :category, :pdf_path, :notes, :status)
+            (:user_id, :supplier_id, :supplier_name, :supplier_nif, :invoice_number, :invoice_date, :base_amount, :vat_rate, :vat_amount, :total_amount, :category, :pdf_path, :notes, :status)
         ');
         $stmt->execute([
             ':user_id' => self::currentUserId(),
+            ':supplier_id' => !empty($data['supplier_id']) ? (int)$data['supplier_id'] : null,
             ':supplier_name' => $data['supplier_name'],
             ':supplier_nif' => $data['supplier_nif'] ?? null,
             ':invoice_number' => $data['invoice_number'] ?? null,
@@ -84,6 +110,7 @@ final class ExpensesRepository
             UPDATE expenses SET
                 supplier_name = :supplier_name,
                 supplier_nif = :supplier_nif,
+                supplier_id = :supplier_id,
                 invoice_number = :invoice_number,
                 invoice_date = :invoice_date,
                 base_amount = :base_amount,
@@ -100,6 +127,7 @@ final class ExpensesRepository
             ':user_id' => self::currentUserId(),
             ':supplier_name' => $data['supplier_name'],
             ':supplier_nif' => $data['supplier_nif'] ?? null,
+            ':supplier_id' => !empty($data['supplier_id']) ? (int)$data['supplier_id'] : null,
             ':invoice_number' => $data['invoice_number'] ?? null,
             ':invoice_date' => $data['invoice_date'],
             ':base_amount' => (float)($data['base_amount'] ?? 0),
