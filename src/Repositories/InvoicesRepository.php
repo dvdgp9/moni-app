@@ -8,11 +8,30 @@ use PDO;
 
 final class InvoicesRepository
 {
-    public static function all(?string $q = null, ?string $status = null): array
+    public static function all(
+        ?string $q = null,
+        ?string $status = null,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        ?string $dueFilter = null,
+        string $sortBy = 'issue_date',
+        string $sortDir = 'desc'
+    ): array
     {
         $pdo = Database::pdo();
-        $sql = 'SELECT i.id, i.invoice_number, i.client_id, i.status, i.issue_date, i.due_date, i.created_at, c.name AS client_name
-                FROM invoices i LEFT JOIN clients c ON c.id = i.client_id';
+        $sql = 'SELECT
+                    i.id,
+                    i.invoice_number,
+                    i.client_id,
+                    i.status,
+                    i.issue_date,
+                    i.due_date,
+                    i.created_at,
+                    c.name AS client_name,
+                    COALESCE(SUM((it.quantity * it.unit_price) + ((it.quantity * it.unit_price) * (it.vat_rate / 100)) - ((it.quantity * it.unit_price) * (it.irpf_rate / 100))), 0) AS total_amount
+                FROM invoices i
+                LEFT JOIN clients c ON c.id = i.client_id
+                LEFT JOIN invoice_items it ON it.invoice_id = i.id';
         $conds = [];
         $params = [];
         if ($status !== null && in_array($status, ['draft','issued','paid','cancelled'], true)) {
@@ -24,10 +43,46 @@ final class InvoicesRepository
             $conds[] = '(i.invoice_number LIKE :k OR c.name LIKE :k)';
             $params[':k'] = $like;
         }
+        if ($dateFrom !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $conds[] = 'i.issue_date >= :date_from';
+            $params[':date_from'] = $dateFrom;
+        }
+        if ($dateTo !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $conds[] = 'i.issue_date <= :date_to';
+            $params[':date_to'] = $dateTo;
+        }
+        if ($dueFilter !== null) {
+            if ($dueFilter === 'overdue') {
+                $conds[] = 'i.status = "issued" AND i.due_date IS NOT NULL AND i.due_date < CURDATE()';
+            } elseif ($dueFilter === 'upcoming') {
+                $conds[] = 'i.status = "issued" AND i.due_date IS NOT NULL AND i.due_date >= CURDATE() AND i.due_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)';
+            } elseif ($dueFilter === 'no_due') {
+                $conds[] = 'i.due_date IS NULL';
+            }
+        }
         if (!empty($conds)) {
             $sql .= ' WHERE ' . implode(' AND ', $conds);
         }
-        $sql .= ' ORDER BY i.created_at DESC';
+
+        $sql .= ' GROUP BY i.id, i.invoice_number, i.client_id, i.status, i.issue_date, i.due_date, i.created_at, c.name';
+
+        $sortMap = [
+            'issue_date' => 'i.issue_date',
+            'due_date' => 'i.due_date',
+            'amount' => 'total_amount',
+            'client' => 'c.name',
+        ];
+        $sortBySql = $sortMap[$sortBy] ?? 'i.issue_date';
+        $sortDirSql = strtolower($sortDir) === 'asc' ? 'ASC' : 'DESC';
+
+        if ($sortBy === 'due_date') {
+            $sql .= ' ORDER BY i.due_date IS NULL ASC, ' . $sortBySql . ' ' . $sortDirSql . ', i.id DESC';
+        } elseif ($sortBy === 'client') {
+            $sql .= ' ORDER BY c.name IS NULL ASC, ' . $sortBySql . ' ' . $sortDirSql . ', i.issue_date DESC';
+        } else {
+            $sql .= ' ORDER BY ' . $sortBySql . ' ' . $sortDirSql . ', i.id DESC';
+        }
+
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

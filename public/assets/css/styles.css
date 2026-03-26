@@ -567,6 +567,98 @@ input[type="color"]::-moz-color-swatch {
 .status-draft { background: var(--gray-200); color: var(--gray-700); }
 .status-issued { background: #FEF3C7; color: #D97706; }
 .status-paid { background: #D1FAE5; color: #065F46; }
+.status-cancelled { background: #FEE2E2; color: #B91C1C; }
+
+/* Invoices page */
+.invoices-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.invoices-filter-block {
+  min-width: 0;
+}
+
+.invoices-filter-block input,
+.invoices-filter-block select {
+  margin-bottom: 0;
+}
+
+.invoices-filter-search {
+  grid-column: span 2;
+}
+
+.invoices-filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.invoices-summary-card {
+  background: linear-gradient(135deg, rgba(15, 163, 177, 0.08) 0%, rgba(132, 204, 22, 0.08) 100%);
+}
+
+.invoices-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.invoices-active-caption {
+  margin-top: 12px;
+  color: var(--gray-600);
+  font-size: 0.9rem;
+}
+
+.invoices-table-wrap {
+  overflow-x: auto;
+}
+
+.invoice-row-overdue {
+  box-shadow: inset 4px 0 0 var(--danger);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.invoice-row-upcoming {
+  box-shadow: inset 4px 0 0 var(--warning);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.invoice-date-main {
+  font-weight: 700;
+  color: var(--gray-800);
+  white-space: nowrap;
+}
+
+.invoice-date-sub {
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--gray-500);
+}
+
+.invoice-date-sub.is-danger {
+  color: #B91C1C;
+  font-weight: 700;
+}
+
+.invoice-date-sub.is-warning {
+  color: #B45309;
+  font-weight: 700;
+}
+
+.invoice-meta-warning {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: #B91C1C;
+  font-weight: 700;
+}
+
+.invoice-meta-upcoming {
+  color: #B45309;
+}
 
 /* Footer */
 .app-footer {
@@ -627,6 +719,15 @@ h3 { font-size: 1.5rem; }
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+
+  .invoices-filter-grid,
+  .invoices-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .invoices-filter-search {
+    grid-column: span 2;
+  }
   
   .table-actions {
     flex-direction: column;
@@ -654,6 +755,15 @@ h3 { font-size: 1.5rem; }
   .nav a {
     font-size: 0.75rem;
     padding: 0.3rem 0.6rem;
+  }
+
+  .invoices-filter-grid,
+  .invoices-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invoices-filter-search {
+    grid-column: span 1;
   }
 }
 
