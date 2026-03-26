@@ -9,22 +9,19 @@ use Moni\Database;
 $flashAll = Flash::getAll();
 
 $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
-$status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
-$status = in_array($status, ['draft','issued','paid','cancelled'], true) ? $status : null;
-$period = isset($_GET['period']) ? trim((string)$_GET['period']) : '';
-$period = in_array($period, ['month', 'quarter', 'year', 'custom'], true) ? $period : '';
-$due = isset($_GET['due']) ? trim((string)$_GET['due']) : '';
-$due = in_array($due, ['overdue', 'upcoming', 'no_due'], true) ? $due : null;
-$sort = isset($_GET['sort']) ? trim((string)$_GET['sort']) : 'issue_date';
-$sort = in_array($sort, ['issue_date', 'due_date', 'amount', 'client'], true) ? $sort : 'issue_date';
-$dir = isset($_GET['dir']) ? strtolower(trim((string)($_GET['dir'] ?? 'desc'))) : 'desc';
-$dir = $dir === 'asc' ? 'asc' : 'desc';
-$start = isset($_GET['start']) ? trim((string)$_GET['start']) : '';
-$end = isset($_GET['end']) ? trim((string)$_GET['end']) : '';
+$yearsRaw = $_GET['years'] ?? [];
+$quartersRaw = $_GET['quarters'] ?? [];
+$years = is_array($yearsRaw) ? array_values(array_unique(array_filter(array_map('intval', $yearsRaw), static fn(int $y): bool => $y >= 1900 && $y <= 2100))) : [];
+$quarters = is_array($quartersRaw) ? array_values(array_unique(array_filter(array_map('intval', $quartersRaw), static fn(int $qv): bool => $qv >= 1 && $qv <= 4))) : [];
 
-if ($period === '' && ($start !== '' || $end !== '')) {
-  $period = 'custom';
-}
+$allowedSort = ['invoice_number', 'client_name', 'status', 'issue_date', 'due_date', 'amount'];
+$sortByReq = isset($_GET['sort_by']) ? trim((string)$_GET['sort_by']) : '';
+$sortByReq = in_array($sortByReq, $allowedSort, true) ? $sortByReq : '';
+$sortDirReq = isset($_GET['sort_dir']) ? strtolower(trim((string)$_GET['sort_dir'])) : 'asc';
+$sortDirReq = $sortDirReq === 'desc' ? 'desc' : 'asc';
+
+$effectiveSortBy = $sortByReq !== '' ? $sortByReq : 'issue_date';
+$effectiveSortDir = $sortByReq !== '' ? $sortDirReq : 'desc';
 
 // Actions: issue, paid, cancelled, delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -87,42 +84,32 @@ function status_es(string $s): string {
   };
 }
 
-function period_label(string $period, ?string $start, ?string $end): string {
-  return match ($period) {
-    'month' => 'Este mes',
-    'quarter' => 'Este trimestre',
-    'year' => 'Este año',
-    'custom' => ($start && $end) ? ('Periodo: ' . fmt_date($start) . ' - ' . fmt_date($end)) : 'Periodo personalizado',
-    default => 'Sin restricción temporal',
-  };
+function year_short_label(int $year): string {
+  return substr((string)$year, -2);
 }
 
-$dateFrom = null;
-$dateTo = null;
+function sort_next(?string $currentBy, string $currentDir, string $column): array {
+  if ($currentBy !== $column) {
+    return ['by' => $column, 'dir' => 'asc'];
+  }
+  if ($currentDir === 'asc') {
+    return ['by' => $column, 'dir' => 'desc'];
+  }
+  return ['by' => null, 'dir' => null];
+}
+
+function sort_indicator(?string $currentBy, string $currentDir, string $column): string {
+  if ($currentBy !== $column) {
+    return '↕';
+  }
+  return $currentDir === 'asc' ? '↑' : '↓';
+}
+
+$availableYears = InvoicesRepository::issueYearRange();
+$invoices = InvoicesRepository::all($q, $years, $quarters, $effectiveSortBy, $effectiveSortDir);
+
 $today = date('Y-m-d');
 $upcomingLimit = date('Y-m-d', strtotime('+7 days'));
-
-if ($period === 'month') {
-  $dateFrom = date('Y-m-01');
-  $dateTo = date('Y-m-t');
-} elseif ($period === 'quarter') {
-  $month = (int) date('n');
-  $quarterStartMonth = ((int) floor(($month - 1) / 3) * 3) + 1;
-  $dateFrom = date(sprintf('Y-%02d-01', $quarterStartMonth));
-  $dateTo = date('Y-m-t', strtotime(sprintf('%s +2 months', $dateFrom)));
-} elseif ($period === 'year') {
-  $dateFrom = date('Y-01-01');
-  $dateTo = date('Y-12-31');
-} elseif ($period === 'custom') {
-  if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $start)) {
-    $dateFrom = $start;
-  }
-  if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)) {
-    $dateTo = $end;
-  }
-}
-
-$invoices = InvoicesRepository::all($q, $status, $dateFrom, $dateTo, $due, $sort, $dir);
 $summary = [
   'count' => count($invoices),
   'total' => 0.0,
@@ -148,14 +135,24 @@ foreach ($invoices as &$invoiceRow) {
 }
 unset($invoiceRow);
 
-$filtersActive = $q !== '' || $status || $period || $due || $start !== '' || $end !== '' || $sort !== 'issue_date' || $dir !== 'desc';
+$filtersActive = $q !== '' || !empty($years) || !empty($quarters);
+$baseQuery = [
+  'page' => 'invoices',
+  'q' => $q,
+];
+if (!empty($years)) {
+  $baseQuery['years'] = $years;
+}
+if (!empty($quarters)) {
+  $baseQuery['quarters'] = $quarters;
+}
 ?>
 <section>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
     <div>
       <h1 style="margin-bottom:8px">Facturas</h1>
       <p style="margin:0;color:var(--gray-600);max-width:760px">
-        Filtra por periodo, vencimiento y estado para centrarte antes en lo que toca revisar o cobrar.
+        Filtra por año y trimestre para ver lo relevante del periodo. Haz clic en los encabezados para ordenar.
       </p>
     </div>
     <a href="/?page=invoice_form" class="btn">+ Nueva factura</a>
@@ -170,7 +167,7 @@ $filtersActive = $q !== '' || $status || $period || $due || $start !== '' || $en
   <?php endif; ?>
 
   <div class="card" style="margin-bottom:16px">
-    <form method="get" class="invoices-filter-grid">
+    <form id="invoiceFiltersForm" method="get" class="invoices-filter-grid invoices-filter-grid-compact">
       <input type="hidden" name="page" value="invoices" />
 
       <div class="invoices-filter-block invoices-filter-search">
@@ -179,69 +176,39 @@ $filtersActive = $q !== '' || $status || $period || $due || $start !== '' || $en
       </div>
 
       <div class="invoices-filter-block">
-        <label for="period">Periodo</label>
-        <select id="period" name="period">
-          <option value="">Todos</option>
-          <option value="month" <?= $period==='month'?'selected':'' ?>>Este mes</option>
-          <option value="quarter" <?= $period==='quarter'?'selected':'' ?>>Este trimestre</option>
-          <option value="year" <?= $period==='year'?'selected':'' ?>>Este año</option>
-          <option value="custom" <?= $period==='custom'?'selected':'' ?>>Personalizado</option>
-        </select>
+        <div class="invoices-group-head">
+          <label style="margin:0">Año</label>
+          <button type="button" class="group-clear-btn" data-clear-group="years" title="Limpiar años">×</button>
+        </div>
+        <div class="check-pills" data-group="years">
+          <?php foreach ($availableYears as $y): ?>
+            <label class="check-pill">
+              <input type="checkbox" name="years[]" value="<?= (int)$y ?>" <?= in_array((int)$y, $years, true) ? 'checked' : '' ?> />
+              <span><?= htmlspecialchars(year_short_label((int)$y)) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
       </div>
 
       <div class="invoices-filter-block">
-        <label for="status">Estado</label>
-        <select id="status" name="status">
-          <option value="">Todos</option>
-          <option value="draft" <?= $status==='draft'?'selected':'' ?>>Borrador</option>
-          <option value="issued" <?= $status==='issued'?'selected':'' ?>>Emitida</option>
-          <option value="paid" <?= $status==='paid'?'selected':'' ?>>Pagada</option>
-          <option value="cancelled" <?= $status==='cancelled'?'selected':'' ?>>Cancelada</option>
-        </select>
-      </div>
-
-      <div class="invoices-filter-block">
-        <label for="due">Vencimiento</label>
-        <select id="due" name="due">
-          <option value="">Todos</option>
-          <option value="overdue" <?= $due==='overdue'?'selected':'' ?>>Vencidas</option>
-          <option value="upcoming" <?= $due==='upcoming'?'selected':'' ?>>Próximas a vencer</option>
-          <option value="no_due" <?= $due==='no_due'?'selected':'' ?>>Sin vencimiento</option>
-        </select>
-      </div>
-
-      <div class="invoices-filter-block">
-        <label for="sort">Ordenar por</label>
-        <select id="sort" name="sort">
-          <option value="issue_date" <?= $sort==='issue_date'?'selected':'' ?>>Fecha factura</option>
-          <option value="due_date" <?= $sort==='due_date'?'selected':'' ?>>Vencimiento</option>
-          <option value="amount" <?= $sort==='amount'?'selected':'' ?>>Importe</option>
-          <option value="client" <?= $sort==='client'?'selected':'' ?>>Cliente</option>
-        </select>
-      </div>
-
-      <div class="invoices-filter-block">
-        <label for="dir">Dirección</label>
-        <select id="dir" name="dir">
-          <option value="desc" <?= $dir==='desc'?'selected':'' ?>>Descendente</option>
-          <option value="asc" <?= $dir==='asc'?'selected':'' ?>>Ascendente</option>
-        </select>
-      </div>
-
-      <div class="invoices-filter-block">
-        <label for="start">Desde</label>
-        <input id="start" type="date" name="start" value="<?= htmlspecialchars($start) ?>" />
-      </div>
-
-      <div class="invoices-filter-block">
-        <label for="end">Hasta</label>
-        <input id="end" type="date" name="end" value="<?= htmlspecialchars($end) ?>" />
+        <div class="invoices-group-head">
+          <label style="margin:0">Periodo</label>
+          <button type="button" class="group-clear-btn" data-clear-group="quarters" title="Limpiar trimestres">×</button>
+        </div>
+        <div class="check-pills" data-group="quarters">
+          <?php for ($quarter = 1; $quarter <= 4; $quarter++): ?>
+            <label class="check-pill">
+              <input type="checkbox" name="quarters[]" value="<?= $quarter ?>" <?= in_array($quarter, $quarters, true) ? 'checked' : '' ?> />
+              <span>T<?= $quarter ?></span>
+            </label>
+          <?php endfor; ?>
+        </div>
       </div>
 
       <div class="invoices-filter-actions">
-        <button type="submit" class="btn">Aplicar filtros</button>
+        <button type="submit" class="btn">Filtrar</button>
         <?php if ($filtersActive): ?>
-          <a href="/?page=invoices" class="btn btn-secondary">Limpiar</a>
+          <a href="/?page=invoices" class="btn btn-secondary">Limpiar todo</a>
         <?php endif; ?>
       </div>
     </form>
@@ -266,12 +233,6 @@ $filtersActive = $q !== '' || $status || $period || $due || $start !== '' || $en
         <div class="stat-label">Vencidas</div>
       </div>
     </div>
-    <div class="invoices-active-caption">
-      <?= htmlspecialchars(period_label($period, $dateFrom, $dateTo)) ?>
-      <?php if ($due === 'overdue'): ?> · Solo vencidas<?php endif; ?>
-      <?php if ($due === 'upcoming'): ?> · Próximas a vencer (7 días)<?php endif; ?>
-      <?php if ($due === 'no_due'): ?> · Sin fecha de vencimiento<?php endif; ?>
-    </div>
   </div>
 
   <?php if (empty($invoices)): ?>
@@ -288,12 +249,31 @@ $filtersActive = $q !== '' || $status || $period || $due || $start !== '' || $en
       <table class="table">
         <thead>
           <tr>
-            <th>Nº</th>
-            <th>Cliente</th>
-            <th>Estado</th>
-            <th>Fecha factura</th>
-            <th>Vencimiento</th>
-            <th>Importe</th>
+            <?php
+              $headers = [
+                'invoice_number' => 'Nº',
+                'client_name' => 'Cliente',
+                'status' => 'Estado',
+                'issue_date' => 'Fecha factura',
+                'due_date' => 'Vencimiento',
+                'amount' => 'Importe',
+              ];
+              foreach ($headers as $col => $label):
+                $next = sort_next($sortByReq !== '' ? $sortByReq : null, $sortDirReq, $col);
+                $query = $baseQuery;
+                if ($next['by'] !== null) {
+                  $query['sort_by'] = $next['by'];
+                  $query['sort_dir'] = $next['dir'];
+                }
+                $href = '/?' . http_build_query($query);
+            ?>
+              <th>
+                <a class="table-sort-link" href="<?= htmlspecialchars($href) ?>">
+                  <span><?= htmlspecialchars($label) ?></span>
+                  <span class="table-sort-indicator"><?= htmlspecialchars(sort_indicator($sortByReq !== '' ? $sortByReq : null, $sortDirReq, $col)) ?></span>
+                </a>
+              </th>
+            <?php endforeach; ?>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -378,3 +358,33 @@ $filtersActive = $q !== '' || $status || $period || $due || $start !== '' || $en
     </div>
   <?php endif; ?>
 </section>
+
+<script>
+(function () {
+  const form = document.getElementById('invoiceFiltersForm');
+  if (!form) return;
+
+  let timer = null;
+  const submitWithDelay = function () {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () {
+      form.submit();
+    }, 220);
+  };
+
+  form.querySelectorAll('input[type="checkbox"]').forEach(function (el) {
+    el.addEventListener('change', submitWithDelay);
+  });
+
+  form.querySelectorAll('.group-clear-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const group = btn.getAttribute('data-clear-group');
+      if (!group) return;
+      form.querySelectorAll('.check-pills[data-group="' + group + '"] input[type="checkbox"]').forEach(function (cb) {
+        cb.checked = false;
+      });
+      submitWithDelay();
+    });
+  });
+})();
+</script>
