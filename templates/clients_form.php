@@ -3,6 +3,9 @@ use Moni\Repositories\ClientsRepository;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+$flashAll = Flash::getAll();
+
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
 $errors = [];
@@ -78,20 +81,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'default_vat' => $vat,
       'default_irpf' => $irpf,
     ];
-    if ($editing) {
-      ClientsRepository::update($id, $payload);
-      Flash::add('success', 'Cliente actualizado.');
-    } else {
-      ClientsRepository::create($payload);
-      Flash::add('success', 'Cliente creado.');
+    try {
+      if ($editing) {
+        ClientsRepository::update($id, $payload);
+        Flash::add('success', 'Cliente actualizado.');
+      } else {
+        ClientsRepository::create($payload);
+        Flash::add('success', 'Cliente creado.');
+      }
+      header('Location: ' . route_path('clients'));
+      exit;
+    } catch (\Throwable $e) {
+      error_log('[client_form] ' . $e->getMessage());
+      $errors['general'] = 'No se pudo guardar el cliente. Revisa los datos e intentalo de nuevo.';
     }
-    header('Location: ' . route_path('clients'));
-    exit;
   }
 }
 ?>
 <section>
   <h1><?= $editing ? 'Editar cliente' : 'Nuevo cliente' ?></h1>
+
+  <?php if (!empty($flashAll)): ?>
+    <?php foreach ($flashAll as $type => $messages): ?>
+      <?php foreach ($messages as $msg): ?>
+        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
+  <?php if (!empty($errors['general'])): ?>
+    <div class="alert error"><?= htmlspecialchars($errors['general']) ?></div>
+  <?php endif; ?>
 
   <form method="post" class="card" style="max-width:760px">
     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
