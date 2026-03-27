@@ -3,6 +3,7 @@ use Moni\Repositories\QuotesRepository;
 use Moni\Repositories\QuoteItemsRepository;
 use Moni\Repositories\UsersRepository;
 use Moni\Services\InvoiceService;
+use Moni\Services\EmailService;
 use Moni\Support\Config;
 
 // $quoteToken is set by the router in index.php
@@ -57,6 +58,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($ok) {
             $quote['status'] = 'accepted';
             $quote['accepted_at'] = date('Y-m-d H:i:s');
+            $actedAt = date('d/m/Y H:i');
+            if ($emitterEmail !== '') {
+                try {
+                    EmailService::sendQuoteStatusNotification(
+                        $emitterEmail,
+                        'Tu presupuesto ' . ($quote['quote_number'] ?: '') . ' ha sido aceptado',
+                        [
+                            'senderName' => $brandName,
+                            'senderEmail' => $emitterEmail,
+                            'platformName' => Config::get('app_name', 'Moni'),
+                            'quoteNumber' => (string)($quote['quote_number'] ?? ''),
+                            'clientName' => (string)($quote['client_name'] ?? ''),
+                            'statusLabel' => 'Aceptado',
+                            'statusMessage' => 'El cliente ha aceptado este presupuesto.',
+                            'publicUrl' => rtrim((string)Config::get('app_url', ''), '/') . '/presupuesto/' . $token,
+                            'rejectionReason' => '',
+                            'actedAt' => $actedAt,
+                            'appUrl' => (string)Config::get('app_url', '#'),
+                        ]
+                    );
+                } catch (\Throwable $mailErr) {
+                    error_log('[quotes_public] Accept notification failed: ' . $mailErr->getMessage());
+                }
+            }
             $actionMessage = 'Has aceptado el presupuesto. Nos pondremos en contacto contigo pronto.';
             $actionType = 'success';
         } else {
@@ -69,6 +94,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($ok) {
             $quote['status'] = 'rejected';
             $quote['rejected_at'] = date('Y-m-d H:i:s');
+            $actedAt = date('d/m/Y H:i');
+            if ($emitterEmail !== '') {
+                try {
+                    EmailService::sendQuoteStatusNotification(
+                        $emitterEmail,
+                        'Tu presupuesto ' . ($quote['quote_number'] ?: '') . ' ha sido rechazado',
+                        [
+                            'senderName' => $brandName,
+                            'senderEmail' => $emitterEmail,
+                            'platformName' => Config::get('app_name', 'Moni'),
+                            'quoteNumber' => (string)($quote['quote_number'] ?? ''),
+                            'clientName' => (string)($quote['client_name'] ?? ''),
+                            'statusLabel' => 'Rechazado',
+                            'statusMessage' => 'El cliente ha rechazado este presupuesto.',
+                            'publicUrl' => rtrim((string)Config::get('app_url', ''), '/') . '/presupuesto/' . $token,
+                            'rejectionReason' => $reason,
+                            'actedAt' => $actedAt,
+                            'appUrl' => (string)Config::get('app_url', '#'),
+                        ]
+                    );
+                } catch (\Throwable $mailErr) {
+                    error_log('[quotes_public] Reject notification failed: ' . $mailErr->getMessage());
+                }
+            }
             $actionMessage = 'Has rechazado el presupuesto.';
             $actionType = 'info';
         } else {

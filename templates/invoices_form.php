@@ -9,6 +9,9 @@ use Moni\Support\Config;
 use Moni\Services\InvoiceNumberingService;
 use Moni\Repositories\SettingsRepository;
 
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+$flashAll = Flash::getAll();
+
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
 $errors = [];
@@ -171,6 +174,14 @@ $totals = InvoiceService::computeTotals($items);
 <section>
   <h1><?= $editing ? 'Editar factura' : 'Nueva factura' ?></h1>
 
+  <?php if (!empty($flashAll)): ?>
+    <?php foreach ($flashAll as $type => $messages): ?>
+      <?php foreach ($messages as $msg): ?>
+        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
   <?php if (!empty($errors)): ?>
     <div class="alert error">Por favor, corrige los errores marcados.</div>
   <?php endif; ?>
@@ -281,16 +292,19 @@ $totals = InvoiceService::computeTotals($items);
     <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
       <button type="submit" class="btn">Guardar</button>
       <a class="btn btn-secondary" href="<?= route_path('invoices') ?>">Cancelar</a>
-      <?php if ($editing): ?>
-        <form method="post" action="<?= route_path('invoices') ?>" onsubmit="return confirm('¿Eliminar la factura?');" style="margin-left:auto">
-          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-          <input type="hidden" name="_action" value="delete" />
-          <input type="hidden" name="id" value="<?= (int)$id ?>" />
-          <button type="submit" class="btn btn-danger">Eliminar</button>
-        </form>
-      <?php endif; ?>
     </div>
   </form>
+
+  <?php if ($editing): ?>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <form method="post" action="<?= route_path('invoices') ?>" onsubmit="return confirm('¿Eliminar la factura?');">
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+        <input type="hidden" name="_action" value="delete" />
+        <input type="hidden" name="id" value="<?= (int)$id ?>" />
+        <button type="submit" class="btn btn-danger">Eliminar</button>
+      </form>
+    </div>
+  <?php endif; ?>
 </section>
 
 <script>

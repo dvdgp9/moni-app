@@ -193,6 +193,93 @@ final class EmailService
         return true;
     }
 
+    /**
+     * Send a notification to the professional when a quote has been accepted or rejected.
+     * $data keys: senderName, senderEmail, platformName, quoteNumber, clientName, statusLabel,
+     * statusMessage, publicUrl, rejectionReason, actedAt, appUrl
+     */
+    public static function sendQuoteStatusNotification(string $to, string $subject, array $data): bool
+    {
+        $mail = new PHPMailer(true);
+        $cfg = Config::get('mail');
+        $debug = Config::get('debug');
+
+        $mail->isSMTP();
+        $mail->Host = (string)$cfg['host'];
+        $mail->Port = (int)$cfg['port'];
+        $mail->SMTPAuth = !empty($cfg['username']);
+        if ($mail->SMTPAuth) {
+            $mail->Username = $cfg['username'];
+            $mail->Password = $cfg['password'];
+        }
+        $enc = strtolower((string)($cfg['encryption'] ?? ''));
+        if ($mail->Port === 465) {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($mail->Port === 587 || $enc === 'tls' || $enc === 'starttls') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } elseif ($enc === 'ssl') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        }
+        $mail->Timeout = 15;
+        $mail->SMTPKeepAlive = false;
+        $mail->CharSet = 'UTF-8';
+        $mail->SMTPDebug = $debug ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
+
+        $platformName = (string)($data['platformName'] ?? (Config::get('app_name') ?: 'Moni'));
+        if (!empty($cfg['from_address'])) {
+            $mail->setFrom((string)$cfg['from_address'], $platformName);
+        }
+        $mail->addAddress($to);
+        $mail->Subject = $subject;
+
+        $senderName = (string)($data['senderName'] ?? '');
+        $senderEmail = (string)($data['senderEmail'] ?? '');
+        $quoteNumber = (string)($data['quoteNumber'] ?? '');
+        $clientName = (string)($data['clientName'] ?? '');
+        $statusLabel = (string)($data['statusLabel'] ?? '');
+        $statusMessage = (string)($data['statusMessage'] ?? '');
+        $publicUrl = (string)($data['publicUrl'] ?? '');
+        $rejectionReason = (string)($data['rejectionReason'] ?? '');
+        $actedAt = (string)($data['actedAt'] ?? '');
+        $appUrl = (string)($data['appUrl'] ?? (Config::get('app_url') ?: '#'));
+
+        $html = self::renderTemplate(__DIR__ . '/../../templates/emails/quote_status.php', compact(
+            'senderName',
+            'senderEmail',
+            'platformName',
+            'quoteNumber',
+            'clientName',
+            'statusLabel',
+            'statusMessage',
+            'publicUrl',
+            'rejectionReason',
+            'actedAt',
+            'appUrl'
+        ));
+        $text = self::renderTemplate(__DIR__ . '/../../templates/emails/quote_status.txt.php', compact(
+            'senderName',
+            'senderEmail',
+            'platformName',
+            'quoteNumber',
+            'clientName',
+            'statusLabel',
+            'statusMessage',
+            'publicUrl',
+            'rejectionReason',
+            'actedAt',
+            'appUrl'
+        ));
+
+        $mail->isHTML(true);
+        $mail->Body = $html;
+        $mail->AltBody = $text;
+
+        if (!$mail->send()) {
+            throw new RuntimeException('Error SMTP: ' . $mail->ErrorInfo);
+        }
+        return true;
+    }
+
     private static function renderTemplate(string $file, array $vars): string
     {
         if (!is_file($file)) {
