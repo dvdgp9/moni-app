@@ -8,16 +8,16 @@ $isLoggedIn = !empty($_SESSION['user_id']);
   <div class="container landing-hero-grid">
     <div class="landing-copy">
       <span class="beta-pill">Beta gratuita en desarrollo</span>
-      <h1 class="landing-title">Facturas, presupuestos, gastos y fiscalidad en una sola herramienta pensada para autonomos.</h1>
+      <h1 class="landing-title">Menos gestión. Más control.</h1>
       <p class="landing-subtitle">
-        <?= htmlspecialchars($appName) ?> ayuda a pequenos autonomos a trabajar con mas claridad: emitir y cobrar, enviar presupuestos,
-        registrar gastos desde movil y revisar el trimestre sin montar un sistema paralelo con hojas, notas y recordatorios sueltos.
+        <?= htmlspecialchars($appName) ?> ayuda a pequeños autónomos a trabajar con más claridad: emitir y cobrar, enviar presupuestos,
+        registrar gastos desde móvil y revisar el trimestre sin montar un sistema paralelo con hojas, notas y recordatorios sueltos.
       </p>
       <div class="landing-actions">
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
           <?= $isLoggedIn ? 'Ir a mi panel' : 'Crear cuenta gratis' ?>
         </a>
-        <a class="btn btn-secondary" href="#funciones">Ver como funciona</a>
+        <a class="btn btn-secondary" href="#funciones">Ver cómo funciona</a>
       </div>
       <p class="landing-footnote">
         Durante esta fase el uso es gratuito a cambio de sugerencias de mejora e informes de errores.
@@ -66,7 +66,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
             <div class="preview-row muted">
               <div>
                 <strong>Scanner de tickets</strong>
-                <span>Foto o PDF desde movil</span>
+                <span>Foto o PDF desde móvil</span>
               </div>
               <div>
                 <span>Listo</span>
@@ -76,7 +76,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
           </div>
           <div class="preview-note">
             <strong>Centro fiscal</strong>
-            <span>Revision trimestral, modelos aplicables y avisos en un mismo sitio.</span>
+            <span>Revisión trimestral, modelos aplicables y avisos en un mismo sitio.</span>
           </div>
         </div>
       </div>
@@ -87,11 +87,11 @@ $isLoggedIn = !empty($_SESSION['user_id']);
 <section class="landing-strip">
   <div class="container landing-strip-grid">
     <div>
-      <strong>Hecho para actividades pequenas</strong>
-      <span>Freelance, consultoria, servicios, profesiones tecnicas y negocios unipersonales.</span>
+      <strong>Hecho para actividades pequeñas</strong>
+      <span>Freelance, consultoría, servicios, profesiones técnicas y negocios unipersonales.</span>
     </div>
     <div>
-      <strong>Operacion diaria clara</strong>
+      <strong>Operación diaria clara</strong>
       <span>Ver que toca ahora: cobrar, cerrar presupuestos, revisar gastos y preparar el trimestre.</span>
     </div>
     <div>
@@ -111,19 +111,19 @@ $isLoggedIn = !empty($_SESSION['user_id']);
     <div class="feature-grid">
       <article class="feature-card">
         <h3>Facturas con contexto</h3>
-        <p>Crea borradores, emite, marca pagadas y filtra por periodos para localizar rapido lo importante y lo pendiente de cobrar.</p>
+        <p>Crea borradores, emite, marca pagadas y filtra por períodos para localizar rápido lo importante y lo pendiente de cobrar.</p>
       </article>
       <article class="feature-card">
-        <h3>Presupuestos con aceptacion</h3>
-        <p>Prepara presupuestos, envialos por correo y deja que el cliente los acepte o rechace desde un enlace directo.</p>
+        <h3>Presupuestos con aceptación</h3>
+        <p>Prepara presupuestos, envíalos por correo y deja que el cliente los acepte o rechace desde un enlace directo.</p>
       </article>
       <article class="feature-card">
         <h3>Gastos y scanner base</h3>
-        <p>Sube PDFs o fotos de tickets desde movil, vincula proveedores y deja preparado el gasto para revisarlo mas rapido.</p>
+        <p>Sube PDFs o fotos de tickets desde móvil, vincula proveedores y deja preparado el gasto para revisarlo más rápido.</p>
       </article>
       <article class="feature-card">
         <h3>Centro fiscal y avisos</h3>
-        <p>Consulta IVA, IRPF, checklist trimestral y recordatorios utiles sin depender de notas externas.</p>
+        <p>Consulta IVA, IRPF, checklist trimestral y recordatorios útiles sin depender de notas externas.</p>
       </article>
     </div>
   </div>
@@ -133,7 +133,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
   <div class="container landing-benefits">
     <div class="section-lead compact">
       <span class="section-kicker">Beneficios</span>
-      <h2>Menos ruido administrativo, mas claridad para trabajar.</h2>
+      <h2>Menos ruido administrativo, más claridad para trabajar.</h2>
     </div>
     <div class="benefit-list">
       <div class="benefit-item">
@@ -150,7 +150,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       </div>
       <div class="benefit-item">
         <strong>Influyes directamente en el producto</strong>
-        <p>Esta beta no es decorativa: priorizamos mejoras segun uso real y feedback concreto.</p>
+        <p>Esta beta no es decorativa: priorizamos mejoras según uso real y feedback concreto.</p>
       </div>
     </div>
   </div>
@@ -159,20 +159,20 @@ $isLoggedIn = !empty($_SESSION['user_id']);
 <section class="landing-section">
   <div class="container">
     <div class="section-lead">
-      <span class="section-kicker">Como encaja</span>
-      <h2>Web publica por un lado, aplicacion por otro.</h2>
-      <p>La entrada publica explica el producto y capta nuevos usuarios. La zona privada queda reservada para trabajar dentro de la aplicacion sin mezclar navegacion comercial y operativa.</p>
+      <span class="section-kicker">Cómo encaja</span>
+      <h2>Web pública por un lado, aplicación por otro.</h2>
+      <p>La entrada pública explica el producto y capta nuevos usuarios. La zona privada queda reservada para trabajar dentro de la aplicación sin mezclar navegación comercial y operativa.</p>
     </div>
     <div class="flow-grid">
       <div class="flow-step">
         <span>1</span>
-        <strong>Landing publica</strong>
-        <p>El trafico llega a la home, conoce el producto, precios beta y propuesta para autonomos.</p>
+        <strong>Landing pública</strong>
+        <p>El tráfico llega a la home, conoce el producto, precios beta y propuesta para autónomos.</p>
       </div>
       <div class="flow-step">
         <span>2</span>
         <strong>Acceso o registro</strong>
-        <p>Desde ahi se entra por rutas dedicadas: login y alta, sin saltar directamente al dashboard.</p>
+        <p>Desde ahí se entra por rutas dedicadas: login y alta, sin saltar directamente al dashboard.</p>
       </div>
       <div class="flow-step">
         <span>3</span>
@@ -195,13 +195,13 @@ $isLoggedIn = !empty($_SESSION['user_id']);
         </p>
         <ul class="pricing-list">
           <li>Acceso a facturas, presupuestos, gastos, proveedores y centro fiscal</li>
-          <li>Nuevas mejoras segun evoluciona la beta</li>
+          <li>Nuevas mejoras según evoluciona la beta</li>
           <li>Feedback directo para priorizar lo importante</li>
         </ul>
       </div>
       <div class="pricing-panel">
         <strong>Ideal si quieres probar desde ya</strong>
-        <p>Si eres autonomo y te interesa una herramienta clara para tu operativa diaria, puedes entrar ahora y ayudarnos a pulirla con uso real de verdad.</p>
+        <p>Si eres autónomo y te interesa una herramienta clara para tu operativa diaria, puedes entrar ahora y ayudarnos a pulirla con uso real de verdad.</p>
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
           <?= $isLoggedIn ? 'Abrir mi espacio' : 'Empezar gratis' ?>
         </a>

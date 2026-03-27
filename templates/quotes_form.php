@@ -8,6 +8,9 @@ use Moni\Services\InvoiceService;
 use Moni\Support\Config;
 use Moni\Services\QuoteNumberingService;
 
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+$flashAll = Flash::getAll();
+
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
 $errors = [];
@@ -170,6 +173,14 @@ $canEdit = in_array($currentStatus, ['draft', 'sent'], true);
 <section>
   <h1><?= $editing ? 'Editar presupuesto' : 'Nuevo presupuesto' ?></h1>
 
+  <?php if (!empty($flashAll)): ?>
+    <?php foreach ($flashAll as $type => $messages): ?>
+      <?php foreach ($messages as $msg): ?>
+        <div class="alert <?= $type==='error'?'error':'' ?>"><?= htmlspecialchars($msg) ?></div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
   <?php if (!empty($errors)): ?>
     <div class="alert error">Por favor, corrige los errores marcados.</div>
   <?php endif; ?>
@@ -268,14 +279,6 @@ $canEdit = in_array($currentStatus, ['draft', 'sent'], true);
       <button type="submit" name="status" value="draft" class="btn btn-secondary">Guardar borrador</button>
       <button type="submit" name="status" value="sent" class="btn" onclick="return confirm('Se asignará número y se enviará por email al cliente. ¿Continuar?')">Enviar al cliente</button>
       <a class="btn btn-secondary" href="<?= route_path('quotes') ?>">Cancelar</a>
-      <?php if ($editing): ?>
-        <form method="post" action="<?= route_path('quotes') ?>" onsubmit="return confirm('¿Eliminar el presupuesto?');" style="margin-left:auto">
-          <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-          <input type="hidden" name="_action" value="delete" />
-          <input type="hidden" name="id" value="<?= (int)$id ?>" />
-          <button type="submit" class="btn btn-danger">Eliminar</button>
-        </form>
-      <?php endif; ?>
     </div>
     <?php else: ?>
     <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
@@ -283,6 +286,17 @@ $canEdit = in_array($currentStatus, ['draft', 'sent'], true);
     </div>
     <?php endif; ?>
   </form>
+
+  <?php if ($editing && $canEdit): ?>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <form method="post" action="<?= route_path('quotes') ?>" onsubmit="return confirm('¿Eliminar el presupuesto?');">
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+        <input type="hidden" name="_action" value="delete" />
+        <input type="hidden" name="id" value="<?= (int)$id ?>" />
+        <button type="submit" class="btn btn-danger">Eliminar</button>
+      </form>
+    </div>
+  <?php endif; ?>
 </section>
 
 <script>
