@@ -158,6 +158,7 @@ $quarterStatus = [
         'tone' => $checklist['unpaid_issued'] > 0 ? 'var(--gray-700)' : 'var(--success)',
     ],
 ];
+$activeModels = array_values(array_filter($storedModels, static fn(string $code): bool => isset($allModels[$code])));
 ?>
 <section>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -177,7 +178,7 @@ $quarterStatus = [
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <div class="card" style="margin-bottom:16px">
+  <div class="card declarations-setup-card" style="margin-bottom:16px">
     <div class="section-header">
       <h3 class="section-title">Configuración fiscal</h3>
     </div>
@@ -185,7 +186,7 @@ $quarterStatus = [
       <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
       <input type="hidden" name="save_tax_setup" value="1" />
 
-      <div class="grid-2">
+      <div class="grid-2 declarations-setup-grid">
         <div>
           <label for="activity_mode">Tipo de actividad</label>
           <select id="activity_mode" name="activity_mode">
@@ -196,21 +197,24 @@ $quarterStatus = [
         </div>
         <div>
           <label>Modelos que te aplican</label>
-          <div class="expense-chip-row">
+          <div class="declarations-models-grid">
             <?php foreach ($allModels as $code => $model): ?>
-              <label class="expense-checkline" style="margin-top:0;background:rgba(255,255,255,0.86);padding:0.6rem 0.8rem;border-radius:999px;border:1px solid rgba(15,35,31,0.08);">
+              <label class="declarations-model-option">
                 <input type="checkbox" name="tax_models[]" value="<?= $code ?>" <?= in_array($code, $storedModels, true) ? 'checked' : '' ?> />
-                <span><strong><?= htmlspecialchars($model['label']) ?></strong> · <?= htmlspecialchars($model['description']) ?></span>
+                <span>
+                  <strong><?= htmlspecialchars($model['label']) ?></strong>
+                  <small><?= htmlspecialchars($model['description']) ?></small>
+                </span>
               </label>
             <?php endforeach; ?>
           </div>
         </div>
       </div>
 
-      <div class="expense-chip-row" style="margin-top:12px">
-        <label class="expense-checkline"><input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($taxProfile['issues_invoices_with_irpf']) ? 'checked' : '' ?> /> Tus facturas suelen llevar retención de IRPF</label>
-        <label class="expense-checkline"><input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($taxProfile['has_rent_withholdings']) ? 'checked' : '' ?> /> Pagas alquiler con retención</label>
-        <label class="expense-checkline"><input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($taxProfile['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> /> Pagas profesionales o nóminas con retención</label>
+      <div class="declarations-flags-grid" style="margin-top:12px">
+        <label class="declarations-flag"><input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($taxProfile['issues_invoices_with_irpf']) ? 'checked' : '' ?> /> Tus facturas suelen llevar retención de IRPF</label>
+        <label class="declarations-flag"><input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($taxProfile['has_rent_withholdings']) ? 'checked' : '' ?> /> Pagas alquiler con retención</label>
+        <label class="declarations-flag"><input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($taxProfile['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> /> Pagas profesionales o nóminas con retención</label>
       </div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:12px">
@@ -241,20 +245,28 @@ $quarterStatus = [
     </div>
   </form>
 
-  <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
-    <?php foreach ($quarterStatus as $item): ?>
-      <div class="stat-card">
-        <div class="stat-value" style="color:<?= $item['tone'] ?>"><?= (int)$item['value'] ?></div>
-        <div class="stat-label"><?= htmlspecialchars($item['label']) ?></div>
-      </div>
-    <?php endforeach; ?>
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-header">
+      <h3 class="section-title">Resultados del trimestre</h3>
+    </div>
+    <div class="declarations-active-models">
+      <?php foreach ($activeModels as $code): ?>
+        <span class="declarations-active-chip"><?= htmlspecialchars($allModels[$code]['label']) ?></span>
+      <?php endforeach; ?>
+      <span class="declarations-range-pill"><?= htmlspecialchars($rangeStartEs) ?> — <?= htmlspecialchars($rangeEndEs) ?></span>
+    </div>
   </div>
 
-  <div class="grid-2">
+  <div class="declarations-results-grid" style="margin-bottom:16px">
     <?php if (in_array('303', $storedModels, true)): ?>
-      <div class="card">
-        <h3>Modelo 303</h3>
-        <p style="color:var(--gray-600);margin-top:-6px">IVA del trimestre seleccionado. Ventas frente a IVA soportado deducible de gastos registrados.</p>
+      <div class="card declarations-model-card declarations-model-primary">
+        <div class="declarations-model-head">
+          <div>
+            <h3>Modelo 303</h3>
+            <p>IVA trimestral a partir de ventas y gastos registrados.</p>
+          </div>
+          <span class="declarations-model-badge">Activo</span>
+        </div>
         <div class="grid-stats-4">
           <div class="kpi"><div class="kpi-label">Base ventas</div><div class="kpi-value"><?= number_format($base, 2) ?> €</div></div>
           <div class="kpi"><div class="kpi-label">IVA devengado</div><div class="kpi-value"><?= number_format($devengado27, 2) ?> €</div></div>
@@ -263,10 +275,10 @@ $quarterStatus = [
         </div>
 
         <?php if (!empty($byVat) || !empty($expensesByVat)): ?>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px">
+          <div class="declarations-breakdown-grid">
             <?php if (!empty($byVat)): ?>
               <div>
-                <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA repercutido</h4>
+                <h4>IVA repercutido</h4>
                 <table class="table" style="font-size:0.9rem">
                   <thead><tr><th>Tipo</th><th style="text-align:right">Base</th><th style="text-align:right">Cuota</th></tr></thead>
                   <tbody>
@@ -283,7 +295,7 @@ $quarterStatus = [
             <?php endif; ?>
             <?php if (!empty($expensesByVat)): ?>
               <div>
-                <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA soportado</h4>
+                <h4>IVA soportado</h4>
                 <table class="table" style="font-size:0.9rem">
                   <thead><tr><th>Tipo</th><th style="text-align:right">Base</th><th style="text-align:right">Cuota</th></tr></thead>
                   <tbody>
@@ -300,17 +312,18 @@ $quarterStatus = [
             <?php endif; ?>
           </div>
         <?php endif; ?>
-
-        <div style="display:flex;justify-content:flex-end;margin-top:12px">
-          <a href="<?= route_path('expenses') ?>" class="btn btn-sm btn-secondary">Ver gastos</a>
-        </div>
       </div>
     <?php endif; ?>
 
     <?php if (in_array('130', $storedModels, true)): ?>
-      <div class="card">
-        <h3>Modelo 130</h3>
-        <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
+      <div class="card declarations-model-card">
+        <div class="declarations-model-head">
+          <div>
+            <h3>Modelo 130</h3>
+            <p>Estimación acumulada desde el 1 de enero hasta el cierre del trimestre.</p>
+          </div>
+          <span class="declarations-model-badge">Activo</span>
+        </div>
         <div class="grid-stats-5">
           <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value"><?= number_format($ingresos01, 2) ?> €</div></div>
           <div class="kpi"><div class="kpi-label">Gastos</div><div class="kpi-value"><?= number_format($gastos02, 2) ?> €</div></div>
@@ -340,11 +353,20 @@ $quarterStatus = [
             </div>
           </div>
           <div style="display:flex;justify-content:flex-end;margin-top:12px">
-            <button type="submit" class="btn btn-sm">Recalcular</button>
+            <button type="submit" class="btn btn-sm">Recalcular 130</button>
           </div>
         </form>
       </div>
     <?php endif; ?>
+  </div>
+
+  <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+    <?php foreach ($quarterStatus as $item): ?>
+      <div class="stat-card">
+        <div class="stat-value" style="color:<?= $item['tone'] ?>"><?= (int)$item['value'] ?></div>
+        <div class="stat-label"><?= htmlspecialchars($item['label']) ?></div>
+      </div>
+    <?php endforeach; ?>
   </div>
 
   <div class="grid-2" style="margin-top:16px">
@@ -408,6 +430,130 @@ $quarterStatus = [
     </div>
   </div>
 </section>
+
+<style>
+.declarations-setup-grid {
+  align-items: start;
+}
+.declarations-models-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.declarations-model-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15,35,31,0.08);
+  background: rgba(255,255,255,0.9);
+  min-height: 78px;
+}
+.declarations-model-option input[type="checkbox"] {
+  width: auto;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+}
+.declarations-model-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.2;
+}
+.declarations-model-option small {
+  color: var(--gray-600);
+  font-size: 0.82rem;
+}
+.declarations-flags-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.declarations-flag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(15,163,177,0.06);
+  border: 1px solid rgba(15,163,177,0.1);
+}
+.declarations-flag input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+.declarations-active-models {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.declarations-active-chip,
+.declarations-range-pill,
+.declarations-model-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.declarations-active-chip {
+  background: rgba(15,163,177,0.1);
+  color: var(--primary-dark);
+}
+.declarations-range-pill {
+  background: rgba(15,35,31,0.06);
+  color: var(--gray-700);
+}
+.declarations-model-badge {
+  background: rgba(132,204,22,0.16);
+  color: #447407;
+}
+.declarations-results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.declarations-model-card h3 {
+  margin-bottom: 4px;
+}
+.declarations-model-card p {
+  color: var(--gray-600);
+  margin-bottom: 0;
+}
+.declarations-model-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.declarations-model-primary {
+  border: 1px solid rgba(15,163,177,0.16);
+  box-shadow: 0 16px 36px rgba(15, 163, 177, 0.08);
+}
+.declarations-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.declarations-breakdown-grid h4 {
+  font-size: 0.9rem;
+  margin: 0 0 8px;
+  color: var(--gray-700);
+}
+@media (max-width: 980px) {
+  .declarations-models-grid,
+  .declarations-flags-grid,
+  .declarations-results-grid,
+  .declarations-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 
 <script>
 (function(){
