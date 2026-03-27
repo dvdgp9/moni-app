@@ -84,6 +84,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     @session_start();
 }
 
+if (!ob_get_level()) {
+    ob_start();
+}
+
 if (moni_request_is_https()) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
