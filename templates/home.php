@@ -8,10 +8,10 @@ $isLoggedIn = !empty($_SESSION['user_id']);
   <div class="container landing-hero-grid">
     <div class="landing-copy">
       <span class="beta-pill">Beta gratuita en desarrollo</span>
-      <h1 class="landing-title">Controla facturas, gastos y recordatorios sin montarte otro trabajo paralelo.</h1>
+      <h1 class="landing-title">Facturas, presupuestos, gastos y fiscalidad en una sola herramienta pensada para autonomos.</h1>
       <p class="landing-subtitle">
-        <?= htmlspecialchars($appName) ?> ayuda a pequeños autonomos a tener su actividad clara, ordenada y al dia,
-        sin hojas de calculo eternas ni herramientas demasiado grandes para trabajar solo.
+        <?= htmlspecialchars($appName) ?> ayuda a pequenos autonomos a trabajar con mas claridad: emitir y cobrar, enviar presupuestos,
+        registrar gastos desde movil y revisar el trimestre sin montar un sistema paralelo con hojas, notas y recordatorios sueltos.
       </p>
       <div class="landing-actions">
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
@@ -31,52 +31,52 @@ $isLoggedIn = !empty($_SESSION['user_id']);
         </div>
         <div class="preview-board">
           <div class="preview-stat primary">
-            <strong>4.860 €</strong>
+            <strong>6.420 EUR</strong>
             <span>Facturado este mes</span>
           </div>
           <div class="preview-stat">
-            <strong>6</strong>
-            <span>Pendientes de cobro</span>
+            <strong>2</strong>
+            <span>Presupuestos esperando respuesta</span>
           </div>
           <div class="preview-list">
             <div class="preview-list-header">
-              <strong>Facturas relevantes</strong>
-              <span>Periodo actual</span>
+              <strong>Panel operativo</strong>
+              <span>Ventas y fiscalidad</span>
             </div>
             <div class="preview-row overdue">
               <div>
-                <strong>2026-0018</strong>
-                <span>Estudio Rivera</span>
+                <strong>Cobros vencidos</strong>
+                <span>2 facturas emitidas</span>
               </div>
               <div>
-                <span>12/03/2026</span>
-                <em>Vencida</em>
+                <span>1.280 EUR</span>
+                <em>Prioridad</em>
               </div>
             </div>
             <div class="preview-row">
               <div>
-                <strong>2026-0019</strong>
-                <span>Laura Castillo</span>
+                <strong>IVA estimado</strong>
+                <span>1T 2026</span>
               </div>
               <div>
-                <span>19/03/2026</span>
-                <em>Emitida</em>
+                <span>438 EUR</span>
+                <em>Trimestre</em>
               </div>
             </div>
             <div class="preview-row muted">
               <div>
-                <strong>Borrador</strong>
-                <span>Consultoria mensual</span>
+                <strong>Scanner de tickets</strong>
+                <span>Foto o PDF desde movil</span>
               </div>
               <div>
-                <span>28/03/2026</span>
-                <em>Preparando</em>
+                <span>Listo</span>
+                <em>Gastos</em>
               </div>
             </div>
           </div>
           <div class="preview-note">
-            <strong>Proximos avisos</strong>
-            <span>Modelo trimestral, cuota y vencimientos en un mismo sitio.</span>
+            <strong>Centro fiscal</strong>
+            <span>Revision trimestral, modelos aplicables y avisos en un mismo sitio.</span>
           </div>
         </div>
       </div>
@@ -91,8 +91,8 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       <span>Freelance, consultoria, servicios, profesiones tecnicas y negocios unipersonales.</span>
     </div>
     <div>
-      <strong>Prioridad real</strong>
-      <span>Ver que toca ahora: cobrar, emitir, revisar gastos y no olvidar fechas importantes.</span>
+      <strong>Operacion diaria clara</strong>
+      <span>Ver que toca ahora: cobrar, cerrar presupuestos, revisar gastos y preparar el trimestre.</span>
     </div>
     <div>
       <strong>Beta con feedback</strong>
@@ -106,24 +106,24 @@ $isLoggedIn = !empty($_SESSION['user_id']);
     <div class="section-lead">
       <span class="section-kicker">Funciones</span>
       <h2>Todo lo esencial para llevar tu actividad con cabeza.</h2>
-      <p>No intentamos ser un ERP enorme. La idea es darte claridad en el dia a dia con una herramienta que puedas abrir y entender al momento.</p>
+      <p>No intentamos ser un ERP enorme. La idea es darte una vista clara de ventas, compras y fiscalidad con una herramienta que puedas abrir y entender al momento.</p>
     </div>
     <div class="feature-grid">
       <article class="feature-card">
         <h3>Facturas con contexto</h3>
-        <p>Crea borradores, emite, marca pagadas y filtra por periodos para localizar rapido lo importante.</p>
+        <p>Crea borradores, emite, marca pagadas y filtra por periodos para localizar rapido lo importante y lo pendiente de cobrar.</p>
       </article>
       <article class="feature-card">
-        <h3>Gastos organizados</h3>
-        <p>Registra facturas recibidas, clasificalas y manten una base limpia para revisar lo deducible y lo pendiente.</p>
+        <h3>Presupuestos con aceptacion</h3>
+        <p>Prepara presupuestos, envialos por correo y deja que el cliente los acepte o rechace desde un enlace directo.</p>
       </article>
       <article class="feature-card">
-        <h3>Clientes y datos listos</h3>
-        <p>Guarda la informacion de tus clientes y reutilizala sin tener que rehacer datos en cada documento.</p>
+        <h3>Gastos y scanner base</h3>
+        <p>Sube PDFs o fotos de tickets desde movil, vincula proveedores y deja preparado el gasto para revisarlo mas rapido.</p>
       </article>
       <article class="feature-card">
-        <h3>Recordatorios utiles</h3>
-        <p>Ten visibles las fechas que no quieres volver a perseguir en notas sueltas o en el calendario.</p>
+        <h3>Centro fiscal y avisos</h3>
+        <p>Consulta IVA, IRPF, checklist trimestral y recordatorios utiles sin depender de notas externas.</p>
       </article>
     </div>
   </div>
@@ -137,16 +137,16 @@ $isLoggedIn = !empty($_SESSION['user_id']);
     </div>
     <div class="benefit-list">
       <div class="benefit-item">
-        <strong>Ves rapidamente que facturas importan ahora</strong>
-        <p>Fechas, estados y relevancia del periodo en una vista de trabajo de verdad.</p>
+        <strong>Sabes que mover hoy</strong>
+        <p>Cobros vencidos, presupuestos esperando respuesta, gastos pendientes y foco fiscal en una vista de trabajo real.</p>
       </div>
       <div class="benefit-item">
-        <strong>Reduces olvidos y tareas repetitivas</strong>
-        <p>Menos tiempo buscando datos, menos dispersion y menos dependencias de hojas manuales.</p>
+        <strong>Reduces olvidos y cambios de contexto</strong>
+        <p>Menos tiempo buscando datos entre apps distintas y menos dependencias de hojas manuales.</p>
       </div>
       <div class="benefit-item">
         <strong>Centralizas lo esencial sin complicarte</strong>
-        <p>Clientes, facturas, gastos y recordatorios en un solo sitio, pensado para alguien que trabaja solo o con estructura ligera.</p>
+        <p>Clientes, facturas, presupuestos, gastos, proveedores y fiscalidad en un solo sitio, pensado para estructura ligera.</p>
       </div>
       <div class="benefit-item">
         <strong>Influyes directamente en el producto</strong>
@@ -177,7 +177,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       <div class="flow-step">
         <span>3</span>
         <strong>Zona de trabajo</strong>
-        <p>Una vez autenticado, el usuario entra al dashboard y navega por clientes, facturas, gastos y ajustes.</p>
+        <p>Una vez autenticado, el usuario entra al dashboard y navega por ventas, compras, fiscalidad y ajustes.</p>
       </div>
     </div>
   </div>
@@ -191,17 +191,17 @@ $isLoggedIn = !empty($_SESSION['user_id']);
         <h2>Beta gratuita</h2>
         <p class="pricing-price">0 €</p>
         <p class="pricing-description">
-          Acceso completo durante la fase de desarrollo. A cambio, te pedimos sugerencias de mejora y que nos informes si encuentras errores.
+          Acceso completo durante la fase de desarrollo. A cambio, te pedimos sugerencias de mejora y que nos informes si encuentras errores o fricciones en el uso real.
         </p>
         <ul class="pricing-list">
-          <li>Acceso a toda la plataforma actual</li>
+          <li>Acceso a facturas, presupuestos, gastos, proveedores y centro fiscal</li>
           <li>Nuevas mejoras segun evoluciona la beta</li>
           <li>Feedback directo para priorizar lo importante</li>
         </ul>
       </div>
       <div class="pricing-panel">
         <strong>Ideal si quieres probar desde ya</strong>
-        <p>Si eres autonomo y te interesa una herramienta clara para tu operativa diaria, puedes entrar ahora y ayudarnos a pulirla con uso real.</p>
+        <p>Si eres autonomo y te interesa una herramienta clara para tu operativa diaria, puedes entrar ahora y ayudarnos a pulirla con uso real de verdad.</p>
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
           <?= $isLoggedIn ? 'Abrir mi espacio' : 'Empezar gratis' ?>
         </a>
