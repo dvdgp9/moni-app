@@ -245,14 +245,14 @@ $suppliersJson = array_map(static function (array $supplier): array {
     <p style="color:var(--gray-600);margin:-8px 0 16px">Acepta PDF o foto desde movil. Si el archivo trae texto, intentaremos rellenar el gasto automaticamente.</p>
     
     <div id="dropzone" style="border:2px dashed var(--gray-300);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s">
-      <input type="file" id="document-input" accept="application/pdf,image/*" capture="environment" style="display:none" />
+      <input type="file" id="document-input" accept="application/pdf,image/*" style="display:none" />
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="1.5" style="margin-bottom:12px">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="17 8 12 3 7 8"/>
         <line x1="12" y1="3" x2="12" y2="15"/>
       </svg>
       <p style="margin:0;color:var(--gray-600)">Arrastra un PDF o una imagen aqui, o <span style="color:var(--primary-600);text-decoration:underline">haz clic para seleccionar</span></p>
-      <p style="margin:8px 0 0;font-size:0.85rem;color:var(--gray-500)">Movil: puedes hacer foto directa. Maximo 10MB</p>
+      <p style="margin:8px 0 0;font-size:0.85rem;color:var(--gray-500)">En movil podras elegir entre camara o archivos. Maximo 10MB</p>
     </div>
 
     <div id="upload-progress" style="display:none;margin-top:16px">
