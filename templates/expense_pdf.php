@@ -24,9 +24,14 @@ if (!is_file($fullPath)) {
 }
 
 $mimeType = ExpenseDocumentService::mimeTypeForPath($fullPath);
+$safeFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($fullPath)) ?: 'documento';
 header('Content-Type: ' . $mimeType);
 header('Content-Length: ' . (string)filesize($fullPath));
-header('Content-Disposition: inline; filename="' . basename($fullPath) . '"');
+header('Content-Disposition: inline; filename="' . $safeFilename . '"');
 header('X-Content-Type-Options: nosniff');
-readfile($fullPath);
+header('Cache-Control: private, max-age=0, must-revalidate');
+if (@readfile($fullPath) === false) {
+    http_response_code(500);
+    echo 'No se pudo leer el documento.';
+}
 exit;

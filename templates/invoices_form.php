@@ -92,6 +92,10 @@ function parse_items_from_post(): array {
   return $out;
 }
 
+function invoice_is_valid_decimal(string $value): bool {
+  return is_numeric(str_replace(',', '.', trim($value)));
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
@@ -126,8 +130,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($invoice['due_date'] !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $invoice['due_date'])) {
     $errors['due_date'] = 'Fecha de vencimiento inválida';
   }
+  if ($invoice['due_date'] !== null && empty($errors['issue_date']) && empty($errors['due_date']) && $invoice['due_date'] < $invoice['issue_date']) {
+    $errors['due_date'] = 'El vencimiento no puede ser anterior a la fecha de la factura';
+  }
   if (empty($items)) {
     $errors['items'] = 'Añade al menos una línea';
+  } else {
+    foreach ($items as $idx => $item) {
+      if (trim((string)$item['description']) === '') {
+        $errors['items'] = 'Todas las líneas deben tener descripción';
+        break;
+      }
+      if (!invoice_is_valid_decimal((string)$item['quantity']) || (float)str_replace(',', '.', (string)$item['quantity']) <= 0) {
+        $errors['items'] = 'La cantidad de cada línea debe ser numérica y mayor que 0';
+        break;
+      }
+      if (!invoice_is_valid_decimal((string)$item['unit_price']) || (float)str_replace(',', '.', (string)$item['unit_price']) < 0) {
+        $errors['items'] = 'El precio de cada línea debe ser numérico y no negativo';
+        break;
+      }
+      if (!invoice_is_valid_decimal((string)$item['vat_rate'])) {
+        $errors['items'] = 'El IVA de cada línea debe ser numérico';
+        break;
+      }
+      $vatValue = (float)str_replace(',', '.', (string)$item['vat_rate']);
+      if ($vatValue < 0 || $vatValue > 21) {
+        $errors['items'] = 'El IVA de cada línea debe estar entre 0 y 21';
+        break;
+      }
+      if (!invoice_is_valid_decimal((string)$item['irpf_rate'])) {
+        $errors['items'] = 'El IRPF de cada línea debe ser numérico';
+        break;
+      }
+      $irpfValue = (float)str_replace(',', '.', (string)$item['irpf_rate']);
+      if ($irpfValue < 0 || $irpfValue > 19) {
+        $errors['items'] = 'El IRPF de cada línea debe estar entre 0 y 19';
+        break;
+      }
+    }
   }
 
   if (empty($errors)) {

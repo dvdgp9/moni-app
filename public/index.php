@@ -166,8 +166,7 @@ if ($page === null && isset($_GET['page']) && isset($legacyRoutes[$_GET['page']]
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $params = $_GET;
         unset($params['page']);
-        header('Location: ' . route_path($page, $params), true, 302);
-        exit;
+        moni_redirect(route_path($page, $params));
     }
 }
 
@@ -222,13 +221,11 @@ $protected = [
 if (in_array($page, $protected, true) && empty($_SESSION['user_id'])) {
     \Moni\Support\Flash::add('error', 'Inicia sesión para continuar.');
     $_SESSION['_intended'] = $_SERVER['REQUEST_URI'] ?? route_path('dashboard');
-    header('Location: ' . route_path('login'));
-    exit;
+    moni_redirect(route_path('login'));
 }
 
 if (!empty($_SESSION['user_id']) && in_array($page, ['login', 'register'], true)) {
-    header('Location: ' . route_path('dashboard'));
-    exit;
+    moni_redirect(route_path('dashboard'));
 }
 
 if ($page === 'reminders' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && (($_POST['ajax'] ?? '') === '1')) {
