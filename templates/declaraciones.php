@@ -143,28 +143,6 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
 $checklist = TaxQuarterService::quarterChecklist($y, $q);
 $annualVat = TaxQuarterService::annualVatSummary($y);
 
-$quarterStatus = [
-    [
-        'label' => 'Borradores por emitir',
-        'value' => $checklist['draft_invoices'],
-        'tone' => $checklist['draft_invoices'] > 0 ? 'var(--warning)' : 'var(--success)',
-    ],
-    [
-        'label' => 'Gastos pendientes de revisar',
-        'value' => $checklist['pending_expenses'],
-        'tone' => $checklist['pending_expenses'] > 0 ? 'var(--warning)' : 'var(--success)',
-    ],
-    [
-        'label' => 'Gastos sin proveedor vinculado',
-        'value' => $checklist['unlinked_suppliers'],
-        'tone' => $checklist['unlinked_suppliers'] > 0 ? 'var(--warning)' : 'var(--success)',
-    ],
-    [
-        'label' => 'Facturas emitidas sin cobrar',
-        'value' => $checklist['unpaid_issued'],
-        'tone' => $checklist['unpaid_issued'] > 0 ? 'var(--gray-700)' : 'var(--success)',
-    ],
-];
 $activeModels = array_values(array_filter($storedModels, static fn(string $code): bool => isset($allModels[$code])));
 if (empty($activeModels)) {
     $activeModels = ['303', '130', '390'];
@@ -206,8 +184,8 @@ $hasFiscalData = abs($base) > 0.0001
       <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
       <input type="hidden" name="save_tax_setup" value="1" />
 
-      <div class="grid-2 declarations-setup-grid">
-        <div>
+      <div class="declarations-setup-grid">
+        <div class="declarations-setup-activity">
           <label for="activity_mode">Tipo de actividad</label>
           <select id="activity_mode" name="activity_mode">
             <?php foreach ($activityModes as $key => $label): ?>
@@ -215,26 +193,26 @@ $hasFiscalData = abs($base) > 0.0001
             <?php endforeach; ?>
           </select>
         </div>
-        <div>
-          <label>Modelos que te aplican</label>
-          <div class="declarations-models-grid">
-            <?php foreach ($allModels as $code => $model): ?>
-              <label class="declarations-model-option">
-                <input type="checkbox" name="tax_models[]" value="<?= htmlspecialchars((string)$code) ?>" <?= in_array((string)$code, $storedModels, true) ? 'checked' : '' ?> />
-                <span>
-                  <strong><?= htmlspecialchars($model['label']) ?></strong>
-                  <small><?= htmlspecialchars($model['description']) ?></small>
-                </span>
-              </label>
-            <?php endforeach; ?>
-          </div>
+        <div class="declarations-flags-grid">
+          <label class="declarations-flag"><input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($taxProfile['issues_invoices_with_irpf']) ? 'checked' : '' ?> /> Tus facturas suelen llevar retención de IRPF</label>
+          <label class="declarations-flag"><input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($taxProfile['has_rent_withholdings']) ? 'checked' : '' ?> /> Pagas alquiler con retención</label>
+          <label class="declarations-flag"><input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($taxProfile['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> /> Pagas profesionales o nóminas con retención</label>
         </div>
       </div>
 
-      <div class="declarations-flags-grid" style="margin-top:12px">
-        <label class="declarations-flag"><input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($taxProfile['issues_invoices_with_irpf']) ? 'checked' : '' ?> /> Tus facturas suelen llevar retención de IRPF</label>
-        <label class="declarations-flag"><input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($taxProfile['has_rent_withholdings']) ? 'checked' : '' ?> /> Pagas alquiler con retención</label>
-        <label class="declarations-flag"><input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($taxProfile['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> /> Pagas profesionales o nóminas con retención</label>
+      <div style="margin-top:12px">
+        <label>Modelos que te aplican</label>
+        <div class="declarations-models-grid declarations-models-grid-wide">
+          <?php foreach ($allModels as $code => $model): ?>
+            <label class="declarations-model-option">
+              <input type="checkbox" name="tax_models[]" value="<?= htmlspecialchars((string)$code) ?>" <?= in_array((string)$code, $storedModels, true) ? 'checked' : '' ?> />
+              <span>
+                <strong><?= htmlspecialchars($model['label']) ?></strong>
+                <small><?= htmlspecialchars($model['description']) ?></small>
+              </span>
+            </label>
+          <?php endforeach; ?>
+        </div>
       </div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:12px">
@@ -265,22 +243,11 @@ $hasFiscalData = abs($base) > 0.0001
     </div>
   </form>
 
-  <div class="card" style="margin-bottom:16px">
-    <div class="section-header">
-      <h3 class="section-title">Resultados del trimestre</h3>
+  <?php if (!$hasFiscalData): ?>
+    <div class="alert" style="margin-bottom:16px;background:rgba(15,163,177,0.08);border-color:rgba(15,163,177,0.18)">
+      No hay movimientos fiscales en este periodo con estado emitida/pagada para facturas. Revisa el trimestre o el estado de tus documentos.
     </div>
-    <div class="declarations-active-models">
-      <?php foreach ($activeModels as $code): ?>
-        <span class="declarations-active-chip"><?= htmlspecialchars($allModels[$code]['label']) ?></span>
-      <?php endforeach; ?>
-      <span class="declarations-range-pill"><?= htmlspecialchars($rangeStartEs) ?> — <?= htmlspecialchars($rangeEndEs) ?></span>
-    </div>
-    <?php if (!$hasFiscalData): ?>
-      <div class="alert" style="margin-top:12px;background:rgba(15,163,177,0.08);border-color:rgba(15,163,177,0.18)">
-        No hay movimientos fiscales en este periodo con estado emitida/pagada para facturas. Revisa el trimestre o el estado de tus documentos.
-      </div>
-    <?php endif; ?>
-  </div>
+  <?php endif; ?>
 
   <div class="declarations-results-grid" style="margin-bottom:16px">
     <?php if ($show303): ?>
@@ -292,11 +259,11 @@ $hasFiscalData = abs($base) > 0.0001
           </div>
           <span class="declarations-model-badge">Activo</span>
         </div>
-        <div class="grid-stats-4">
-          <div class="kpi"><div class="kpi-label">Base ventas</div><div class="kpi-value"><?= number_format($base, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">IVA devengado</div><div class="kpi-value"><?= number_format($devengado27, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">IVA deducible</div><div class="kpi-value"><?= number_format($deducible45, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">Resultado</div><div class="kpi-value" style="<?= $resultado46 < 0 ? 'color:var(--success)' : '' ?>"><?= number_format($resultado46, 2) ?> €</div></div>
+        <div class="declarations-kpi-grid declarations-kpi-grid-4">
+          <div class="declarations-kpi-card"><div class="kpi-label">Base ventas</div><div class="kpi-value"><?= number_format($base, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">IVA devengado</div><div class="kpi-value"><?= number_format($devengado27, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">IVA deducible</div><div class="kpi-value"><?= number_format($deducible45, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">Resultado</div><div class="kpi-value" style="<?= $resultado46 < 0 ? 'color:var(--success)' : '' ?>"><?= number_format($resultado46, 2) ?> €</div></div>
         </div>
 
         <?php if (!empty($byVat) || !empty($expensesByVat)): ?>
@@ -349,12 +316,12 @@ $hasFiscalData = abs($base) > 0.0001
           </div>
           <span class="declarations-model-badge">Activo</span>
         </div>
-        <div class="grid-stats-5">
-          <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value"><?= number_format($ingresos01, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">Gastos</div><div class="kpi-value"><?= number_format($gastos02, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">Rendimiento</div><div class="kpi-value"><?= number_format($rendimiento03, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">20%</div><div class="kpi-value"><?= number_format($cuota04, 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">A ingresar</div><div class="kpi-value"><?= number_format($casilla7, 2) ?> €</div></div>
+        <div class="declarations-kpi-grid declarations-kpi-grid-5">
+          <div class="declarations-kpi-card"><div class="kpi-label">Ingresos</div><div class="kpi-value"><?= number_format($ingresos01, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">Gastos</div><div class="kpi-value"><?= number_format($gastos02, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">Rendimiento</div><div class="kpi-value"><?= number_format($rendimiento03, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">20%</div><div class="kpi-value"><?= number_format($cuota04, 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">A ingresar</div><div class="kpi-value"><?= number_format($casilla7, 2) ?> €</div></div>
         </div>
         <div class="sep"></div>
         <form method="get" class="form-band">
@@ -383,15 +350,6 @@ $hasFiscalData = abs($base) > 0.0001
         </form>
       </div>
     <?php endif; ?>
-  </div>
-
-  <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
-    <?php foreach ($quarterStatus as $item): ?>
-      <div class="stat-card">
-        <div class="stat-value" style="color:<?= $item['tone'] ?>"><?= (int)$item['value'] ?></div>
-        <div class="stat-label"><?= htmlspecialchars($item['label']) ?></div>
-      </div>
-    <?php endforeach; ?>
   </div>
 
   <div class="grid-2" style="margin-top:16px">
@@ -429,11 +387,11 @@ $hasFiscalData = abs($base) > 0.0001
       <div class="card">
         <h3>Modelo 390</h3>
         <p style="color:var(--gray-600)">Resumen anual de IVA para tener visibilidad del ejercicio completo.</p>
-        <div class="grid-stats-4">
-          <div class="kpi"><div class="kpi-label">Base ventas año</div><div class="kpi-value"><?= number_format($annualVat['sales_base'], 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">IVA ventas año</div><div class="kpi-value"><?= number_format($annualVat['sales_vat'], 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">IVA gastos año</div><div class="kpi-value"><?= number_format($annualVat['expenses_vat'], 2) ?> €</div></div>
-          <div class="kpi"><div class="kpi-label">Resultado anual</div><div class="kpi-value"><?= number_format($annualVat['result'], 2) ?> €</div></div>
+        <div class="declarations-kpi-grid declarations-kpi-grid-4">
+          <div class="declarations-kpi-card"><div class="kpi-label">Base ventas año</div><div class="kpi-value"><?= number_format($annualVat['sales_base'], 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">IVA ventas año</div><div class="kpi-value"><?= number_format($annualVat['sales_vat'], 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">IVA gastos año</div><div class="kpi-value"><?= number_format($annualVat['expenses_vat'], 2) ?> €</div></div>
+          <div class="declarations-kpi-card"><div class="kpi-label">Resultado anual</div><div class="kpi-value"><?= number_format($annualVat['result'], 2) ?> €</div></div>
         </div>
       </div>
     <?php endif; ?>
@@ -459,14 +417,20 @@ $hasFiscalData = abs($base) > 0.0001
 <style>
 .declarations-setup-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(360px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(240px, 360px) 1fr;
+  gap: 12px;
   align-items: start;
+}
+.declarations-setup-activity select {
+  margin-bottom: 0;
 }
 .declarations-models-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+.declarations-models-grid-wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .declarations-model-option {
   display: flex;
@@ -550,6 +514,30 @@ $hasFiscalData = abs($base) > 0.0001
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
+.declarations-kpi-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+.declarations-kpi-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.declarations-kpi-grid-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.declarations-kpi-card {
+  background: #f7f9fc;
+  border: 1px solid #e6ebf1;
+  border-radius: 10px;
+  padding: 10px 10px 12px;
+  min-height: 72px;
+}
+.declarations-kpi-card .kpi-label {
+  margin-bottom: 6px;
+}
+.declarations-kpi-card .kpi-value {
+  font-size: 1.08rem;
+}
 .declarations-model-card h3 {
   margin-bottom: 4px;
 }
@@ -579,12 +567,21 @@ $hasFiscalData = abs($base) > 0.0001
   margin: 0 0 8px;
   color: var(--gray-700);
 }
+.declarations-breakdown-grid .table {
+  background: #f7f9fc;
+  border: 1px solid #e6ebf1;
+  border-radius: 10px;
+  overflow: hidden;
+}
 @media (max-width: 980px) {
   .declarations-setup-grid,
   .declarations-models-grid,
   .declarations-flags-grid,
+  .declarations-models-grid-wide,
   .declarations-results-grid,
-  .declarations-breakdown-grid {
+  .declarations-breakdown-grid,
+  .declarations-kpi-grid-4,
+  .declarations-kpi-grid-5 {
     grid-template-columns: 1fr;
   }
 }
