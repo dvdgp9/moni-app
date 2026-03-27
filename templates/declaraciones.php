@@ -14,6 +14,7 @@ $allModels = [
     '115' => ['label' => 'Modelo 115', 'description' => 'Retenciones por alquiler'],
     '390' => ['label' => 'Modelo 390', 'description' => 'Resumen anual de IVA'],
 ];
+$modelCodes = array_map('strval', array_keys($allModels));
 
 $activityModes = [
     'professional' => 'Profesional / freelance',
@@ -27,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_tax_setup'])) {
         try {
             $selectedModels = $_POST['tax_models'] ?? [];
             $selectedModels = is_array($selectedModels)
-                ? array_values(array_intersect(array_keys($allModels), array_map('strval', $selectedModels)))
+                ? array_values(array_intersect($modelCodes, array_map('strval', $selectedModels)))
                 : [];
             if (empty($selectedModels)) {
                 $selectedModels = ['303', '130'];
@@ -65,7 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_tax_setup'])) {
 }
 
 $storedModels = json_decode((string)(SettingsRepository::get('tax_models') ?? '[]'), true);
-$storedModels = is_array($storedModels) ? array_values(array_intersect(array_keys($allModels), $storedModels)) : [];
+$storedModels = is_array($storedModels)
+    ? array_values(array_intersect($modelCodes, array_map('strval', $storedModels)))
+    : [];
 if (empty($storedModels)) {
     $storedModels = ['303', '130', '390'];
 }
@@ -217,7 +220,7 @@ $hasFiscalData = abs($base) > 0.0001
           <div class="declarations-models-grid">
             <?php foreach ($allModels as $code => $model): ?>
               <label class="declarations-model-option">
-                <input type="checkbox" name="tax_models[]" value="<?= $code ?>" <?= in_array($code, $storedModels, true) ? 'checked' : '' ?> />
+                <input type="checkbox" name="tax_models[]" value="<?= htmlspecialchars((string)$code) ?>" <?= in_array((string)$code, $storedModels, true) ? 'checked' : '' ?> />
                 <span>
                   <strong><?= htmlspecialchars($model['label']) ?></strong>
                   <small><?= htmlspecialchars($model['description']) ?></small>
