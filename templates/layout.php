@@ -41,6 +41,7 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
         <a href="<?= route_path('dashboard') ?>" class="<?= ($page==='dashboard')?'active':'' ?>">Dashboard</a>
         <a href="<?= route_path('clients') ?>" class="<?= ($page==='clients'||$page==='client_form')?'active':'' ?>">Clientes</a>
         <a href="<?= route_path('invoices') ?>" class="<?= ($page==='invoices'||$page==='invoice_form')?'active':'' ?>">Facturas</a>
+        <a href="<?= route_path('quotes') ?>" class="<?= ($page==='quotes'||$page==='quote_form')?'active':'' ?>">Presupuestos</a>
         <a href="<?= route_path('expenses') ?>" class="<?= ($page==='expenses'||$page==='expense_form')?'active':'' ?>">Gastos</a>
         <a href="<?= route_path('suppliers') ?>" class="<?= ($page==='suppliers'||$page==='supplier_form')?'active':'' ?>">Proveedores</a>
         <a href="<?= route_path('declaraciones') ?>" class="<?= ($page==='declaraciones')?'active':'' ?>">Declaraciones</a>

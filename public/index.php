@@ -113,6 +113,9 @@ $legacyRoutes = [
     'profile' => 'profile',
     'reminders' => 'reminders',
     'declaraciones' => 'declaraciones',
+    'quotes' => 'quotes',
+    'quote_form' => 'quote_form',
+    'quote_pdf' => 'quote_pdf',
 ];
 
 $pathRoutes = [
@@ -139,9 +142,20 @@ $pathRoutes = [
     '/perfil' => 'profile',
     '/notificaciones' => 'reminders',
     '/declaraciones' => 'declaraciones',
+    '/presupuestos' => 'quotes',
+    '/presupuestos/nuevo' => 'quote_form',
+    '/presupuestos/editar' => 'quote_form',
+    '/presupuestos/pdf' => 'quote_pdf',
 ];
 
 $page = $pathRoutes[$requestPath] ?? null;
+
+// Public quote route: /presupuesto/{token}
+$quoteToken = null;
+if ($page === null && preg_match('#^/presupuesto/([a-f0-9]{64})$#', $requestPath, $m)) {
+    $page = 'quote_public';
+    $quoteToken = $m[1];
+}
 
 if ($page === null && isset($_GET['page']) && isset($legacyRoutes[$_GET['page']])) {
     $page = $legacyRoutes[$_GET['page']];
@@ -183,6 +197,10 @@ $routes = [
     'profile' => $root . '/templates/profile.php',
     'reminders' => $root . '/templates/reminders.php',
     'declaraciones' => $root . '/templates/declaraciones.php',
+    'quotes' => $root . '/templates/quotes_list.php',
+    'quote_form' => $root . '/templates/quotes_form.php',
+    'quote_pdf' => $root . '/templates/quotes_pdf.php',
+    'quote_public' => $root . '/templates/quotes_public.php',
 ];
 
 $template = $routes[$page] ?? $routes['home'];
@@ -194,6 +212,7 @@ $protected = [
     'expenses', 'expense_form', 'expense_pdf',
     'suppliers', 'supplier_form',
     'profile', 'reminders', 'declaraciones',
+    'quotes', 'quote_form', 'quote_pdf',
 ];
 
 if (in_array($page, $protected, true) && empty($_SESSION['user_id'])) {
@@ -218,7 +237,12 @@ if ($page === 'invoices' && (($_GET['ajax'] ?? '') === '1')) {
     exit;
 }
 
-if ($page === 'invoice_pdf' || $page === 'expense_pdf') {
+if ($page === 'quote_public') {
+    include $template;
+    exit;
+}
+
+if ($page === 'invoice_pdf' || $page === 'expense_pdf' || $page === 'quote_pdf') {
     if (empty($_SESSION['user_id'])) {
         http_response_code(403);
         echo 'Inicia sesión para acceder al PDF';

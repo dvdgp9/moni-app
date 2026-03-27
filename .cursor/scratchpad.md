@@ -1,3 +1,174 @@
+# Presupuestos con envío y aceptación
+
+## Background and Motivation
+El usuario quiere añadir un sistema completo de **presupuestos (quotes)** a Moni con el siguiente flujo:
+1. **Crear presupuestos** — formulario similar a facturas (cliente, líneas, IVA/IRPF, notas, fecha validez)
+2. **Enviar por correo** con enlace seguro — email al cliente con link a vista pública
+3. **Vista pública para el cliente** — página accesible sin login donde el cliente ve el presupuesto completo
+4. **Aceptar/Rechazar** — el cliente puede aceptar o rechazar desde la vista pública
+5. **Convertir a factura en un clic** — desde el panel del usuario, un presupuesto aceptado se convierte en factura (borrador)
+
+La app ya tiene un sistema completo de facturas (`invoices` + `invoice_items`) con repositorios, formulario, listado, PDF y numeración. Los presupuestos seguirán patrones idénticos pero con estados y flujo propios.
+
+## Key Challenges and Analysis
+
+### Arquitectura de datos
+- **Tabla `quotes`**: similar a `invoices` pero con campos adicionales: `token` (UUID para enlace seguro), `valid_until` (fecha de validez), `status` (draft/sent/accepted/rejected/expired/converted), `accepted_at`, `rejected_at`, `rejection_reason`, `converted_invoice_id` (FK a invoices).
+- **Tabla `quote_items`**: idéntica a `invoice_items` pero referenciando `quote_id`.
+- No se necesita numeración secuencial formal como facturas (no hay obligación legal), pero sí un identificador legible tipo `P-YYYY-NNNN`.
+
+### Seguridad del enlace público
+- Token UUID v4 (32 hex chars) en la URL: `/presupuesto/{token}` — impredecible, no adivinable.
+- La vista pública NO requiere sesión. Se valida solo por token.
+- El token se genera al crear el presupuesto.
+- Considerar expiración: si `valid_until` ha pasado, mostrar mensaje de expirado.
+
+### Envío por email
+- Reutilizar `EmailService` con nuevo método `sendQuote()` y plantilla HTML dedicada.
+- El email incluye: resumen del presupuesto, importe total, enlace al presupuesto, botones de acción.
+
+### Vista pública
+- Nueva ruta `/presupuesto/{token}` que NO pasa por autenticación.
+- Usa `layout_public.php` o un layout minimalista propio (sin nav de la app).
+- Muestra: datos del emisor, datos del cliente, líneas, totales, botones Aceptar/Rechazar.
+- Al rechazar, opcionalmente pedir motivo.
+
+### Conversión a factura
+- Copiar datos del presupuesto (cliente, líneas, notas) a una nueva factura en estado `draft`.
+- Marcar el presupuesto como `converted` y guardar `converted_invoice_id`.
+- Un presupuesto solo se puede convertir una vez.
+
+### Integración en UI existente
+- Añadir "Presupuestos" al menú de navegación (entre Facturas y Gastos).
+- Dashboard: tarjeta resumen de presupuestos pendientes.
+
+## High-level Task Breakdown
+
+### Tarea 1: Migración BD — tablas `quotes` y `quote_items`
+**Archivos:** `database/migrations/009_create_quotes.sql`
+**Detalle:**
+- Tabla `quotes`: id, user_id, quote_number, client_id, status ENUM('draft','sent','accepted','rejected','expired','converted'), token VARCHAR(64) UNIQUE, issue_date, valid_until, notes, accepted_at, rejected_at, rejection_reason, converted_invoice_id, created_at
+- Tabla `quote_items`: id, quote_id, description, quantity, unit_price, vat_rate, irpf_rate
+- Índice en token (para búsqueda pública rápida)
+**Criterio de éxito:** SQL ejecutable sin errores, tablas creadas con estructura correcta.
+
+### Tarea 2: Repositorios — `QuotesRepository` y `QuoteItemsRepository`
+**Archivos:** `src/Repositories/QuotesRepository.php`, `src/Repositories/QuoteItemsRepository.php`
+**Detalle:**
+- `QuotesRepository`: all(), find(), findByToken(), create(), update(), setStatus(), delete(), countByClient()
+- `QuoteItemsRepository`: byQuote(), deleteByQuote(), insertMany()
+- Patrón idéntico a `InvoicesRepository` / `InvoiceItemsRepository` con scoping por `user_id`
+- `findByToken()` NO requiere autenticación (es para vista pública), pero sí valida que el token existe
+**Criterio de éxito:** Métodos CRUD funcionales, findByToken devuelve datos sin requerir sesión.
+
+### Tarea 3: Servicio de numeración — `QuoteNumberingService`
+**Archivos:** `src/Services/QuoteNumberingService.php`
+**Detalle:**
+- Tabla `quote_sequences` (user_id, seq_year, last_number) — puede ir en la misma migración 009
+- Formato: `P-YYYY-NNNN` (P de presupuesto)
+- Asignación atómica como `InvoiceNumberingService`
+**Criterio de éxito:** Numeración secuencial única por usuario y año.
+
+### Tarea 4: Formulario de presupuesto — crear/editar
+**Archivos:** `templates/quotes_form.php`
+**Detalle:**
+- Mismo formulario que `invoices_form.php`: cliente, fecha, líneas con IVA/IRPF, notas, totales en vivo
+- Campo adicional: "Válido hasta" (fecha de validez, por defecto +30 días)
+- Estado: Borrador / Enviado
+- Al guardar como borrador, no se asigna número. Al enviar, se asigna número.
+**Criterio de éxito:** Formulario funcional, crea/edita presupuestos con líneas y totales correctos.
+
+### Tarea 5: Listado de presupuestos
+**Archivos:** `templates/quotes_list.php`
+**Detalle:**
+- Tabla con: Nº, Cliente, Estado (badge con colores), Fecha, Válido hasta, Importe, Acciones
+- Acciones: Editar, PDF, Enviar, Convertir a factura, Eliminar
+- Filtros: búsqueda, año, estados
+- Resumen: total presupuestos, pendientes, aceptados, importe
+**Criterio de éxito:** Listado funcional con filtros y acciones correctas según estado.
+
+### Tarea 6: PDF del presupuesto
+**Archivos:** `templates/quotes_pdf.php`
+**Detalle:**
+- Reutilizar la plantilla de `invoices_pdf.php` adaptada: título "Presupuesto" en vez de "Factura", mostrar "Válido hasta", sin fecha de vencimiento de pago.
+- Mismo estilo con branding del usuario (colores, logo).
+**Criterio de éxito:** PDF generado con diseño coherente al de facturas.
+
+### Tarea 7: Envío por email
+**Archivos:** `src/Services/EmailService.php` (nuevo método), `templates/emails/quote.php`, `templates/emails/quote.txt.php`
+**Detalle:**
+- Método `sendQuote(string $to, string $subject, array $data): bool`
+- Plantilla HTML branded: resumen del presupuesto, enlace público, CTA
+- `$data`: brandName, appUrl, quoteNumber, clientName, total, validUntil, publicUrl
+- Se envía al email del cliente (tomado de `clients.email`)
+**Criterio de éxito:** Email recibido con diseño correcto y enlace funcional.
+
+### Tarea 8: Vista pública del presupuesto
+**Archivos:** `templates/quotes_public.php`
+**Detalle:**
+- Ruta: `/presupuesto/{token}` — se añade patrón regex al router en `index.php`
+- Sin autenticación requerida. Solo token válido.
+- Layout minimalista (sin nav de la app, solo branding del emisor)
+- Muestra: datos emisor, datos cliente, líneas, totales, estado actual
+- Si estado = `sent` y no expirado: botones "Aceptar" y "Rechazar"
+- Si estado = `accepted`: mensaje "Presupuesto aceptado el DD/MM/YYYY"
+- Si estado = `rejected`: mensaje "Presupuesto rechazado"
+- Si expirado (valid_until < hoy y status=sent): mensaje "Presupuesto expirado"
+- POST para aceptar/rechazar: valida token + CSRF, actualiza estado y timestamps
+**Criterio de éxito:** Vista accesible por enlace, aceptar/rechazar funciona, estados se reflejan correctamente.
+
+### Tarea 9: Conversión a factura
+**Archivos:** lógica en `templates/quotes_list.php` (acción POST) o servicio dedicado
+**Detalle:**
+- Botón "Convertir a factura" solo visible si estado = `accepted`
+- Crea factura draft con: mismo client_id, issue_date=hoy, copiar líneas, copiar notas
+- Actualiza quote: status='converted', converted_invoice_id=nueva factura
+- Redirige al formulario de la nueva factura para revisar/emitir
+**Criterio de éxito:** Un clic crea factura borrador con datos del presupuesto, presupuesto queda marcado como convertido.
+
+### Tarea 10: Integración en navegación y rutas
+**Archivos:** `public/index.php`, `src/bootstrap.php`, `templates/layout.php`
+**Detalle:**
+- Nuevas rutas: `/presupuestos`, `/presupuestos/nuevo`, `/presupuestos/editar`, `/presupuestos/pdf`, `/presupuesto/{token}` (pública)
+- Enlace "Presupuestos" en nav (entre Facturas y Gastos)
+- Rutas protegidas excepto la pública
+**Criterio de éxito:** Navegación funcional, rutas resuelven correctamente, vista pública no pide login.
+
+## Project Status Board
+- [x] T1: Migración BD (quotes, quote_items, quote_sequences)
+- [x] T2: Repositorios (QuotesRepository, QuoteItemsRepository)
+- [x] T3: Servicio de numeración (QuoteNumberingService)
+- [x] T4: Formulario de presupuesto (crear/editar)
+- [x] T5: Listado de presupuestos
+- [x] T6: PDF del presupuesto
+- [x] T7: Envío por email (método + plantillas)
+- [x] T8: Vista pública del presupuesto (ruta + template + aceptar/rechazar)
+- [x] T9: Conversión a factura
+- [x] T10: Integración en navegación y rutas
+
+## Current Status / Progress Tracking
+- 2026-03-27: **Presupuestos IMPLEMENTADO** — Todos los archivos creados:
+  - Migración: `database/migrations/009_create_quotes.sql` (3 tablas: quotes, quote_items, quote_sequences)
+  - Repositorios: `QuotesRepository.php` (con findByToken, acceptByToken, rejectByToken, markConverted), `QuoteItemsRepository.php` (con byQuotePublic para vista pública)
+  - Servicio: `QuoteNumberingService.php` (formato P-YYYY-NNNN)
+  - Templates: `quotes_form.php`, `quotes_list.php`, `quotes_pdf.php`, `quotes_public.php`
+  - Email: `EmailService::sendQuote()` + plantillas `emails/quote.php` y `emails/quote.txt.php`
+  - Rutas: `index.php` actualizado con rutas protegidas + ruta pública `/presupuesto/{token}`
+  - Navegación: enlace "Presupuestos" añadido en `layout.php`
+  - CSS: badge `status-converted` añadido en `styles.css`
+  - **Pendiente usuario:** Ejecutar migración `009_create_quotes.sql` en BD local/producción
+
+## Executor's Feedback or Assistance Requests
+- El usuario debe ejecutar la migración SQL antes de probar la funcionalidad.
+- La vista pública tiene su propio CSS inline completo (no depende de styles.css de la app), diseñada para ser limpia y profesional para clientes.
+
+## Lessons
+- La ruta pública `/presupuesto/{token}` usa regex en el router porque es un patrón dinámico, no una ruta estática. Se procesa antes del auth check y sale con exit.
+- El token es de 64 caracteres hex (32 bytes random) — suficientemente seguro para enlaces públicos.
+- Los badges de estado reutilizan las clases CSS existentes (status-draft, status-issued=sent, status-paid=accepted, status-cancelled=rejected) más el nuevo status-converted.
+
+---
+
 # Scratchpad: Corrección de recordatorios duplicados (Cierre T4 / Resumen Anual)
 
 ## Background and Motivation

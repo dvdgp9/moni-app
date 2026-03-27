@@ -568,6 +568,7 @@ input[type="color"]::-moz-color-swatch {
 .status-issued { background: #FEF3C7; color: #D97706; }
 .status-paid { background: #D1FAE5; color: #065F46; }
 .status-cancelled { background: #FEE2E2; color: #B91C1C; }
+.status-converted { background: #DBEAFE; color: #1D4ED8; }
 
 /* Invoices page */
 .invoices-filter-grid {

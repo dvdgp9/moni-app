@@ -103,6 +103,9 @@ if (!function_exists('route_path')) {
             'profile' => '/perfil',
             'reminders' => '/notificaciones',
             'declaraciones' => '/declaraciones',
+            'quotes' => '/presupuestos',
+            'quote_form' => isset($params['id']) ? '/presupuestos/editar' : '/presupuestos/nuevo',
+            'quote_pdf' => '/presupuestos/pdf',
             default => '/dashboard',
         };
 
