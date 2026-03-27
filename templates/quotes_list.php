@@ -8,6 +8,8 @@ use Moni\Support\Csrf;
 use Moni\Support\Config;
 use Moni\Services\QuoteNumberingService;
 use Moni\Services\InvoiceService;
+use Moni\Repositories\UsersRepository;
+use Moni\Services\AuthService;
 
 $flashAll = Flash::getAll();
 
@@ -49,8 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $appUrl = rtrim((string)Config::get('app_url', ''), '/');
               $savedQuote = QuotesRepository::find($id);
               $publicUrl = $appUrl . '/presupuesto/' . ($savedQuote['token'] ?? '');
+              $user = UsersRepository::find((int)AuthService::userId());
+              $senderName = trim((string)(($user['company_name'] ?? '') ?: ($user['name'] ?? Config::get('app_name', 'Moni'))));
+              $senderEmail = trim((string)(($user['billing_email'] ?? '') ?: ($user['email'] ?? '')));
               try {
-                \Moni\Services\EmailService::sendQuote($client['email'], 'Presupuesto ' . $num, [
+                \Moni\Services\EmailService::sendQuote($client['email'], 'Presupuesto de ' . $senderName, [
                   'brandName' => Config::get('app_name', 'Moni'),
                   'appUrl' => $appUrl,
                   'quoteNumber' => $num,
@@ -58,6 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   'total' => number_format($totals['total'], 2, ',', '.') . ' €',
                   'validUntil' => $qt['valid_until'] ? date('d/m/Y', strtotime($qt['valid_until'])) : '',
                   'publicUrl' => $publicUrl,
+                  'senderName' => $senderName,
+                  'senderEmail' => $senderEmail,
+                  'platformName' => Config::get('app_name', 'Moni'),
                 ]);
                 Flash::add('success', 'Presupuesto ' . $num . ' enviado a ' . $client['email']);
               } catch (Throwable $mailErr) {

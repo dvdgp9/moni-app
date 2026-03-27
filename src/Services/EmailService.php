@@ -125,7 +125,8 @@ final class EmailService
 
     /**
      * Send a branded quote email with HTML + plain text parts.
-     * $data keys: brandName, appUrl, quoteNumber, clientName, total, validUntil, publicUrl
+     * $data keys: brandName, appUrl, quoteNumber, clientName, total, validUntil, publicUrl,
+     * senderName, senderEmail, platformName
      */
     public static function sendQuote(string $to, string $subject, array $data): bool
     {
@@ -154,8 +155,16 @@ final class EmailService
         $mail->CharSet = 'UTF-8';
         $mail->SMTPDebug = $debug ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
 
+        $senderName = (string)($data['senderName'] ?? '');
+        $senderEmail = (string)($data['senderEmail'] ?? '');
+        $platformName = (string)($data['platformName'] ?? (Config::get('app_name') ?: 'Moni'));
+
         if (!empty($cfg['from_address'])) {
-            $mail->setFrom((string)$cfg['from_address'], (string)($cfg['from_name'] ?? ''));
+            $fromName = $senderName !== '' ? ($senderName . ' vía ' . $platformName) : (string)($cfg['from_name'] ?? $platformName);
+            $mail->setFrom((string)$cfg['from_address'], $fromName);
+            if ($senderEmail !== '') {
+                $mail->addReplyTo($senderEmail, $senderName !== '' ? $senderName : $platformName);
+            }
         }
         $mail->addAddress($to);
         $mail->Subject = $subject;
@@ -167,9 +176,12 @@ final class EmailService
         $total = (string)($data['total'] ?? '');
         $validUntil = (string)($data['validUntil'] ?? '');
         $publicUrl = (string)($data['publicUrl'] ?? '');
+        $senderName = (string)($data['senderName'] ?? $brandName);
+        $senderEmail = (string)($data['senderEmail'] ?? '');
+        $platformName = (string)($data['platformName'] ?? (Config::get('app_name') ?: 'Moni'));
 
-        $html = self::renderTemplate(__DIR__ . '/../../templates/emails/quote.php', compact('brandName', 'appUrl', 'quoteNumber', 'clientName', 'total', 'validUntil', 'publicUrl'));
-        $text = self::renderTemplate(__DIR__ . '/../../templates/emails/quote.txt.php', compact('brandName', 'appUrl', 'quoteNumber', 'clientName', 'total', 'validUntil', 'publicUrl'));
+        $html = self::renderTemplate(__DIR__ . '/../../templates/emails/quote.php', compact('brandName', 'appUrl', 'quoteNumber', 'clientName', 'total', 'validUntil', 'publicUrl', 'senderName', 'senderEmail', 'platformName'));
+        $text = self::renderTemplate(__DIR__ . '/../../templates/emails/quote.txt.php', compact('brandName', 'appUrl', 'quoteNumber', 'clientName', 'total', 'validUntil', 'publicUrl', 'senderName', 'senderEmail', 'platformName'));
 
         $mail->isHTML(true);
         $mail->Body = $html;

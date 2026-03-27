@@ -129,7 +129,9 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
     .qp-container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
     .qp-brand { display: flex; align-items: center; gap: 10px; }
     .qp-brand img { height: 36px; }
-    .qp-brand span { font-weight: 800; font-size: 20px; color: <?= qp_h($primary) ?>; }
+    .qp-brand-mark { font-weight: 800; font-size: 20px; color: <?= qp_h($primary) ?>; }
+    .qp-brand-meta { display:flex; flex-direction:column; gap:2px; }
+    .qp-brand-sub { font-size: 12px; color: #64748b; }
     .qp-main { padding: 32px 0 60px; }
     .qp-card {
       background: #fff; border-radius: 14px; border: 1px solid #e2e8f0;
@@ -240,8 +242,14 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
         <?php if ($logoPath): ?>
           <img src="<?= $logoPath ?>" alt="<?= qp_h($brandName) ?>" />
         <?php else: ?>
-          <span><?= qp_h($brandName) ?></span>
+          <span class="qp-brand-mark"><?= qp_h($brandName) ?></span>
         <?php endif; ?>
+        <div class="qp-brand-meta">
+          <?php if ($logoPath): ?>
+            <span class="qp-brand-mark"><?= qp_h($brandName) ?></span>
+          <?php endif; ?>
+          <span class="qp-brand-sub">Presupuesto enviado por <?= qp_h($brandName) ?></span>
+        </div>
       </div>
     </div>
   </header>
@@ -263,7 +271,10 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
       <div class="qp-card">
         <!-- Header -->
         <div class="qp-card-header">
-          <h1>Presupuesto <?= qp_h($quote['quote_number'] ?? '') ?></h1>
+          <div>
+            <h1>Presupuesto <?= qp_h($quote['quote_number'] ?? '') ?></h1>
+            <div style="margin-top:4px;font-size:14px;color:#64748b;">Documento compartido por <?= qp_h($brandName) ?></div>
+          </div>
           <?php
             $badgeClass = match ($quote['status']) {
                 'sent' => ($isExpired ? 'qp-badge-expired' : 'qp-badge-pending'),
@@ -398,7 +409,7 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
       </div>
 
       <div class="qp-footer">
-        Presupuesto generado por <?= qp_h($brandName) ?>
+        Presupuesto compartido por <?= qp_h($brandName) ?> · Gestionado con <?= qp_h(Config::get('app_name', 'Moni')) ?>
       </div>
     </div>
   </main>

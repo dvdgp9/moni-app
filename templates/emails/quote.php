@@ -1,5 +1,5 @@
 <?php
-// Variables: $brandName, $appUrl, $quoteNumber, $clientName, $total, $validUntil, $publicUrl
+// Variables: $brandName, $appUrl, $quoteNumber, $clientName, $total, $validUntil, $publicUrl, $senderName, $senderEmail, $platformName
 $brandName = $brandName ?? 'Moni';
 $appUrl = $appUrl ?? '#';
 $quoteNumber = $quoteNumber ?? '';
@@ -7,6 +7,9 @@ $clientName = $clientName ?? '';
 $total = $total ?? '';
 $validUntil = $validUntil ?? '';
 $publicUrl = $publicUrl ?? '#';
+$senderName = $senderName ?? $brandName;
+$senderEmail = $senderEmail ?? '';
+$platformName = $platformName ?? 'Moni';
 ?>
 <!doctype html>
 <html lang="es">
@@ -23,17 +26,18 @@ $publicUrl = $publicUrl ?? '#';
           <!-- Header -->
           <tr>
             <td style="padding:18px 22px;border-bottom:1px solid #eef2f7;background:#ffffff;">
-              <div style="font-weight:800;font-size:18px;color:#0FA3B1;letter-spacing:0.3px;"><?= htmlspecialchars($brandName) ?></div>
+              <div style="font-weight:800;font-size:18px;color:#0f172a;letter-spacing:0.1px;"><?= htmlspecialchars($senderName) ?></div>
+              <div style="margin-top:4px;font-size:12px;color:#64748b;">Te ha enviado un presupuesto</div>
             </td>
           </tr>
           <!-- Greeting -->
           <tr>
             <td style="padding:22px 22px 6px 22px;">
-              <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#0f172a;">Presupuesto <?= htmlspecialchars($quoteNumber) ?></h1>
+              <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#0f172a;"><?= htmlspecialchars($senderName) ?> te ha enviado un presupuesto</h1>
               <?php if ($clientName): ?>
                 <p style="margin:0 0 12px 0;color:#475569;font-size:14px;">Hola <?= htmlspecialchars($clientName) ?>,</p>
               <?php endif; ?>
-              <p style="margin:0 0 14px 0;color:#334155;font-size:14px;">Te hemos preparado un presupuesto. Puedes revisarlo y aceptarlo o rechazarlo directamente desde el enlace de abajo.</p>
+              <p style="margin:0 0 14px 0;color:#334155;font-size:14px;">Puedes revisarlo y aceptarlo o rechazarlo directamente desde el enlace de abajo.</p>
             </td>
           </tr>
           <!-- Summary card -->
@@ -71,13 +75,16 @@ $publicUrl = $publicUrl ?? '#';
           <!-- Note -->
           <tr>
             <td style="padding:0 22px 18px 22px;">
-              <p style="margin:0;color:#64748b;font-size:13px;">Desde el enlace podrás ver todos los detalles y aceptar o rechazar el presupuesto directamente.</p>
+              <p style="margin:0;color:#64748b;font-size:13px;">Desde el enlace podrás ver todos los detalles del presupuesto y responder directamente.</p>
+              <?php if ($senderEmail): ?>
+                <p style="margin:10px 0 0;color:#64748b;font-size:13px;">Si necesitas responder por correo, puedes escribir a <a href="mailto:<?= htmlspecialchars($senderEmail) ?>" style="color:#0FA3B1;text-decoration:none;"><?= htmlspecialchars($senderEmail) ?></a>.</p>
+              <?php endif; ?>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
             <td style="padding:14px 22px;border-top:1px solid #eef2f7;background:#f9fbfd;color:#64748b;font-size:12px;">
-              <div>Enviado desde <a href="<?= htmlspecialchars($appUrl) ?>" style="color:#0FA3B1;text-decoration:none;"><?= htmlspecialchars($brandName) ?></a></div>
+              <div>Enviado por <?= htmlspecialchars($senderName) ?> con ayuda de <a href="<?= htmlspecialchars($appUrl) ?>" style="color:#0FA3B1;text-decoration:none;"><?= htmlspecialchars($platformName) ?></a></div>
             </td>
           </tr>
         </table>
