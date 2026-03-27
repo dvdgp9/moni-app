@@ -106,6 +106,7 @@ final class ExpensesRepository
     public static function update(int $id, array $data): bool
     {
         $pdo = Database::pdo();
+        $existing = self::find($id);
         $stmt = $pdo->prepare('
             UPDATE expenses SET
                 supplier_name = :supplier_name,
@@ -118,11 +119,12 @@ final class ExpensesRepository
                 vat_amount = :vat_amount,
                 total_amount = :total_amount,
                 category = :category,
+                pdf_path = :pdf_path,
                 notes = :notes,
                 status = :status
             WHERE id = :id AND user_id = :user_id
         ');
-        return $stmt->execute([
+        $updated = $stmt->execute([
             ':id' => $id,
             ':user_id' => self::currentUserId(),
             ':supplier_name' => $data['supplier_name'],
@@ -135,9 +137,24 @@ final class ExpensesRepository
             ':vat_amount' => (float)($data['vat_amount'] ?? 0),
             ':total_amount' => (float)($data['total_amount'] ?? 0),
             ':category' => $data['category'] ?? 'otros',
+            ':pdf_path' => $data['pdf_path'] ?? null,
             ':notes' => $data['notes'] ?? null,
             ':status' => $data['status'] ?? 'pending',
         ]);
+
+        if (
+            $updated
+            && $existing
+            && !empty($existing['pdf_path'])
+            && ($existing['pdf_path'] !== ($data['pdf_path'] ?? null))
+        ) {
+            $oldPath = dirname(__DIR__, 2) . '/' . ltrim((string)$existing['pdf_path'], '/');
+            if (is_file($oldPath)) {
+                @unlink($oldPath);
+            }
+        }
+
+        return $updated;
     }
 
     public static function delete(int $id): bool

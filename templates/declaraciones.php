@@ -157,6 +157,40 @@ $hasFiscalData = abs($base) > 0.0001
     || abs($expensesVat) > 0.0001
     || abs($ingresos01) > 0.0001
     || abs($gastos02) > 0.0001;
+$recommendedModels = ['303', '130', '390'];
+if (!empty($taxProfile['has_payroll_or_professional_withholdings'])) {
+    $recommendedModels[] = '111';
+}
+if (!empty($taxProfile['has_rent_withholdings'])) {
+    $recommendedModels[] = '115';
+}
+$recommendedModels = array_values(array_unique($recommendedModels));
+$missingRecommendedModels = array_values(array_diff($recommendedModels, $activeModels));
+$quarterDeadlines = [
+    1 => ['window' => '1-20 abril', 'label' => 'Presentacion del 1T'],
+    2 => ['window' => '1-20 julio', 'label' => 'Presentacion del 2T'],
+    3 => ['window' => '1-20 octubre', 'label' => 'Presentacion del 3T'],
+    4 => ['window' => '1-30 enero', 'label' => 'Presentacion del 4T y cierre anual'],
+];
+$selectedDeadline = $quarterDeadlines[$q];
+$selectedDeadlineModels = array_values(array_filter(['303', '130', '111', '115'], static fn(string $code): bool => in_array($code, $activeModels, true)));
+if ($q === 4 && in_array('390', $activeModels, true)) {
+    $selectedDeadlineModels[] = '390';
+}
+$selectedDeadlineModels = array_values(array_unique($selectedDeadlineModels));
+$currentMonth = (int)date('n');
+if ($currentMonth === 1) {
+    $nextQuarter = 4;
+} elseif ($currentMonth <= 4) {
+    $nextQuarter = 1;
+} elseif ($currentMonth <= 7) {
+    $nextQuarter = 2;
+} elseif ($currentMonth <= 10) {
+    $nextQuarter = 3;
+} else {
+    $nextQuarter = 4;
+}
+$nextDeadline = $quarterDeadlines[$nextQuarter];
 ?>
 <section>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -242,6 +276,61 @@ $hasFiscalData = abs($base) > 0.0001
       </div>
     </div>
   </form>
+
+  <div class="declarations-guide-grid" style="margin-bottom:16px">
+    <div class="card">
+      <div class="section-header">
+        <h3 class="section-title">Guia fiscal</h3>
+      </div>
+      <div class="declarations-guide-list">
+        <div class="declarations-guide-item">
+          <strong>Modelos recomendados segun tu perfil</strong>
+          <div class="declarations-active-models" style="margin-top:8px">
+            <?php foreach ($recommendedModels as $code): ?>
+              <span class="declarations-active-chip"><?= htmlspecialchars($allModels[$code]['label']) ?></span>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <div class="declarations-guide-item">
+          <strong>Modelos que presentarias para este trimestre</strong>
+          <p style="margin:8px 0 0;color:var(--gray-600)">
+            <?= htmlspecialchars($selectedDeadline['label']) ?>: <?= htmlspecialchars($selectedDeadline['window']) ?>.
+          </p>
+          <div class="declarations-active-models" style="margin-top:8px">
+            <?php foreach ($selectedDeadlineModels as $code): ?>
+              <span class="declarations-range-pill"><?= htmlspecialchars($allModels[$code]['label']) ?></span>
+            <?php endforeach; ?>
+            <?php if (empty($selectedDeadlineModels)): ?>
+              <span class="declarations-range-pill">Sin modelos activos para este trimestre</span>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-header">
+        <h3 class="section-title">Proximo hito</h3>
+      </div>
+      <div class="declarations-deadline-card">
+        <div class="declarations-deadline-main">
+          <span class="declarations-model-badge"><?= htmlspecialchars($nextDeadline['label']) ?></span>
+          <strong style="display:block;font-size:1.15rem;margin-top:10px"><?= htmlspecialchars($nextDeadline['window']) ?></strong>
+          <p style="color:var(--gray-600);margin:8px 0 0">
+            Puedes dejar avisos activos en notificaciones para no llegar justo al cierre.
+          </p>
+        </div>
+        <?php if (!empty($missingRecommendedModels)): ?>
+          <div class="alert" style="margin:12px 0 0;background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.18);color:#8a5a00">
+            Te faltan por activar: <?= htmlspecialchars(implode(', ', array_map(static fn(string $code): string => $allModels[$code]['label'], $missingRecommendedModels))) ?>.
+          </div>
+        <?php endif; ?>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <a href="<?= route_path('reminders') ?>" class="btn btn-secondary btn-sm">Configurar avisos</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <?php if (!$hasFiscalData): ?>
     <div class="alert" style="margin-bottom:16px;background:rgba(15,163,177,0.08);border-color:rgba(15,163,177,0.18)">
@@ -509,6 +598,32 @@ $hasFiscalData = abs($base) > 0.0001
   background: rgba(132,204,22,0.16);
   color: #447407;
 }
+.declarations-guide-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 14px;
+}
+.declarations-guide-list {
+  display: grid;
+  gap: 12px;
+}
+.declarations-guide-item {
+  padding: 12px 14px;
+  background: #f7f9fc;
+  border: 1px solid #e6ebf1;
+  border-radius: 12px;
+}
+.declarations-deadline-card {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.declarations-deadline-main {
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(15, 163, 177, 0.08), rgba(247,249,252,0.9));
+  border: 1px solid #d9edf0;
+  border-radius: 12px;
+}
 .declarations-results-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -578,6 +693,7 @@ $hasFiscalData = abs($base) > 0.0001
   .declarations-models-grid,
   .declarations-flags-grid,
   .declarations-models-grid-wide,
+  .declarations-guide-grid,
   .declarations-results-grid,
   .declarations-breakdown-grid,
   .declarations-kpi-grid-4,

@@ -1,6 +1,7 @@
 <?php
 use Moni\Repositories\ExpensesRepository;
 use Moni\Repositories\SuppliersRepository;
+use Moni\Services\ExpenseDocumentService;
 use Moni\Services\PdfExtractorService;
 use Moni\Services\InvoiceParserService;
 use Moni\Support\Csrf;
@@ -51,8 +52,9 @@ if ($editing) {
         exit;
     }
 }
+$documentIsImage = !empty($expense['pdf_path']) ? ExpenseDocumentService::isImagePath((string)$expense['pdf_path']) : false;
 
-// Handle PDF upload and extraction (AJAX or form submit)
+// Handle document upload and extraction (AJAX or form submit)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'extract') {
     while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json');
@@ -62,12 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
-    if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
+    if (!isset($_FILES['document']) || $_FILES['document']['error'] !== UPLOAD_ERR_OK) {
         echo json_encode(['error' => 'Error al subir el archivo']);
         exit;
     }
 
-    $file = $_FILES['pdf'];
+    $file = $_FILES['document'];
     $maxSize = 10 * 1024 * 1024; // 10MB
 
     if ($file['size'] > $maxSize) {
@@ -75,48 +77,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
-
-    if ($mimeType !== 'application/pdf') {
-        echo json_encode(['error' => 'El archivo debe ser un PDF']);
-        exit;
-    }
-
-    // Save the file
-    $storageDir = dirname(__DIR__) . '/storage/expenses';
-    if (!is_dir($storageDir)) {
-        mkdir($storageDir, 0755, true);
-    }
-
-    $filename = date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.pdf';
-    $destPath = $storageDir . '/' . $filename;
-
-    if (!move_uploaded_file($file['tmp_name'], $destPath)) {
-        echo json_encode(['error' => 'Error al guardar el archivo']);
-        exit;
-    }
-
     // Extract text
     try {
-        $text = PdfExtractorService::extractText($destPath);
-        $hasContent = PdfExtractorService::hasUsefulContent($text);
+        $stored = ExpenseDocumentService::storeUploaded($file);
+        $parsed = [];
+        $supplierMatch = null;
+        $hasContent = false;
 
-        // Parse the text
-        $parsed = InvoiceParserService::parse($text);
-        $supplierMatch = SuppliersRepository::findMatch($parsed['supplier_name'] ?? null, $parsed['supplier_nif'] ?? null);
+        if ($stored['document_kind'] === 'pdf') {
+            $destPath = dirname(__DIR__) . '/' . ltrim((string)$stored['relative_path'], '/');
+            $text = PdfExtractorService::extractText($destPath);
+            $hasContent = PdfExtractorService::hasUsefulContent($text);
+            $parsed = InvoiceParserService::parse($text);
+            $supplierMatch = SuppliersRepository::findMatch($parsed['supplier_name'] ?? null, $parsed['supplier_nif'] ?? null);
+        }
     } catch (\Throwable $e) {
         error_log("Error en extracción PDF: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
-        echo json_encode(['error' => 'Error interno al procesar el PDF. Revisa los logs.']);
+        echo json_encode(['error' => 'Error interno al procesar el documento. Revisa los logs.']);
         exit;
     }
 
     echo json_encode([
         'success' => true,
-        'pdf_path' => 'storage/expenses/' . $filename,
+        'pdf_path' => $stored['relative_path'],
         'has_content' => $hasContent,
         'extracted' => $parsed,
+        'document_kind' => $stored['document_kind'],
+        'message' => $stored['document_kind'] === 'image'
+            ? 'Imagen guardada. La base del scanner ya admite tickets desde movil; por ahora rellena o revisa los datos manualmente.'
+            : ($hasContent ? 'PDF procesado. Revisa los datos extraidos abajo.' : 'PDF guardado, pero no se ha podido leer texto util.'),
         'supplier_match' => $supplierMatch ? [
             'id' => (int)$supplierMatch['id'],
             'name' => (string)$supplierMatch['name'],
@@ -243,7 +232,6 @@ $suppliersJson = array_map(static function (array $supplier): array {
     <div class="alert error"><?= htmlspecialchars($errors['general']) ?></div>
   <?php endif; ?>
 
-  <?php if (!$editing): ?>
   <div class="card" style="margin-bottom:20px" id="upload-section">
     <h3 style="margin-top:0">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px">
@@ -252,43 +240,42 @@ $suppliersJson = array_map(static function (array $supplier): array {
         <line x1="12" y1="18" x2="12" y2="12"/>
         <polyline points="9 15 12 12 15 15"/>
       </svg>
-      Subir factura (PDF)
+      Escanear ticket o subir factura
     </h3>
-    <p style="color:var(--gray-600);margin:-8px 0 16px">Sube el PDF de la factura y extraeremos los datos automáticamente.</p>
+    <p style="color:var(--gray-600);margin:-8px 0 16px">Acepta PDF o foto desde movil. Si el archivo trae texto, intentaremos rellenar el gasto automaticamente.</p>
     
     <div id="dropzone" style="border:2px dashed var(--gray-300);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s">
-      <input type="file" id="pdf-input" accept="application/pdf" style="display:none" />
+      <input type="file" id="document-input" accept="application/pdf,image/*" capture="environment" style="display:none" />
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="1.5" style="margin-bottom:12px">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="17 8 12 3 7 8"/>
         <line x1="12" y1="3" x2="12" y2="15"/>
       </svg>
-      <p style="margin:0;color:var(--gray-600)">Arrastra un PDF aquí o <span style="color:var(--primary-600);text-decoration:underline">haz clic para seleccionar</span></p>
-      <p style="margin:8px 0 0;font-size:0.85rem;color:var(--gray-500)">Máximo 10MB</p>
+      <p style="margin:0;color:var(--gray-600)">Arrastra un PDF o una imagen aqui, o <span style="color:var(--primary-600);text-decoration:underline">haz clic para seleccionar</span></p>
+      <p style="margin:8px 0 0;font-size:0.85rem;color:var(--gray-500)">Movil: puedes hacer foto directa. Maximo 10MB</p>
     </div>
 
     <div id="upload-progress" style="display:none;margin-top:16px">
       <div style="display:flex;align-items:center;gap:12px">
         <div class="spinner"></div>
-        <span>Subiendo y analizando PDF...</span>
+        <span>Subiendo y analizando documento...</span>
       </div>
     </div>
 
     <div id="extraction-result" style="display:none;margin-top:16px">
       <div class="alert" style="background:var(--success-50);border-color:var(--success-200);color:var(--success-700)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><polyline points="20 6 9 17 4 12"/></svg>
-        <span id="extraction-message">PDF procesado. Revisa los datos extraídos abajo.</span>
+        <span id="extraction-message">Documento procesado. Revisa los datos extraidos abajo.</span>
       </div>
     </div>
 
     <div id="extraction-warning" style="display:none;margin-top:16px">
       <div class="alert" style="background:var(--warning-50);border-color:var(--warning-200);color:var(--warning-700)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>No se pudo extraer texto del PDF. Puede ser una imagen escaneada. Introduce los datos manualmente.</span>
+        <span id="extraction-warning-message">No se ha podido extraer texto del documento. Puedes seguir y completar los datos manualmente.</span>
       </div>
     </div>
   </div>
-  <?php endif; ?>
 
   <form method="post" class="card" id="expense-form">
     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
@@ -424,7 +411,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
       </svg>
-      <span>PDF adjunto: <a href="<?= route_path('expense_pdf', ['id' => (int)$id]) ?>" target="_blank" style="color:var(--primary-600)"><?= basename((string)$expense['pdf_path']) ?></a></span>
+      <span><?= $documentIsImage ? 'Imagen adjunta' : 'Documento adjunto' ?>: <a href="<?= route_path('expense_pdf', ['id' => (int)$id]) ?>" target="_blank" style="color:var(--primary-600)"><?= basename((string)$expense['pdf_path']) ?></a></span>
     </div>
     <?php endif; ?>
 
@@ -520,10 +507,12 @@ $suppliersJson = array_map(static function (array $supplier): array {
   const supplierById = new Map(suppliers.map(supplier => [String(supplier.id), supplier]));
   const supplierByLabel = new Map(suppliers.map(supplier => [supplier.label, supplier]));
   const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('pdf-input');
+  const fileInput = document.getElementById('document-input');
   const progressDiv = document.getElementById('upload-progress');
   const resultDiv = document.getElementById('extraction-result');
   const warningDiv = document.getElementById('extraction-warning');
+  const extractionMessage = document.getElementById('extraction-message');
+  const extractionWarningMessage = document.getElementById('extraction-warning-message');
   const supplierLookup = document.getElementById('supplier_lookup');
   const supplierIdInput = document.getElementById('supplier_id');
   const supplierNameInput = document.getElementById('supplier_name');
@@ -646,8 +635,9 @@ $suppliersJson = array_map(static function (array $supplier): array {
   }
 
   function handleFile(file) {
-    if (file.type !== 'application/pdf') {
-      alert('Por favor, selecciona un archivo PDF.');
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!allowed.includes(file.type)) {
+      alert('Selecciona un PDF o una imagen JPG, PNG, WEBP o HEIC.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -664,7 +654,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
     warningDiv.style.display = 'none';
 
     const formData = new FormData();
-    formData.append('pdf', file);
+    formData.append('document', file);
     formData.append('_token', '<?= Csrf::token() ?>');
     formData.append('action', 'extract');
 
@@ -686,16 +676,18 @@ $suppliersJson = array_map(static function (array $supplier): array {
       document.getElementById('pdf_path').value = data.pdf_path;
 
       if (data.has_content) {
+        if (extractionMessage && data.message) extractionMessage.textContent = data.message;
         resultDiv.style.display = 'block';
         fillForm(data.extracted, data.supplier_match || null);
       } else {
+        if (extractionWarningMessage && data.message) extractionWarningMessage.textContent = data.message;
         warningDiv.style.display = 'block';
       }
     })
     .catch(err => {
       progressDiv.style.display = 'none';
       dropzone.style.display = 'block';
-      alert('Error al procesar el PDF: ' + err.message);
+      alert('Error al procesar el documento: ' + err.message);
     });
   }
 
