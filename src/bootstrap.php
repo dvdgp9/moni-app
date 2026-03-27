@@ -119,3 +119,16 @@ if (!function_exists('route_path')) {
         return $path;
     }
 }
+
+if (!function_exists('moni_redirect')) {
+    function moni_redirect(string $path, int $status = 302): never
+    {
+        if (!headers_sent()) {
+            header('Location: ' . $path, true, $status);
+        }
+
+        $safeUrl = htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
+        echo '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' . $safeUrl . '"><title>Redirigiendo…</title><script>window.location.replace(' . json_encode($path, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');</script></head><body style="font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;padding:32px;color:#0f172a">Redirigiendo… Si no ocurre automáticamente, <a href="' . $safeUrl . '">continúa aquí</a>.</body></html>';
+        exit;
+    }
+}

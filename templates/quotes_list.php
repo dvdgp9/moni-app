@@ -29,8 +29,7 @@ $effectiveSortDir = $sortByReq !== '' ? $sortDirReq : 'desc';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: ' . route_path('quotes'));
-    exit;
+    moni_redirect(route_path('quotes'));
   }
   $id = (int)($_POST['id'] ?? 0);
   $action = $_POST['_action'] ?? '';
@@ -96,8 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           // Mark converted
           QuotesRepository::markConverted($id, $invId);
           Flash::add('success', 'Factura borrador creada a partir del presupuesto. Revísala y emítela.');
-          header('Location: ' . route_path('invoice_form', ['id' => $invId]));
-          exit;
+          moni_redirect(route_path('invoice_form', ['id' => $invId]));
         } else {
           Flash::add('error', 'Solo se pueden convertir presupuestos aceptados.');
         }
@@ -109,8 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
       Flash::add('error', 'Acción fallida: ' . $e->getMessage());
     }
-    header('Location: ' . route_path('quotes'));
-    exit;
+    moni_redirect(route_path('quotes'));
   }
 }
 

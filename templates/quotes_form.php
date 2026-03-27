@@ -47,8 +47,7 @@ if ($editing) {
     }
   } else {
     Flash::add('error', 'Presupuesto no encontrado o sin acceso.');
-    header('Location: ' . route_path('quotes'));
-    exit;
+    moni_redirect(route_path('quotes'));
   }
 }
 
@@ -81,8 +80,7 @@ function parse_quote_items_from_post(): array {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: ' . route_path('quotes'));
-    exit;
+    moni_redirect(route_path('quotes'));
   }
   $quote['client_id'] = (int)($_POST['client_id'] ?? 0);
   $quote['issue_date'] = trim((string)($_POST['issue_date'] ?? date('Y-m-d')));
@@ -164,8 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Flash::add('success', 'Presupuesto guardado como borrador.');
       }
 
-      header('Location: ' . route_path('quotes'));
-      exit;
+      moni_redirect(route_path('quotes'));
     } catch (Throwable $e) {
       error_log('[quote_form] ' . $e->getMessage());
       $errors['general'] = Config::get('debug')

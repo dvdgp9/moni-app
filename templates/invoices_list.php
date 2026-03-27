@@ -26,8 +26,7 @@ $effectiveSortDir = $sortByReq !== '' ? $sortDirReq : 'desc';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: ' . route_path('invoices'));
-    exit;
+    moni_redirect(route_path('invoices'));
   }
   $id = (int)($_POST['id'] ?? 0);
   $action = $_POST['_action'] ?? '';
@@ -58,8 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
       Flash::add('error', 'Acción fallida: ' . $e->getMessage());
     }
-    header('Location: ' . route_path('invoices'));
-    exit;
+    moni_redirect(route_path('invoices'));
   }
 }
 

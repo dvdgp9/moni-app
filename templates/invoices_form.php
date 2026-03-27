@@ -62,8 +62,7 @@ if ($editing) {
     }
   } else {
     Flash::add('error', 'Factura no encontrada o sin acceso.');
-    header('Location: ' . route_path('invoices'));
-    exit;
+    moni_redirect(route_path('invoices'));
   }
 }
 
@@ -96,8 +95,7 @@ function parse_items_from_post(): array {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: ' . route_path('invoices'));
-    exit;
+    moni_redirect(route_path('invoices'));
   }
   $invoice['client_id'] = (int)($_POST['client_id'] ?? 0);
   $invoice['issue_date'] = trim((string)($_POST['issue_date'] ?? date('Y-m-d')));
@@ -158,8 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
 
       // Ir al listado de facturas tras guardar
-      header('Location: ' . route_path('invoices'));
-      exit;
+      moni_redirect(route_path('invoices'));
     } catch (Throwable $e) {
       error_log('[invoice_form] ' . $e->getMessage());
       $errors['general'] = Config::get('debug')
