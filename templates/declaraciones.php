@@ -24,37 +24,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_tax_setup'])) {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido.');
     } else {
-        $selectedModels = $_POST['tax_models'] ?? [];
-        $selectedModels = is_array($selectedModels)
-            ? array_values(array_intersect(array_keys($allModels), $selectedModels))
-            : [];
-        if (empty($selectedModels)) {
-            $selectedModels = ['303', '130'];
-        }
+        try {
+            $selectedModels = $_POST['tax_models'] ?? [];
+            $selectedModels = is_array($selectedModels)
+                ? array_values(array_intersect(array_keys($allModels), array_map('strval', $selectedModels)))
+                : [];
+            if (empty($selectedModels)) {
+                $selectedModels = ['303', '130'];
+            }
 
-        $taxProfile = [
-            'activity_mode' => in_array(($_POST['activity_mode'] ?? 'professional'), array_keys($activityModes), true)
-                ? (string)$_POST['activity_mode']
-                : 'professional',
-            'issues_invoices_with_irpf' => isset($_POST['issues_invoices_with_irpf']),
-            'has_rent_withholdings' => isset($_POST['has_rent_withholdings']),
-            'has_payroll_or_professional_withholdings' => isset($_POST['has_payroll_or_professional_withholdings']),
-        ];
+            $taxProfile = [
+                'activity_mode' => in_array(($_POST['activity_mode'] ?? 'professional'), array_keys($activityModes), true)
+                    ? (string)$_POST['activity_mode']
+                    : 'professional',
+                'issues_invoices_with_irpf' => isset($_POST['issues_invoices_with_irpf']),
+                'has_rent_withholdings' => isset($_POST['has_rent_withholdings']),
+                'has_payroll_or_professional_withholdings' => isset($_POST['has_payroll_or_professional_withholdings']),
+            ];
 
-        if ($taxProfile['has_rent_withholdings'] && !in_array('115', $selectedModels, true)) {
-            $selectedModels[] = '115';
-        }
-        if ($taxProfile['has_payroll_or_professional_withholdings'] && !in_array('111', $selectedModels, true)) {
-            $selectedModels[] = '111';
-        }
-        if (!in_array('390', $selectedModels, true)) {
-            $selectedModels[] = '390';
-        }
+            if ($taxProfile['has_rent_withholdings'] && !in_array('115', $selectedModels, true)) {
+                $selectedModels[] = '115';
+            }
+            if ($taxProfile['has_payroll_or_professional_withholdings'] && !in_array('111', $selectedModels, true)) {
+                $selectedModels[] = '111';
+            }
+            if (!in_array('390', $selectedModels, true)) {
+                $selectedModels[] = '390';
+            }
 
-        sort($selectedModels);
-        SettingsRepository::set('tax_models', json_encode($selectedModels));
-        SettingsRepository::set('tax_profile', json_encode($taxProfile));
-        Flash::add('success', 'Centro fiscal actualizado.');
+            sort($selectedModels);
+            SettingsRepository::set('tax_models', json_encode($selectedModels));
+            SettingsRepository::set('tax_profile', json_encode($taxProfile));
+            Flash::add('success', 'Centro fiscal actualizado.');
+        } catch (Throwable $e) {
+            Flash::add('error', 'No se ha podido guardar la configuración fiscal. Inténtalo de nuevo.');
+        }
     }
     header('Location: ' . route_path('declaraciones'));
     exit;
@@ -159,6 +163,19 @@ $quarterStatus = [
     ],
 ];
 $activeModels = array_values(array_filter($storedModels, static fn(string $code): bool => isset($allModels[$code])));
+if (empty($activeModels)) {
+    $activeModels = ['303', '130', '390'];
+}
+$show303 = in_array('303', $activeModels, true);
+$show130 = in_array('130', $activeModels, true);
+$show111 = in_array('111', $activeModels, true);
+$show115 = in_array('115', $activeModels, true);
+$show390 = in_array('390', $activeModels, true);
+$hasFiscalData = abs($base) > 0.0001
+    || abs($iva) > 0.0001
+    || abs($expensesVat) > 0.0001
+    || abs($ingresos01) > 0.0001
+    || abs($gastos02) > 0.0001;
 ?>
 <section>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -255,10 +272,15 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
       <?php endforeach; ?>
       <span class="declarations-range-pill"><?= htmlspecialchars($rangeStartEs) ?> — <?= htmlspecialchars($rangeEndEs) ?></span>
     </div>
+    <?php if (!$hasFiscalData): ?>
+      <div class="alert" style="margin-top:12px;background:rgba(15,163,177,0.08);border-color:rgba(15,163,177,0.18)">
+        No hay movimientos fiscales en este periodo con estado emitida/pagada para facturas. Revisa el trimestre o el estado de tus documentos.
+      </div>
+    <?php endif; ?>
   </div>
 
   <div class="declarations-results-grid" style="margin-bottom:16px">
-    <?php if (in_array('303', $storedModels, true)): ?>
+    <?php if ($show303): ?>
       <div class="card declarations-model-card declarations-model-primary">
         <div class="declarations-model-head">
           <div>
@@ -315,7 +337,7 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
       </div>
     <?php endif; ?>
 
-    <?php if (in_array('130', $storedModels, true)): ?>
+    <?php if ($show130): ?>
       <div class="card declarations-model-card">
         <div class="declarations-model-head">
           <div>
@@ -370,7 +392,7 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
   </div>
 
   <div class="grid-2" style="margin-top:16px">
-    <?php if (in_array('111', $storedModels, true)): ?>
+    <?php if ($show111): ?>
       <div class="card">
         <h3>Modelo 111</h3>
         <p style="color:var(--gray-600)">Lo hemos dejado preparado en el centro fiscal, pero el cálculo automático todavía no está integrado en esta fase.</p>
@@ -385,7 +407,7 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
       </div>
     <?php endif; ?>
 
-    <?php if (in_array('115', $storedModels, true)): ?>
+    <?php if ($show115): ?>
       <div class="card">
         <h3>Modelo 115</h3>
         <p style="color:var(--gray-600)">Visible porque has indicado que gestionas alquiler con retención. Lo dejamos preparado como recordatorio centralizado.</p>
@@ -400,7 +422,7 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
       </div>
     <?php endif; ?>
 
-    <?php if (in_array('390', $storedModels, true)): ?>
+    <?php if ($show390): ?>
       <div class="card">
         <h3>Modelo 390</h3>
         <p style="color:var(--gray-600)">Resumen anual de IVA para tener visibilidad del ejercicio completo.</p>
@@ -433,51 +455,60 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
 
 <style>
 .declarations-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(360px, 1fr);
+  gap: 14px;
   align-items: start;
 }
 .declarations-models-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .declarations-model-option {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 0.9rem 1rem;
-  border-radius: 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 0.72rem 0.85rem;
+  border-radius: 14px;
   border: 1px solid rgba(15,35,31,0.08);
   background: rgba(255,255,255,0.9);
-  min-height: 78px;
+  min-height: 60px;
+  cursor: pointer;
 }
 .declarations-model-option input[type="checkbox"] {
   width: auto;
-  margin: 2px 0 0;
+  margin: 0;
   flex: 0 0 auto;
 }
 .declarations-model-option span {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   line-height: 1.2;
+}
+.declarations-model-option strong {
+  font-size: 0.98rem;
 }
 .declarations-model-option small {
   color: var(--gray-600);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
 }
 .declarations-flags-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .declarations-flag {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0.85rem 1rem;
+  gap: 6px;
+  padding: 0.72rem 0.85rem;
   border-radius: 14px;
   background: rgba(15,163,177,0.06);
   border: 1px solid rgba(15,163,177,0.1);
+  font-size: 0.94rem;
+  cursor: pointer;
 }
 .declarations-flag input[type="checkbox"] {
   width: auto;
@@ -514,7 +545,7 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
 .declarations-results-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 .declarations-model-card h3 {
   margin-bottom: 4px;
@@ -546,6 +577,7 @@ $activeModels = array_values(array_filter($storedModels, static fn(string $code)
   color: var(--gray-700);
 }
 @media (max-width: 980px) {
+  .declarations-setup-grid,
   .declarations-models-grid,
   .declarations-flags-grid,
   .declarations-results-grid,

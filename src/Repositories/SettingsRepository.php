@@ -29,14 +29,17 @@ final class SettingsRepository
     {
         $pdo = Database::pdo();
         $userId = self::effectiveUserId($userId);
-        // UPDATE first (handles existing rows even if unique constraint isn't enforced due to NULL)
-        $upd = $pdo->prepare('UPDATE settings SET setting_value = :v WHERE setting_key = :k AND (user_id <=> :u)');
-        $upd->execute([':k' => $key, ':v' => $value, ':u' => $userId]);
-        if ($upd->rowCount() === 0) {
-            // No row updated, INSERT new record
-            $ins = $pdo->prepare('INSERT INTO settings (setting_key, setting_value, user_id) VALUES (:k, :v, :u)');
-            $ins->execute([':k' => $key, ':v' => $value, ':u' => $userId]);
+        // Robust upsert: avoid duplicate insert when UPDATE finds row but value is unchanged.
+        $stmt = $pdo->prepare('SELECT id FROM settings WHERE setting_key = :k AND (user_id <=> :u) ORDER BY id DESC LIMIT 1');
+        $stmt->execute([':k' => $key, ':u' => $userId]);
+        $existingId = $stmt->fetchColumn();
+        if ($existingId !== false) {
+            $upd = $pdo->prepare('UPDATE settings SET setting_value = :v WHERE id = :id');
+            $upd->execute([':v' => $value, ':id' => (int)$existingId]);
+            return;
         }
+        $ins = $pdo->prepare('INSERT INTO settings (setting_key, setting_value, user_id) VALUES (:k, :v, :u)');
+        $ins->execute([':k' => $key, ':v' => $value, ':u' => $userId]);
     }
 
     public static function all(?int $userId = null): array
