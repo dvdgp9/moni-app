@@ -17,8 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       echo json_encode(['ok' => false, 'error' => 'CSRF inválido']);
       exit;
     } else {
-      header('Location: ' . route_path('reminders'));
-      exit;
+      moni_redirect(route_path('reminders'));
     }
   }
   $action = $_POST['_action'] ?? '';
@@ -68,7 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       RemindersRepository::setEnabledMany($ids, $action === 'bulk_enable');
     }
   } catch (Throwable $e) {
-    Flash::add('error', 'Acción fallida: ' . $e->getMessage());
+    error_log('[reminders] ' . $e->getMessage());
+    Flash::add('error', 'No se pudo completar la acción.');
   }
   // AJAX response
   if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
@@ -76,8 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo json_encode(['ok' => true]);
     exit;
   }
-  header('Location: ' . route_path('reminders'));
-  exit;
+  moni_redirect(route_path('reminders'));
 }
 
 // Load reminders and split groups

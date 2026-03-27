@@ -48,8 +48,7 @@ if ($editing) {
         }
     } else {
         Flash::add('error', 'Gasto no encontrado.');
-        header('Location: ' . route_path('expenses'));
-        exit;
+        moni_redirect(route_path('expenses'));
     }
 }
 $documentIsImage = !empty($expense['pdf_path']) ? ExpenseDocumentService::isImagePath((string)$expense['pdf_path']) : false;
@@ -122,8 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST['action'] === 'save')) {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'Token CSRF inválido.');
-        header('Location: ' . route_path('expenses'));
-        exit;
+        moni_redirect(route_path('expenses'));
     }
 
     $expense['supplier_name'] = trim($_POST['supplier_name'] ?? '');
@@ -178,8 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
                 ExpensesRepository::create($expense);
                 Flash::add('success', 'Gasto registrado correctamente.');
             }
-            header('Location: ' . route_path('expenses'));
-            exit;
+            moni_redirect(route_path('expenses'));
         } catch (\Throwable $e) {
             error_log('[expense_form] ' . $e->getMessage());
             $errors['general'] = 'No se pudo guardar el gasto. Revisa proveedor y datos fiscales.';

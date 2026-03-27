@@ -12,15 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'Token CSRF inválido.');
     } else {
-        $delId = (int)($_POST['id'] ?? 0);
-        if ($delId > 0 && ExpensesRepository::delete($delId)) {
-            Flash::add('success', 'Gasto eliminado correctamente.');
-        } else {
+        try {
+            $delId = (int)($_POST['id'] ?? 0);
+            if ($delId > 0 && ExpensesRepository::delete($delId)) {
+                Flash::add('success', 'Gasto eliminado correctamente.');
+            } else {
+                Flash::add('error', 'No se pudo eliminar el gasto.');
+            }
+        } catch (Throwable $e) {
+            error_log('[expenses] ' . $e->getMessage());
             Flash::add('error', 'No se pudo eliminar el gasto.');
         }
     }
-    header('Location: ' . route_path('expenses'));
-    exit;
+    moni_redirect(route_path('expenses'));
 }
 
 // Handle validate action
@@ -28,13 +32,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'Token CSRF inválido.');
     } else {
-        $valId = (int)($_POST['id'] ?? 0);
-        if ($valId > 0 && ExpensesRepository::validate($valId)) {
-            Flash::add('success', 'Gasto validado.');
+        try {
+            $valId = (int)($_POST['id'] ?? 0);
+            if ($valId > 0 && ExpensesRepository::validate($valId)) {
+                Flash::add('success', 'Gasto validado.');
+            } else {
+                Flash::add('error', 'No se pudo validar el gasto.');
+            }
+        } catch (Throwable $e) {
+            error_log('[expenses] ' . $e->getMessage());
+            Flash::add('error', 'No se pudo validar el gasto.');
         }
     }
-    header('Location: ' . route_path('expenses'));
-    exit;
+    moni_redirect(route_path('expenses'));
 }
 
 // Filters

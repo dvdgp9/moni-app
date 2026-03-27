@@ -58,11 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_tax_setup'])) {
             SettingsRepository::set('tax_profile', json_encode($taxProfile));
             Flash::add('success', 'Centro fiscal actualizado.');
         } catch (Throwable $e) {
+            error_log('[declaraciones] ' . $e->getMessage());
             Flash::add('error', 'No se ha podido guardar la configuración fiscal. Inténtalo de nuevo.');
         }
     }
-    header('Location: ' . route_path('declaraciones'));
-    exit;
+    moni_redirect(route_path('declaraciones'));
 }
 
 $storedModels = json_decode((string)(SettingsRepository::get('tax_models') ?? '[]'), true);

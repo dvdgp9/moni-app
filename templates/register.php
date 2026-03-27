@@ -9,35 +9,36 @@ $flashAll = Flash::getAll();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
-        Flash::add('error', 'CSRF inválido');
-        header('Location: ' . route_path('register'));
-        exit;
+        Flash::add('error', 'CSRF inválido.');
+        moni_redirect(route_path('register'));
     }
-    $name = trim((string)($_POST['name'] ?? ''));
-    $email = trim((string)($_POST['email'] ?? ''));
-    $password = (string)($_POST['password'] ?? '');
-    $password2 = (string)($_POST['password2'] ?? '');
+    try {
+        $name = trim((string)($_POST['name'] ?? ''));
+        $email = trim((string)($_POST['email'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+        $password2 = (string)($_POST['password2'] ?? '');
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        Flash::add('error', 'Email inválido');
-        header('Location: ' . route_path('register'));
-        exit;
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Flash::add('error', 'Email inválido.');
+            moni_redirect(route_path('register'));
+        }
+        if ($password === '' || $password !== $password2) {
+            Flash::add('error', 'Las contraseñas no coinciden.');
+            moni_redirect(route_path('register'));
+        }
+        if (UsersRepository::existsByEmail($email)) {
+            Flash::add('error', 'Ya existe un usuario con ese email.');
+            moni_redirect(route_path('register'));
+        }
+        $uid = UsersRepository::create($email, $password, $name !== '' ? $name : null);
+        AuthService::login((int)$uid);
+        Flash::add('success', 'Bienvenido a Moni.');
+        moni_redirect(route_path('dashboard'));
+    } catch (Throwable $e) {
+        error_log('[register] ' . $e->getMessage());
+        Flash::add('error', 'No se pudo completar el registro. Inténtalo de nuevo.');
     }
-    if ($password === '' || $password !== $password2) {
-        Flash::add('error', 'Las contraseñas no coinciden');
-        header('Location: ' . route_path('register'));
-        exit;
-    }
-    if (UsersRepository::existsByEmail($email)) {
-        Flash::add('error', 'Ya existe un usuario con ese email');
-        header('Location: ' . route_path('register'));
-        exit;
-    }
-    $uid = UsersRepository::create($email, $password, $name !== '' ? $name : null);
-    AuthService::login((int)$uid);
-    Flash::add('success', 'Bienvenido a Moni');
-    header('Location: ' . route_path('dashboard'));
-    exit;
+    moni_redirect(route_path('register'));
 }
 ?>
 <section class="auth-shell fade-in-up">

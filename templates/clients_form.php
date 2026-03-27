@@ -25,8 +25,7 @@ if ($editing) {
     $values = array_merge($values, $found);
   } else {
     Flash::add('error', 'Cliente no encontrado o sin acceso.');
-    header('Location: ' . route_path('clients'));
-    exit;
+    moni_redirect(route_path('clients'));
   }
 }
 
@@ -42,8 +41,7 @@ function valid_phone(?string $p): bool {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!Csrf::validate($_POST['_token'] ?? null)) {
     Flash::add('error', 'CSRF inválido.');
-    header('Location: ' . route_path('clients'));
-    exit;
+    moni_redirect(route_path('clients'));
   }
   $values['name'] = trim((string)($_POST['name'] ?? ''));
   $values['nif'] = trim((string)($_POST['nif'] ?? ''));
@@ -89,11 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ClientsRepository::create($payload);
         Flash::add('success', 'Cliente creado.');
       }
-      header('Location: ' . route_path('clients'));
-      exit;
+      moni_redirect(route_path('clients'));
     } catch (\Throwable $e) {
-      error_log('[client_form] ' . $e->getMessage());
-      $errors['general'] = 'No se pudo guardar el cliente. Revisa los datos e intentalo de nuevo.';
+      error_log('[clients_form] ' . $e->getMessage());
+      $errors['general'] = 'No se pudo guardar el cliente. Revisa los datos e inténtalo de nuevo.';
     }
   }
 }

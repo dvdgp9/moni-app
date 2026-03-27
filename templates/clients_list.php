@@ -13,21 +13,24 @@ $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido. Inténtalo de nuevo.');
-        header('Location: ' . route_path('clients'));
-        exit;
+        moni_redirect(route_path('clients'));
     }
-    $id = (int)($_POST['id'] ?? 0);
-    if ($id > 0) {
-        $cnt = InvoicesRepository::countByClient($id);
-        if ($cnt > 0) {
-            Flash::add('error', 'No se puede eliminar el cliente: tiene ' . $cnt . ' factura(s) asociada(s).');
-        } else {
-            ClientsRepository::delete($id);
-            Flash::add('success', 'Cliente eliminado.');
+    try {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id > 0) {
+            $cnt = InvoicesRepository::countByClient($id);
+            if ($cnt > 0) {
+                Flash::add('error', 'No se puede eliminar el cliente: tiene ' . $cnt . ' factura(s) asociada(s).');
+            } else {
+                ClientsRepository::delete($id);
+                Flash::add('success', 'Cliente eliminado.');
+            }
         }
-        header('Location: ' . route_path('clients'));
-        exit;
+    } catch (Throwable $e) {
+        error_log('[clients_list] ' . $e->getMessage());
+        Flash::add('error', 'No se pudo eliminar el cliente.');
     }
+    moni_redirect(route_path('clients'));
 }
 
 $clients = ClientsRepository::all($q);

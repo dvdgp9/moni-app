@@ -3,13 +3,16 @@ use Moni\Support\Config;
 use Moni\Services\EmailService;
 use Moni\Repositories\SettingsRepository;
 use Moni\Support\Csrf;
+use Moni\Support\Flash;
 
-$flash = null;
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+$flashAll = Flash::getAll();
 
 // Guardado de ajustes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
-        $flash = 'CSRF inválido.';
+        Flash::add('error', 'CSRF inválido.');
+        moni_redirect(route_path('settings'));
     } else {
     $notify = isset($_POST['notify_email']) ? trim((string)$_POST['notify_email']) : null;
     $tz = isset($_POST['timezone']) ? trim((string)$_POST['timezone']) : null;
@@ -35,6 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     }));
 
     try {
+        if ($notify !== null && $notify !== '' && filter_var($notify, FILTER_VALIDATE_EMAIL) === false) {
+            Flash::add('error', 'El email de notificación no es válido.');
+            moni_redirect(route_path('settings'));
+        }
         if ($notify !== null) { SettingsRepository::set('notify_email', $notify); }
         if ($tz !== null) { SettingsRepository::set('timezone', $tz); }
         if ($enabled !== null) { SettingsRepository::set('reminders_enabled', $enabled); }
@@ -46,38 +53,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
                 SettingsRepository::set('invoice_due_days', (string)$days);
             }
         }
-        $flash = 'Ajustes guardados correctamente.';
+        Flash::add('success', 'Ajustes guardados correctamente.');
     } catch (Throwable $e) {
-        $flash = 'Error guardando ajustes: ' . htmlspecialchars($e->getMessage());
+        error_log('[settings] ' . $e->getMessage());
+        Flash::add('error', 'No se pudieron guardar los ajustes.');
     }
     }
+    moni_redirect(route_path('settings'));
 }
 
 // Envío de prueba
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
-        $flash = 'CSRF inválido.';
+        Flash::add('error', 'CSRF inválido.');
     } else {
         $to = trim($_POST['test_email']);
         try {
+            if ($to === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+                Flash::add('error', 'El email de prueba no es válido.');
+                moni_redirect(route_path('settings'));
+            }
             $ok = EmailService::sendTest($to);
-            $flash = $ok ? 'Email de prueba enviado a ' . htmlspecialchars($to) : 'Error al enviar el email de prueba';
+            Flash::add($ok ? 'success' : 'error', $ok ? 'Email de prueba enviado a ' . $to : 'No se pudo enviar el email de prueba.');
         } catch (Throwable $e) {
-            $flash = 'Excepción enviando email: ' . htmlspecialchars($e->getMessage());
+            error_log('[settings] ' . $e->getMessage());
+            Flash::add('error', 'No se pudo enviar el email de prueba.');
         }
     }
+    moni_redirect(route_path('settings'));
 }
 
 // Vista previa de recordatorio
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preview_reminder'])) {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
-        $flash = 'CSRF inválido.';
+        Flash::add('error', 'CSRF inválido.');
     } else {
         // Leer directamente desde BD/Config para evitar dependencia del orden de carga
         $currentNotify = SettingsRepository::get('notify_email') ?? (string)Config::get('settings.notify_email');
         $to = trim((string)$currentNotify);
         if ($to === '') {
-            $flash = 'Configura primero un Email de notificación para enviar la vista previa.';
+            Flash::add('error', 'Configura primero un email de notificación para enviar la vista previa.');
         } else {
             try {
                 $subject = 'Vista previa · Recordatorio: Cierre trimestral';
@@ -92,12 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['preview_reminder'])) 
                     'appUrl' => (string)(Config::get('app_url') ?? '#'),
                 ];
                 EmailService::sendReminder($to, $subject, $data);
-                $flash = 'Vista previa enviada a ' . htmlspecialchars($to);
+                Flash::add('success', 'Vista previa enviada a ' . $to);
             } catch (Throwable $e) {
-                $flash = 'Error enviando vista previa: ' . htmlspecialchars($e->getMessage());
+                error_log('[settings] ' . $e->getMessage());
+                Flash::add('error', 'No se pudo enviar la vista previa.');
             }
         }
     }
+    moni_redirect(route_path('settings'));
 }
 
 // Cargar ajustes actuales (fallback a config/.env)
@@ -112,8 +129,12 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
 ?>
 <section>
   <h1>Ajustes</h1>
-  <?php if ($flash): ?>
-    <div class="alert"><?= $flash ?></div>
+  <?php if (!empty($flashAll)): ?>
+    <?php foreach ($flashAll as $type => $messages): ?>
+      <?php foreach ($messages as $msg): ?>
+        <div class="alert <?= $type === 'error' ? 'error' : '' ?>"><?= htmlspecialchars($msg) ?></div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
   <?php endif; ?>
 
   <div class="grid-2">

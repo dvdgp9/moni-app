@@ -4,6 +4,9 @@ use Moni\Repositories\ExpensesRepository;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+$flashAll = Flash::getAll();
+
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $editing = $id > 0;
 $errors = [];
@@ -20,8 +23,7 @@ if ($editing) {
     $found = SuppliersRepository::find($id);
     if (!$found) {
         Flash::add('error', 'Proveedor no encontrado o sin acceso.');
-        header('Location: ' . route_path('suppliers'));
-        exit;
+        moni_redirect(route_path('suppliers'));
     }
     $supplier = array_merge($supplier, $found);
 }
@@ -29,8 +31,7 @@ if ($editing) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido.');
-        header('Location: ' . route_path('suppliers'));
-        exit;
+        moni_redirect(route_path('suppliers'));
     }
 
     $supplier['name'] = trim((string)($_POST['name'] ?? ''));
@@ -55,8 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SuppliersRepository::create($supplier);
                 Flash::add('success', 'Proveedor creado.');
             }
-            header('Location: ' . route_path('suppliers'));
-            exit;
+            moni_redirect(route_path('suppliers'));
         } catch (\Throwable $e) {
             error_log('[supplier_form] ' . $e->getMessage());
             $errors['general'] = 'No se pudo guardar el proveedor. Revisa el NIF y los datos introducidos.';
@@ -69,6 +69,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h1 style="margin:0"><?= $editing ? 'Editar proveedor' : 'Nuevo proveedor' ?></h1>
     <a href="<?= route_path('suppliers') ?>" class="btn btn-secondary">Volver</a>
   </div>
+
+  <?php if (!empty($flashAll)): ?>
+    <?php foreach ($flashAll as $type => $messages): ?>
+      <?php foreach ($messages as $msg): ?>
+        <div class="alert <?= $type === 'error' ? 'error' : '' ?>"><?= htmlspecialchars($msg) ?></div>
+      <?php endforeach; ?>
+    <?php endforeach; ?>
+  <?php endif; ?>
 
   <?php if (!empty($errors['general'])): ?>
     <div class="alert error"><?= htmlspecialchars($errors['general']) ?></div>

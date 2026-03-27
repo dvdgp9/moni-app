@@ -11,19 +11,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'dele
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido.');
     } else {
-        $id = (int)($_POST['id'] ?? 0);
-        if ($id > 0) {
-            $count = SuppliersRepository::countExpenses($id);
-            if ($count > 0) {
-                Flash::add('error', 'No puedes eliminar este proveedor porque tiene gastos asociados.');
-            } else {
-                SuppliersRepository::delete($id);
-                Flash::add('success', 'Proveedor eliminado.');
+        try {
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id > 0) {
+                $count = SuppliersRepository::countExpenses($id);
+                if ($count > 0) {
+                    Flash::add('error', 'No puedes eliminar este proveedor porque tiene gastos asociados.');
+                } else {
+                    SuppliersRepository::delete($id);
+                    Flash::add('success', 'Proveedor eliminado.');
+                }
             }
+        } catch (Throwable $e) {
+            error_log('[suppliers_list] ' . $e->getMessage());
+            Flash::add('error', 'No se pudo eliminar el proveedor.');
         }
     }
-    header('Location: ' . route_path('suppliers', $q !== '' ? ['q' => $q] : []));
-    exit;
+    moni_redirect(route_path('suppliers', $q !== '' ? ['q' => $q] : []));
 }
 
 $suppliers = SuppliersRepository::all($q);

@@ -9,24 +9,26 @@ $flashAll = Flash::getAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
-        Flash::add('error', 'CSRF inválido');
-        header('Location: ' . route_path('login'));
-        exit;
+        Flash::add('error', 'CSRF inválido.');
+        moni_redirect(route_path('login'));
     }
-    $email = trim((string)($_POST['email'] ?? ''));
-    $password = (string)($_POST['password'] ?? '');
-    $remember = isset($_POST['remember']) && $_POST['remember'] === '1';
-    $user = UsersRepository::findByEmail($email);
-    if ($user && password_verify($password, $user['password_hash'])) {
-        AuthService::login((int)$user['id'], $remember);
-        $to = $_SESSION['_intended'] ?? route_path('dashboard');
-        unset($_SESSION['_intended']);
-        header('Location: ' . $to);
-        exit;
+    try {
+        $email = trim((string)($_POST['email'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+        $remember = isset($_POST['remember']) && $_POST['remember'] === '1';
+        $user = UsersRepository::findByEmail($email);
+        if ($user && password_verify($password, $user['password_hash'])) {
+            AuthService::login((int)$user['id'], $remember);
+            $to = $_SESSION['_intended'] ?? route_path('dashboard');
+            unset($_SESSION['_intended']);
+            moni_redirect($to);
+        }
+        Flash::add('error', 'Credenciales inválidas.');
+    } catch (Throwable $e) {
+        error_log('[login] ' . $e->getMessage());
+        Flash::add('error', 'No se pudo iniciar sesión. Inténtalo de nuevo.');
     }
-    Flash::add('error', 'Credenciales inválidas');
-    header('Location: ' . route_path('login'));
-    exit;
+    moni_redirect(route_path('login'));
 }
 ?>
 <section class="auth-shell fade-in-up">

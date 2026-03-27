@@ -30,62 +30,64 @@ $values = [
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['_token'] ?? null)) {
         Flash::add('error', 'CSRF inválido.');
-        header('Location: ' . route_path('profile'));
-        exit;
+        moni_redirect(route_path('profile'));
     }
-    $values['name'] = trim((string)($_POST['name'] ?? ''));
-    $values['company_name'] = trim((string)($_POST['company_name'] ?? ''));
-    $values['nif'] = trim((string)($_POST['nif'] ?? ''));
-    $values['address'] = trim((string)($_POST['address'] ?? ''));
-    $values['phone'] = trim((string)($_POST['phone'] ?? ''));
-    $values['billing_email'] = trim((string)($_POST['billing_email'] ?? ''));
-    $values['iban'] = trim((string)($_POST['iban'] ?? ''));
-    // No actual text field for logo_url: keep current unless a new file is uploaded
-    $values['color_primary'] = trim((string)($_POST['color_primary'] ?? ''));
-    $values['color_accent'] = trim((string)($_POST['color_accent'] ?? ''));
+    try {
+        $values['name'] = trim((string)($_POST['name'] ?? ''));
+        $values['company_name'] = trim((string)($_POST['company_name'] ?? ''));
+        $values['nif'] = trim((string)($_POST['nif'] ?? ''));
+        $values['address'] = trim((string)($_POST['address'] ?? ''));
+        $values['phone'] = trim((string)($_POST['phone'] ?? ''));
+        $values['billing_email'] = trim((string)($_POST['billing_email'] ?? ''));
+        $values['iban'] = trim((string)($_POST['iban'] ?? ''));
+        $values['color_primary'] = trim((string)($_POST['color_primary'] ?? ''));
+        $values['color_accent'] = trim((string)($_POST['color_accent'] ?? ''));
 
-    // Handle optional logo file upload
-    if (!empty($_FILES['logo_file']['name']) && is_uploaded_file($_FILES['logo_file']['tmp_name'])) {
-        $tmp = $_FILES['logo_file']['tmp_name'];
-        $orig = $_FILES['logo_file']['name'];
-        $size = (int)($_FILES['logo_file']['size'] ?? 0);
-        // Limit 2MB
-        if ($size > 2 * 1024 * 1024) {
-            Flash::add('error', 'El logo supera el tamaño máximo (2MB).');
-            header('Location: ' . route_path('profile'));
-            exit;
+        if ($values['billing_email'] !== '' && filter_var($values['billing_email'], FILTER_VALIDATE_EMAIL) === false) {
+            Flash::add('error', 'El email de facturación no es válido.');
+            moni_redirect(route_path('profile'));
         }
-        // Validate mime
-        $f = new \finfo(FILEINFO_MIME_TYPE);
-        $mime = (string)$f->file($tmp);
-        $allowed = [
-            'image/png' => 'png',
-            'image/jpeg' => 'jpg',
-            'image/webp' => 'webp',
-        ];
-        if (!isset($allowed[$mime])) {
-            Flash::add('error', 'Formato de logo no soportado. Usa PNG, JPG o WEBP.');
-            header('Location: ' . route_path('profile'));
-            exit;
+
+        if (!empty($_FILES['logo_file']['name']) && is_uploaded_file($_FILES['logo_file']['tmp_name'])) {
+            $tmp = $_FILES['logo_file']['tmp_name'];
+            $size = (int)($_FILES['logo_file']['size'] ?? 0);
+            if ($size > 2 * 1024 * 1024) {
+                Flash::add('error', 'El logo supera el tamaño máximo (2MB).');
+                moni_redirect(route_path('profile'));
+            }
+            $f = new \finfo(FILEINFO_MIME_TYPE);
+            $mime = (string)$f->file($tmp);
+            $allowed = [
+                'image/png' => 'png',
+                'image/jpeg' => 'jpg',
+                'image/webp' => 'webp',
+            ];
+            if (!isset($allowed[$mime])) {
+                Flash::add('error', 'Formato de logo no soportado. Usa PNG, JPG o WEBP.');
+                moni_redirect(route_path('profile'));
+            }
+            $ext = $allowed[$mime];
+            $uploadDir = dirname(__DIR__, 1) . '/public/uploads/logos';
+            if (!is_dir($uploadDir) && !@mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+                throw new RuntimeException('No se pudo preparar el directorio del logo.');
+            }
+            $fileName = 'logo-user-' . $userId . '.' . $ext;
+            $dest = $uploadDir . '/' . $fileName;
+            if (!@move_uploaded_file($tmp, $dest)) {
+                Flash::add('error', 'No se pudo guardar el logo.');
+                moni_redirect(route_path('profile'));
+            }
+            $values['logo_url'] = '/uploads/logos/' . $fileName;
         }
-        $ext = $allowed[$mime];
-        $uploadDir = dirname(__DIR__, 1) . '/public/uploads/logos';
-        if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0775, true); }
-        $fileName = 'logo-user-' . $userId . '.' . $ext;
-        $dest = $uploadDir . '/' . $fileName;
-        if (!@move_uploaded_file($tmp, $dest)) {
-            Flash::add('error', 'No se pudo guardar el logo.');
-            header('Location: ' . route_path('profile'));
-            exit;
-        }
-        // Public URL
-        $values['logo_url'] = '/uploads/logos/' . $fileName;
+
+        UsersRepository::updateProfile($userId, $values);
+        Flash::add('success', 'Perfil actualizado.');
+        moni_redirect(route_path('profile'));
+    } catch (Throwable $e) {
+        error_log('[profile] ' . $e->getMessage());
+        Flash::add('error', 'No se pudo actualizar el perfil.');
+        moni_redirect(route_path('profile'));
     }
-
-    UsersRepository::updateProfile($userId, $values);
-    Flash::add('success', 'Perfil actualizado.');
-    header('Location: ' . route_path('profile'));
-    exit;
 }
 ?>
 <section>
