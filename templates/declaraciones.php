@@ -1,9 +1,79 @@
 <?php
+use Moni\Repositories\SettingsRepository;
 use Moni\Services\TaxQuarterService;
+use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 $flashAll = Flash::getAll();
+
+$allModels = [
+    '303' => ['label' => 'Modelo 303', 'description' => 'IVA trimestral'],
+    '130' => ['label' => 'Modelo 130', 'description' => 'Pago fraccionado de IRPF'],
+    '111' => ['label' => 'Modelo 111', 'description' => 'Retenciones de profesionales y nóminas'],
+    '115' => ['label' => 'Modelo 115', 'description' => 'Retenciones por alquiler'],
+    '390' => ['label' => 'Modelo 390', 'description' => 'Resumen anual de IVA'],
+];
+
+$activityModes = [
+    'professional' => 'Profesional / freelance',
+    'business' => 'Actividad empresarial',
+];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_tax_setup'])) {
+    if (!Csrf::validate($_POST['_token'] ?? null)) {
+        Flash::add('error', 'CSRF inválido.');
+    } else {
+        $selectedModels = $_POST['tax_models'] ?? [];
+        $selectedModels = is_array($selectedModels)
+            ? array_values(array_intersect(array_keys($allModels), $selectedModels))
+            : [];
+        if (empty($selectedModels)) {
+            $selectedModels = ['303', '130'];
+        }
+
+        $taxProfile = [
+            'activity_mode' => in_array(($_POST['activity_mode'] ?? 'professional'), array_keys($activityModes), true)
+                ? (string)$_POST['activity_mode']
+                : 'professional',
+            'issues_invoices_with_irpf' => isset($_POST['issues_invoices_with_irpf']),
+            'has_rent_withholdings' => isset($_POST['has_rent_withholdings']),
+            'has_payroll_or_professional_withholdings' => isset($_POST['has_payroll_or_professional_withholdings']),
+        ];
+
+        if ($taxProfile['has_rent_withholdings'] && !in_array('115', $selectedModels, true)) {
+            $selectedModels[] = '115';
+        }
+        if ($taxProfile['has_payroll_or_professional_withholdings'] && !in_array('111', $selectedModels, true)) {
+            $selectedModels[] = '111';
+        }
+        if (!in_array('390', $selectedModels, true)) {
+            $selectedModels[] = '390';
+        }
+
+        sort($selectedModels);
+        SettingsRepository::set('tax_models', json_encode($selectedModels));
+        SettingsRepository::set('tax_profile', json_encode($taxProfile));
+        Flash::add('success', 'Centro fiscal actualizado.');
+    }
+    header('Location: ' . route_path('declaraciones'));
+    exit;
+}
+
+$storedModels = json_decode((string)(SettingsRepository::get('tax_models') ?? '[]'), true);
+$storedModels = is_array($storedModels) ? array_values(array_intersect(array_keys($allModels), $storedModels)) : [];
+if (empty($storedModels)) {
+    $storedModels = ['303', '130', '390'];
+}
+
+$storedProfile = json_decode((string)(SettingsRepository::get('tax_profile') ?? '{}'), true);
+$storedProfile = is_array($storedProfile) ? $storedProfile : [];
+$taxProfile = array_merge([
+    'activity_mode' => 'professional',
+    'issues_invoices_with_irpf' => true,
+    'has_rent_withholdings' => false,
+    'has_payroll_or_professional_withholdings' => false,
+], $storedProfile);
 
 $y = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
 $m = (int)date('n');
@@ -11,69 +81,93 @@ $defaultQ = (int)ceil($m / 3);
 $q = isset($_GET['quarter']) ? (int)$_GET['quarter'] : $defaultQ;
 $q = max(1, min(4, $q));
 
-// Ventas (facturas emitidas)
 $summary = TaxQuarterService::summarizeSales($y, $q);
 $base = $summary['base_total'];
 $iva = $summary['iva_total'];
-$irpf = $summary['irpf_total']; // informativo
+$irpf = $summary['irpf_total'];
 $byVat = $summary['by_vat'];
 $range = $summary['range'];
 $rangeStartEs = (new DateTime($range['start']))->format('d/m/Y');
 $rangeEndEs = (new DateTime($range['end']))->format('d/m/Y');
 
-// Gastos (facturas recibidas) - trimestre
 $expensesSummary = TaxQuarterService::summarizeExpenses($y, $q);
 $expensesBase = $expensesSummary['base_total'];
 $expensesVat = $expensesSummary['vat_total'];
 $expensesByVat = $expensesSummary['by_vat'];
 
-// Modelo 303 - con IVA deducible real
-$devengado27 = $iva; // total cuota devengada
-$deducible45 = $expensesVat; // IVA soportado deducible (de gastos)
+$devengado27 = $iva;
+$deducible45 = $expensesVat;
 $resultado46 = $devengado27 - $deducible45;
 
-// Modelo 130 (YTD acumulado)
 $ytd = TaxQuarterService::summarizeSalesYTD($y, $q);
 $expensesYtd = TaxQuarterService::summarizeExpensesYTD($y, $q);
 $ingresos01 = $ytd['base_total_ytd'];
-// Gastos: usar los registrados o permitir override manual
 $gastosRegistrados = $expensesYtd['base_total_ytd'];
-$gastosManuales = isset($_GET['gastos_ytd']) && $_GET['gastos_ytd'] !== '' 
-    ? (float)str_replace(',', '.', (string)$_GET['gastos_ytd']) 
+$gastosManuales = isset($_GET['gastos_ytd']) && $_GET['gastos_ytd'] !== ''
+    ? (float)str_replace(',', '.', (string)$_GET['gastos_ytd'])
     : $gastosRegistrados;
 $gastos02 = round($gastosManuales, 2);
 $rendimiento03 = $ingresos01 - $gastos02;
 $cuota04 = $rendimiento03 > 0 ? round($rendimiento03 * 0.20, 2) : 0.00;
+
 $autoPrev = 0.0;
 if ($q > 1) {
-  $paidSoFar = 0.0;
-  for ($k = 1; $k <= $q-1; $k++) {
-    $ytdK = TaxQuarterService::summarizeSalesYTD($y, $k);
-    $ingK = (float)$ytdK['base_total_ytd'];
-    $retK = (float)$ytdK['irpf_total_ytd'];
-    $rendK = max($ingK, 0.0);
-    $c4K = round($rendK * 0.20, 2);
-    // Casilla 7 del trimestre k: 04(k) - pagos previos (hasta k-1) - retenciones YTD(k)
-    $c7K = round(max(0.0, $c4K - $paidSoFar - $retK), 2);
-    $paidSoFar += $c7K;
-  }
-  $autoPrev = round($paidSoFar, 2);
+    $paidSoFar = 0.0;
+    for ($k = 1; $k <= $q - 1; $k++) {
+        $ytdK = TaxQuarterService::summarizeSalesYTD($y, $k);
+        $ingK = (float)$ytdK['base_total_ytd'];
+        $retK = (float)$ytdK['irpf_total_ytd'];
+        $rendK = max($ingK, 0.0);
+        $c4K = round($rendK * 0.20, 2);
+        $c7K = round(max(0.0, $c4K - $paidSoFar - $retK), 2);
+        $paidSoFar += $c7K;
+    }
+    $autoPrev = round($paidSoFar, 2);
 }
 $casilla5_prev = (isset($_GET['prev_payments']) && $_GET['prev_payments'] !== '')
-  ? (float)str_replace(',', '.', (string)$_GET['prev_payments'])
-  : $autoPrev;
+    ? (float)str_replace(',', '.', (string)$_GET['prev_payments'])
+    : $autoPrev;
 $autoRetenciones = (float)$ytd['irpf_total_ytd'];
 $casilla6_ret = isset($_GET['retenciones']) && $_GET['retenciones'] !== ''
-  ? (float)str_replace(',', '.', (string)$_GET['retenciones'])
-  : $autoRetenciones;
+    ? (float)str_replace(',', '.', (string)$_GET['retenciones'])
+    : $autoRetenciones;
 $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
+
+$checklist = TaxQuarterService::quarterChecklist($y, $q);
+$annualVat = TaxQuarterService::annualVatSummary($y);
+
+$quarterStatus = [
+    [
+        'label' => 'Borradores por emitir',
+        'value' => $checklist['draft_invoices'],
+        'tone' => $checklist['draft_invoices'] > 0 ? 'var(--warning)' : 'var(--success)',
+    ],
+    [
+        'label' => 'Gastos pendientes de revisar',
+        'value' => $checklist['pending_expenses'],
+        'tone' => $checklist['pending_expenses'] > 0 ? 'var(--warning)' : 'var(--success)',
+    ],
+    [
+        'label' => 'Gastos sin proveedor vinculado',
+        'value' => $checklist['unlinked_suppliers'],
+        'tone' => $checklist['unlinked_suppliers'] > 0 ? 'var(--warning)' : 'var(--success)',
+    ],
+    [
+        'label' => 'Facturas emitidas sin cobrar',
+        'value' => $checklist['unpaid_issued'],
+        'tone' => $checklist['unpaid_issued'] > 0 ? 'var(--gray-700)' : 'var(--success)',
+    ],
+];
 ?>
 <section>
-  <h1>Declaraciones</h1>
-  <p style="margin-top:-6px;margin-bottom:14px;color:var(--gray-600)">
-    Resumen del trimestre para IVA (Modelo 303) y pagos fraccionados IRPF (Modelo 130).
-    Se incluyen facturas <strong>Emitidas</strong> y <strong>Pagadas</strong> según su <strong>fecha de factura</strong>.
-  </p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+    <div>
+      <h1 style="margin-bottom:6px">Centro fiscal</h1>
+      <p style="color:var(--gray-600);max-width:70ch">
+        Configura los modelos que te aplican y revisa el trimestre con una vista pensada para saber qué presentar y qué te falta cerrar.
+      </p>
+    </div>
+  </div>
 
   <?php if (!empty($flashAll)): ?>
     <?php foreach ($flashAll as $type => $messages): ?>
@@ -83,7 +177,49 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <form method="get" class="card">
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-header">
+      <h3 class="section-title">Configuración fiscal</h3>
+    </div>
+    <form method="post">
+      <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+      <input type="hidden" name="save_tax_setup" value="1" />
+
+      <div class="grid-2">
+        <div>
+          <label for="activity_mode">Tipo de actividad</label>
+          <select id="activity_mode" name="activity_mode">
+            <?php foreach ($activityModes as $key => $label): ?>
+              <option value="<?= $key ?>" <?= $taxProfile['activity_mode'] === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div>
+          <label>Modelos que te aplican</label>
+          <div class="expense-chip-row">
+            <?php foreach ($allModels as $code => $model): ?>
+              <label class="expense-checkline" style="margin-top:0;background:rgba(255,255,255,0.86);padding:0.6rem 0.8rem;border-radius:999px;border:1px solid rgba(15,35,31,0.08);">
+                <input type="checkbox" name="tax_models[]" value="<?= $code ?>" <?= in_array($code, $storedModels, true) ? 'checked' : '' ?> />
+                <span><strong><?= htmlspecialchars($model['label']) ?></strong> · <?= htmlspecialchars($model['description']) ?></span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="expense-chip-row" style="margin-top:12px">
+        <label class="expense-checkline"><input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($taxProfile['issues_invoices_with_irpf']) ? 'checked' : '' ?> /> Tus facturas suelen llevar retención de IRPF</label>
+        <label class="expense-checkline"><input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($taxProfile['has_rent_withholdings']) ? 'checked' : '' ?> /> Pagas alquiler con retención</label>
+        <label class="expense-checkline"><input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($taxProfile['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> /> Pagas profesionales o nóminas con retención</label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button type="submit" class="btn">Guardar configuración</button>
+      </div>
+    </form>
+  </div>
+
+  <form method="get" class="card" style="margin-bottom:16px">
     <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
       <div>
         <label for="year">Año</label>
@@ -98,141 +234,203 @@ $casilla7 = round($cuota04 - $casilla5_prev - $casilla6_ret, 2);
           <option value="4" <?= $q===4?'selected':'' ?>>4T (10–12)</option>
         </select>
       </div>
-      <div style="margin-left:auto;display:flex;gap:12px;align-items:center">
+      <div style="margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <span id="rangeLabel" style="color:var(--gray-600);white-space:nowrap">Periodo seleccionado: <?= htmlspecialchars($rangeStartEs) ?> — <?= htmlspecialchars($rangeEndEs) ?></span>
         <button type="submit" class="btn">Calcular</button>
       </div>
     </div>
   </form>
 
-  <script>
-  (function(){
-    const yearEl = document.getElementById('year');
-    const qEl = document.getElementById('quarter');
-    const label = document.getElementById('rangeLabel');
-    function fmt(d){
-      const dd = String(d.getDate()).padStart(2,'0');
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const yy = d.getFullYear();
-      return dd+'/'+mm+'/'+yy;
-    }
-    function update(){
-      const y = parseInt(yearEl.value,10)||new Date().getFullYear();
-      const q = parseInt(qEl.value,10)||1;
-      let start, end;
-      if (q===1){ start=new Date(y,0,1); end=new Date(y,2,31); }
-      else if (q===2){ start=new Date(y,3,1); end=new Date(y,5,30); }
-      else if (q===3){ start=new Date(y,6,1); end=new Date(y,8,30); }
-      else { start=new Date(y,9,1); end=new Date(y,11,31); }
-      if (label) label.textContent = 'Periodo seleccionado: ' + fmt(start) + ' — ' + fmt(end);
-    }
-    yearEl && yearEl.addEventListener('input', update);
-    qEl && qEl.addEventListener('change', update);
-  })();
-  </script>
+  <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+    <?php foreach ($quarterStatus as $item): ?>
+      <div class="stat-card">
+        <div class="stat-value" style="color:<?= $item['tone'] ?>"><?= (int)$item['value'] ?></div>
+        <div class="stat-label"><?= htmlspecialchars($item['label']) ?></div>
+      </div>
+    <?php endforeach; ?>
+  </div>
 
   <div class="grid-2">
-    <div class="card">
-      <h3>Modelo 303 — IVA</h3>
-      <p style="color:var(--gray-600);margin-top:-6px">IVA devengado (ventas) menos IVA soportado deducible (gastos) del trimestre.</p>
-      <div class="grid-stats-4">
-        <div class="kpi"><div class="kpi-label">Base imponible (ventas)</div><div class="kpi-value"><?= number_format($base, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">IVA devengado (27)</div><div class="kpi-value"><?= number_format($devengado27, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">IVA deducible (45)</div><div class="kpi-value"><?= number_format($deducible45, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">Resultado (46)</div><div class="kpi-value" style="<?= $resultado46 < 0 ? 'color:var(--success-600)' : '' ?>"><?= number_format($resultado46, 2) ?> €</div></div>
-      </div>
-
-      <?php if (!empty($byVat) || !empty($expensesByVat)): ?>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px">
-        <?php if (!empty($byVat)): ?>
-        <div>
-          <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA Repercutido (ventas)</h4>
-          <table class="table" style="font-size:0.9rem">
-            <thead>
-              <tr>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600">Tipo</th>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Base</th>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Cuota</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($byVat as $rate => $t): ?>
-                <tr>
-                  <td><?= htmlspecialchars($rate) ?>%</td>
-                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['base'], 2) ?> €</td>
-                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['iva'], 2) ?> €</td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
+    <?php if (in_array('303', $storedModels, true)): ?>
+      <div class="card">
+        <h3>Modelo 303</h3>
+        <p style="color:var(--gray-600);margin-top:-6px">IVA del trimestre seleccionado. Ventas frente a IVA soportado deducible de gastos registrados.</p>
+        <div class="grid-stats-4">
+          <div class="kpi"><div class="kpi-label">Base ventas</div><div class="kpi-value"><?= number_format($base, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">IVA devengado</div><div class="kpi-value"><?= number_format($devengado27, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">IVA deducible</div><div class="kpi-value"><?= number_format($deducible45, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">Resultado</div><div class="kpi-value" style="<?= $resultado46 < 0 ? 'color:var(--success)' : '' ?>"><?= number_format($resultado46, 2) ?> €</div></div>
         </div>
+
+        <?php if (!empty($byVat) || !empty($expensesByVat)): ?>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px">
+            <?php if (!empty($byVat)): ?>
+              <div>
+                <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA repercutido</h4>
+                <table class="table" style="font-size:0.9rem">
+                  <thead><tr><th>Tipo</th><th style="text-align:right">Base</th><th style="text-align:right">Cuota</th></tr></thead>
+                  <tbody>
+                    <?php foreach ($byVat as $rate => $t): ?>
+                      <tr>
+                        <td><?= htmlspecialchars($rate) ?>%</td>
+                        <td style="text-align:right"><?= number_format($t['base'], 2) ?> €</td>
+                        <td style="text-align:right"><?= number_format($t['iva'], 2) ?> €</td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+            <?php if (!empty($expensesByVat)): ?>
+              <div>
+                <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA soportado</h4>
+                <table class="table" style="font-size:0.9rem">
+                  <thead><tr><th>Tipo</th><th style="text-align:right">Base</th><th style="text-align:right">Cuota</th></tr></thead>
+                  <tbody>
+                    <?php foreach ($expensesByVat as $rate => $t): ?>
+                      <tr>
+                        <td><?= htmlspecialchars($rate) ?>%</td>
+                        <td style="text-align:right"><?= number_format($t['base'], 2) ?> €</td>
+                        <td style="text-align:right"><?= number_format($t['vat'], 2) ?> €</td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+          </div>
         <?php endif; ?>
-        <?php if (!empty($expensesByVat)): ?>
-        <div>
-          <h4 style="font-size:0.9rem;margin:0 0 8px;color:var(--gray-700)">IVA Soportado (gastos)</h4>
-          <table class="table" style="font-size:0.9rem">
-            <thead>
-              <tr>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600">Tipo</th>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Base</th>
-                <th style="background:var(--gray-50);color:var(--gray-700);font-weight:600;text-align:right">Cuota</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($expensesByVat as $rate => $t): ?>
-                <tr>
-                  <td><?= htmlspecialchars($rate) ?>%</td>
-                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['base'], 2) ?> €</td>
-                  <td style="text-align:right;white-space:nowrap;"><?= number_format($t['vat'], 2) ?> €</td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
-        <?php endif; ?>
-      </div>
-      <?php endif; ?>
 
-      <div style="margin-top:12px;text-align:right">
-        <a href="<?= route_path('expenses') ?>" class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)">Ver gastos →</a>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <a href="<?= route_path('expenses') ?>" class="btn btn-sm btn-secondary">Ver gastos</a>
+        </div>
       </div>
-    </div>
+    <?php endif; ?>
+
+    <?php if (in_array('130', $storedModels, true)): ?>
+      <div class="card">
+        <h3>Modelo 130</h3>
+        <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
+        <div class="grid-stats-5">
+          <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value"><?= number_format($ingresos01, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">Gastos</div><div class="kpi-value"><?= number_format($gastos02, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">Rendimiento</div><div class="kpi-value"><?= number_format($rendimiento03, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">20%</div><div class="kpi-value"><?= number_format($cuota04, 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">A ingresar</div><div class="kpi-value"><?= number_format($casilla7, 2) ?> €</div></div>
+        </div>
+        <div class="sep"></div>
+        <form method="get" class="form-band">
+          <input type="hidden" name="year" value="<?= (int)$y ?>" />
+          <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
+          <div class="form-grid-3">
+            <div>
+              <label style="font-weight:600;font-size:0.9rem">Gastos acumulados</label>
+              <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)$gastosManuales) ?>" placeholder="0,00" />
+              <div class="hint">Auto: <?= number_format($gastosRegistrados, 2) ?> €</div>
+            </div>
+            <div>
+              <label style="font-weight:600;font-size:0.9rem">Pagos previos</label>
+              <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
+              <div class="hint">Auto: <?= number_format($autoPrev, 2) ?> €</div>
+            </div>
+            <div>
+              <label style="font-weight:600;font-size:0.9rem">Retenciones acumuladas</label>
+              <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
+              <div class="hint">Auto: <?= number_format($autoRetenciones, 2) ?> €</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:12px">
+            <button type="submit" class="btn btn-sm">Recalcular</button>
+          </div>
+        </form>
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <div class="grid-2" style="margin-top:16px">
+    <?php if (in_array('111', $storedModels, true)): ?>
+      <div class="card">
+        <h3>Modelo 111</h3>
+        <p style="color:var(--gray-600)">Lo hemos dejado preparado en el centro fiscal, pero el cálculo automático todavía no está integrado en esta fase.</p>
+        <div class="form-band">
+          <strong>Qué conviene revisar</strong>
+          <ul style="margin:8px 0 0 18px;color:var(--gray-700)">
+            <li>Pagos a profesionales con retención</li>
+            <li>Nóminas o servicios sujetos a retención</li>
+            <li>Importes retenidos durante el trimestre</li>
+          </ul>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <?php if (in_array('115', $storedModels, true)): ?>
+      <div class="card">
+        <h3>Modelo 115</h3>
+        <p style="color:var(--gray-600)">Visible porque has indicado que gestionas alquiler con retención. Lo dejamos preparado como recordatorio centralizado.</p>
+        <div class="form-band">
+          <strong>Qué conviene revisar</strong>
+          <ul style="margin:8px 0 0 18px;color:var(--gray-700)">
+            <li>Importe del alquiler del trimestre</li>
+            <li>Retención practicada</li>
+            <li>Datos del arrendador</li>
+          </ul>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <?php if (in_array('390', $storedModels, true)): ?>
+      <div class="card">
+        <h3>Modelo 390</h3>
+        <p style="color:var(--gray-600)">Resumen anual de IVA para tener visibilidad del ejercicio completo.</p>
+        <div class="grid-stats-4">
+          <div class="kpi"><div class="kpi-label">Base ventas año</div><div class="kpi-value"><?= number_format($annualVat['sales_base'], 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">IVA ventas año</div><div class="kpi-value"><?= number_format($annualVat['sales_vat'], 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">IVA gastos año</div><div class="kpi-value"><?= number_format($annualVat['expenses_vat'], 2) ?> €</div></div>
+          <div class="kpi"><div class="kpi-label">Resultado anual</div><div class="kpi-value"><?= number_format($annualVat['result'], 2) ?> €</div></div>
+        </div>
+      </div>
+    <?php endif; ?>
 
     <div class="card">
-      <h3>Modelo 130 — IRPF</h3>
-      <p style="color:var(--gray-600);margin-top:-6px">Acumulado desde el 1 de enero hasta el fin del trimestre seleccionado.</p>
-      <div class="grid-stats-5">
-        <div class="kpi"><div class="kpi-label">Ingresos (01)</div><div class="kpi-value"><?= number_format($ingresos01, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">Gastos (02)</div><div class="kpi-value"><?= number_format($gastos02, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">Rendimiento (03)</div><div class="kpi-value"><?= number_format($rendimiento03, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">20% (04)</div><div class="kpi-value"><?= number_format($cuota04, 2) ?> €</div></div>
-        <div class="kpi"><div class="kpi-label">Pago fraccionado (7)</div><div class="kpi-value"><?= number_format($casilla7, 2) ?> €</div></div>
+      <h3>Checklist de cierre</h3>
+      <p style="color:var(--gray-600)">Una guía rápida para saber qué conviene revisar antes de dar por cerrado el trimestre.</p>
+      <ul class="kv">
+        <li><span>Borradores pendientes:</span> <span><?= (int)$checklist['draft_invoices'] ?></span></li>
+        <li><span>Gastos por revisar:</span> <span><?= (int)$checklist['pending_expenses'] ?></span></li>
+        <li><span>Gastos sin proveedor:</span> <span><?= (int)$checklist['unlinked_suppliers'] ?></span></li>
+        <li><span>Gastos en “otros”:</span> <span><?= (int)$checklist['uncategorized_expenses'] ?></span></li>
+        <li><span>Facturas emitidas sin cobrar:</span> <span><?= (int)$checklist['unpaid_issued'] ?></span></li>
+      </ul>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <a href="<?= route_path('invoices') ?>" class="btn btn-sm btn-secondary">Ver facturas</a>
+        <a href="<?= route_path('expenses') ?>" class="btn btn-sm btn-secondary">Ver gastos</a>
       </div>
-      <div class="sep"></div>
-      <form method="get" class="form-band">
-        <input type="hidden" name="year" value="<?= (int)$y ?>" />
-        <input type="hidden" name="quarter" value="<?= (int)$q ?>" />
-        <div class="form-grid-3">
-          <div>
-            <label style="font-weight:600;font-size:0.9rem">Gastos (02)</label>
-            <input type="text" name="gastos_ytd" value="<?= htmlspecialchars((string)($gastosManuales)) ?>" placeholder="0,00" />
-            <div class="hint">Auto: <?= number_format($gastosRegistrados, 2) ?> € (de gastos registrados)</div>
-          </div>
-          <div>
-            <label style="font-weight:600;font-size:0.9rem">Pagos previos (5)</label>
-            <input type="text" name="prev_payments" value="<?= htmlspecialchars((string)$casilla5_prev) ?>" placeholder="0,00" />
-            <div class="hint">Auto: <?= number_format($autoPrev, 2) ?> €</div>
-          </div>
-          <div>
-            <label style="font-weight:600;font-size:0.9rem">Retenciones acumuladas (6)</label>
-            <input type="text" name="retenciones" value="<?= htmlspecialchars((string)$casilla6_ret) ?>" placeholder="0,00" />
-            <div class="hint">Auto: <?= number_format($autoRetenciones, 2) ?> €</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px">
-          <button type="submit" class="btn btn-sm">Recalcular</button>
-        </div>
-      </form>
     </div>
   </div>
 </section>
+
+<script>
+(function(){
+  const yearEl = document.getElementById('year');
+  const qEl = document.getElementById('quarter');
+  const label = document.getElementById('rangeLabel');
+  function fmt(d){
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = d.getFullYear();
+    return dd+'/'+mm+'/'+yy;
+  }
+  function update(){
+    const y = parseInt(yearEl.value,10)||new Date().getFullYear();
+    const q = parseInt(qEl.value,10)||1;
+    let start, end;
+    if (q===1){ start=new Date(y,0,1); end=new Date(y,2,31); }
+    else if (q===2){ start=new Date(y,3,1); end=new Date(y,5,30); }
+    else if (q===3){ start=new Date(y,6,1); end=new Date(y,8,30); }
+    else { start=new Date(y,9,1); end=new Date(y,11,31); }
+    if (label) label.textContent = 'Periodo seleccionado: ' + fmt(start) + ' — ' + fmt(end);
+  }
+  yearEl && yearEl.addEventListener('input', update);
+  qEl && qEl.addEventListener('change', update);
+})();
+</script>

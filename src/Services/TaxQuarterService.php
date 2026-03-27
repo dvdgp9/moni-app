@@ -9,6 +9,15 @@ use PDO;
 
 final class TaxQuarterService
 {
+    private static function currentUserId(): int
+    {
+        $userId = AuthService::userId();
+        if ($userId === null) {
+            throw new \RuntimeException('Usuario no autenticado');
+        }
+        return $userId;
+    }
+
     public static function quarterRange(int $year, int $quarter): array
     {
         $quarter = max(1, min(4, $quarter));
@@ -33,14 +42,16 @@ final class TaxQuarterService
     {
         $range = self::quarterRange($year, $quarter);
         $pdo = Database::pdo();
+        $userId = self::currentUserId();
         // Join invoices and items, restricted by date and status
         $sql = 'SELECT it.quantity, it.unit_price, it.vat_rate, it.irpf_rate
                 FROM invoice_items it
                 INNER JOIN invoices i ON i.id = it.invoice_id
                 WHERE i.status IN (\'issued\', \'paid\')
+                  AND i.user_id = :user_id
                   AND i.issue_date >= :start AND i.issue_date <= :end';
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([':start' => $range['start'], ':end' => $range['end']]);
+        $stmt->execute([':start' => $range['start'], ':end' => $range['end'], ':user_id' => $userId]);
         $base = 0.0; $iva = 0.0; $irpf = 0.0;
         $byVat = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -87,13 +98,15 @@ final class TaxQuarterService
         $start = "$year-01-01";
         $end = $endMap[$quarter];
         $pdo = Database::pdo();
+        $userId = self::currentUserId();
         $sql = 'SELECT it.quantity, it.unit_price, it.vat_rate, it.irpf_rate
                 FROM invoice_items it
                 INNER JOIN invoices i ON i.id = it.invoice_id
                 WHERE i.status IN (\'issued\', \'paid\')
+                  AND i.user_id = :user_id
                   AND i.issue_date >= :start AND i.issue_date <= :end';
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([':start' => $start, ':end' => $end]);
+        $stmt->execute([':start' => $start, ':end' => $end, ':user_id' => $userId]);
         $base = 0.0; $iva = 0.0; $irpf = 0.0;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $qty = (float)($row['quantity'] ?? 0);
@@ -121,12 +134,14 @@ final class TaxQuarterService
     {
         $range = self::quarterRange($year, $quarter);
         $pdo = Database::pdo();
+        $userId = self::currentUserId();
         
         $sql = 'SELECT base_amount, vat_rate, vat_amount
                 FROM expenses
-                WHERE invoice_date >= :start AND invoice_date <= :end';
+                WHERE user_id = :user_id
+                  AND invoice_date >= :start AND invoice_date <= :end';
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([':start' => $range['start'], ':end' => $range['end']]);
+        $stmt->execute([':start' => $range['start'], ':end' => $range['end'], ':user_id' => $userId]);
         
         $base = 0.0;
         $vat = 0.0;
@@ -177,11 +192,13 @@ final class TaxQuarterService
         $end = $endMap[$quarter];
         
         $pdo = Database::pdo();
+        $userId = self::currentUserId();
         $sql = 'SELECT SUM(base_amount) as base_total, SUM(vat_amount) as vat_total
                 FROM expenses
-                WHERE invoice_date >= :start AND invoice_date <= :end';
+                WHERE user_id = :user_id
+                  AND invoice_date >= :start AND invoice_date <= :end';
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([':start' => $start, ':end' => $end]);
+        $stmt->execute([':start' => $start, ':end' => $end, ':user_id' => $userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         return [
@@ -189,5 +206,57 @@ final class TaxQuarterService
             'vat_total_ytd' => round((float)($row['vat_total'] ?? 0), 2),
             'range_ytd' => ['start' => $start, 'end' => $end],
         ];
+    }
+
+    public static function annualVatSummary(int $year): array
+    {
+        $sales = [1, 2, 3, 4];
+        $annual = [
+            'sales_base' => 0.0,
+            'sales_vat' => 0.0,
+            'expenses_base' => 0.0,
+            'expenses_vat' => 0.0,
+        ];
+        foreach ($sales as $quarter) {
+            $salesQ = self::summarizeSales($year, $quarter);
+            $expensesQ = self::summarizeExpenses($year, $quarter);
+            $annual['sales_base'] += $salesQ['base_total'];
+            $annual['sales_vat'] += $salesQ['iva_total'];
+            $annual['expenses_base'] += $expensesQ['base_total'];
+            $annual['expenses_vat'] += $expensesQ['vat_total'];
+        }
+        $annual['result'] = round($annual['sales_vat'] - $annual['expenses_vat'], 2);
+        foreach (['sales_base', 'sales_vat', 'expenses_base', 'expenses_vat'] as $key) {
+            $annual[$key] = round($annual[$key], 2);
+        }
+        return $annual;
+    }
+
+    public static function quarterChecklist(int $year, int $quarter): array
+    {
+        $range = self::quarterRange($year, $quarter);
+        $pdo = Database::pdo();
+        $userId = self::currentUserId();
+
+        $queries = [
+            'draft_invoices' => 'SELECT COUNT(*) FROM invoices WHERE user_id = :user_id AND status = "draft" AND issue_date >= :start AND issue_date <= :end',
+            'pending_expenses' => 'SELECT COUNT(*) FROM expenses WHERE user_id = :user_id AND status = "pending" AND invoice_date >= :start AND invoice_date <= :end',
+            'uncategorized_expenses' => 'SELECT COUNT(*) FROM expenses WHERE user_id = :user_id AND category = "otros" AND invoice_date >= :start AND invoice_date <= :end',
+            'unlinked_suppliers' => 'SELECT COUNT(*) FROM expenses WHERE user_id = :user_id AND supplier_id IS NULL AND invoice_date >= :start AND invoice_date <= :end',
+            'unpaid_issued' => 'SELECT COUNT(*) FROM invoices WHERE user_id = :user_id AND status = "issued" AND issue_date >= :start AND issue_date <= :end',
+        ];
+
+        $result = [];
+        foreach ($queries as $key => $sql) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':start' => $range['start'],
+                ':end' => $range['end'],
+            ]);
+            $result[$key] = (int)$stmt->fetchColumn();
+        }
+
+        return $result;
     }
 }
