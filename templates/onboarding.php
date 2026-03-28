@@ -433,10 +433,27 @@ $progressPercent = (int)round((($step - 1) / 4) * 100);
 .onboarding-subtitle { font-size:0.88rem; font-weight:700; color:var(--gray-700); text-transform:uppercase; letter-spacing:0.03em; }
 .onboarding-checks { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
 .onboarding-check-card { display:flex; gap:10px; align-items:flex-start; min-height:100px; padding:14px 16px; border:1px solid var(--gray-200); border-radius:16px; background:#f8fbfd; color:var(--gray-800); font-weight:600; line-height:1.4; }
-.onboarding-check-card input { margin-top:3px; flex:0 0 auto; }
+.onboarding-check-card input[type="checkbox"],
+.onboarding-model input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: none;
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  flex: 0 0 auto;
+}
+.onboarding-check-card span,
+.onboarding-model span {
+  min-width: 0;
+}
 .onboarding-models { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
 .onboarding-model { display:flex; gap:12px; align-items:flex-start; min-height:92px; padding:14px 16px; border-radius:16px; border:1px solid var(--gray-200); background:#fff; }
-.onboarding-model input { margin-top:3px; flex:0 0 auto; }
 .onboarding-model span { display:grid; gap:4px; }
 .onboarding-model strong { font-size:1.02rem; color:var(--gray-900); }
 .onboarding-model small { color:var(--gray-600); }
