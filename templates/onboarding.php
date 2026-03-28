@@ -332,8 +332,9 @@ $progressPercent = (int)round((($step - 1) / 4) * 100);
           Si no lo configuras ahora, tendrás que elegir estos valores manualmente más adelante al crear documentos.
         </div>
       <?php elseif ($step === 4): ?>
-        <div class="onboarding-grid">
-          <div>
+        <div class="onboarding-fiscal-layout">
+          <div class="onboarding-fiscal-top">
+            <div class="onboarding-fiscal-activity">
             <label>Tipo de actividad</label>
             <select name="activity_mode">
               <?php foreach ($activityModes as $key => $label): ?>
@@ -341,12 +342,25 @@ $progressPercent = (int)round((($step - 1) / 4) * 100);
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="onboarding-grid-span onboarding-checks">
-            <label><input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($values['issues_invoices_with_irpf']) ? 'checked' : '' ?> /> Mis facturas suelen llevar retención de IRPF</label>
-            <label><input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($values['has_rent_withholdings']) ? 'checked' : '' ?> /> Pago alquiler con retención</label>
-            <label><input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($values['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> /> Pago profesionales o nóminas con retención</label>
+            <div class="onboarding-fiscal-flags">
+              <span class="onboarding-subtitle">Situaciones que te aplican</span>
+              <div class="onboarding-checks">
+                <label class="onboarding-check-card">
+                  <input type="checkbox" name="issues_invoices_with_irpf" value="1" <?= !empty($values['issues_invoices_with_irpf']) ? 'checked' : '' ?> />
+                  <span>Mis facturas suelen llevar retención de IRPF</span>
+                </label>
+                <label class="onboarding-check-card">
+                  <input type="checkbox" name="has_rent_withholdings" value="1" <?= !empty($values['has_rent_withholdings']) ? 'checked' : '' ?> />
+                  <span>Pago alquiler con retención</span>
+                </label>
+                <label class="onboarding-check-card">
+                  <input type="checkbox" name="has_payroll_or_professional_withholdings" value="1" <?= !empty($values['has_payroll_or_professional_withholdings']) ? 'checked' : '' ?> />
+                  <span>Pago profesionales o nóminas con retención</span>
+                </label>
+              </div>
+            </div>
           </div>
-          <div class="onboarding-grid-span">
+          <div class="onboarding-fiscal-models">
             <label>Modelos que te aplican</label>
             <div class="onboarding-models">
               <?php foreach ($allModels as $code => $model): ?>
@@ -413,11 +427,18 @@ $progressPercent = (int)round((($step - 1) / 4) * 100);
 .onboarding-preview-card { width:100%; max-width:280px; min-height:160px; border-radius:18px; border:1px solid rgba(15,35,31,0.08); background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,252,0.94)); padding:18px; display:grid; gap:6px; box-shadow:0 12px 30px rgba(15,35,31,0.08); }
 .onboarding-preview-logo { max-height:48px; width:auto; max-width:160px; object-fit:contain; }
 .onboarding-preview-placeholder { width:88px; height:48px; border-radius:12px; background:var(--gray-100); display:flex; align-items:center; justify-content:center; color:var(--gray-500); font-size:0.78rem; }
-.onboarding-checks { display:grid; gap:10px; }
-.onboarding-checks label { display:flex; gap:8px; align-items:flex-start; font-weight:500; color:var(--gray-800); }
+.onboarding-fiscal-layout { display:grid; gap:18px; }
+.onboarding-fiscal-top { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.2fr); gap:16px; align-items:start; }
+.onboarding-fiscal-activity, .onboarding-fiscal-flags, .onboarding-fiscal-models { display:grid; gap:10px; }
+.onboarding-subtitle { font-size:0.88rem; font-weight:700; color:var(--gray-700); text-transform:uppercase; letter-spacing:0.03em; }
+.onboarding-checks { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+.onboarding-check-card { display:flex; gap:10px; align-items:flex-start; min-height:100px; padding:14px 16px; border:1px solid var(--gray-200); border-radius:16px; background:#f8fbfd; color:var(--gray-800); font-weight:600; line-height:1.4; }
+.onboarding-check-card input { margin-top:3px; flex:0 0 auto; }
 .onboarding-models { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
-.onboarding-model { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:14px; border:1px solid var(--gray-200); background:#fff; }
+.onboarding-model { display:flex; gap:12px; align-items:flex-start; min-height:92px; padding:14px 16px; border-radius:16px; border:1px solid var(--gray-200); background:#fff; }
+.onboarding-model input { margin-top:3px; flex:0 0 auto; }
 .onboarding-model span { display:grid; gap:4px; }
+.onboarding-model strong { font-size:1.02rem; color:var(--gray-900); }
 .onboarding-model small { color:var(--gray-600); }
 .onboarding-summary-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
 .onboarding-summary-card { padding:16px; border-radius:16px; border:1px solid var(--gray-200); background:#fff; display:grid; gap:6px; }
@@ -427,7 +448,7 @@ $progressPercent = (int)round((($step - 1) / 4) * 100);
 .onboarding-summary-card p { margin:0; color:var(--gray-600); font-size:0.92rem; }
 .onboarding-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; flex-wrap:wrap; }
 @media (max-width: 820px) {
-  .onboarding-grid, .onboarding-summary-grid, .onboarding-models { grid-template-columns:1fr; }
+  .onboarding-grid, .onboarding-summary-grid, .onboarding-models, .onboarding-fiscal-top, .onboarding-checks { grid-template-columns:1fr; }
   .onboarding-preview { justify-content:flex-start; }
 }
 </style>
