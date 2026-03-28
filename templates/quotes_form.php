@@ -8,6 +8,7 @@ use Moni\Services\InvoiceService;
 use Moni\Support\Config;
 use Moni\Services\QuoteNumberingService;
 use Moni\Repositories\UsersRepository;
+use Moni\Repositories\SettingsRepository;
 use Moni\Services\AuthService;
 
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
@@ -18,6 +19,10 @@ $editing = $id > 0;
 $errors = [];
 
 $clients = ClientsRepository::all();
+$storedVat = SettingsRepository::get('default_vat_rate');
+$storedIrpf = SettingsRepository::get('default_irpf_rate');
+$defaultVat = $storedVat !== null && is_numeric(str_replace(',', '.', $storedVat)) ? (string)(float)str_replace(',', '.', $storedVat) : '21';
+$defaultIrpf = $storedIrpf !== null && is_numeric(str_replace(',', '.', $storedIrpf)) ? (string)(float)str_replace(',', '.', $storedIrpf) : '15';
 
 $quote = [
   'client_id' => $clients[0]['id'] ?? 0,
@@ -30,8 +35,8 @@ $items = [[
   'description' => '',
   'quantity' => '1',
   'unit_price' => '0.00',
-  'vat_rate' => '21',
-  'irpf_rate' => '15',
+  'vat_rate' => $defaultVat,
+  'irpf_rate' => $defaultIrpf,
 ]];
 
 if ($editing) {
@@ -42,7 +47,7 @@ if ($editing) {
     $items = QuoteItemsRepository::byQuote($id);
     if (empty($items)) {
       $items = [[
-        'description' => '', 'quantity' => '1', 'unit_price' => '0.00', 'vat_rate' => '21', 'irpf_rate' => '15'
+        'description' => '', 'quantity' => '1', 'unit_price' => '0.00', 'vat_rate' => $defaultVat, 'irpf_rate' => $defaultIrpf
       ]];
     }
   } else {
@@ -63,8 +68,8 @@ function parse_quote_items_from_post(): array {
     $d = trim((string)($desc[$i] ?? ''));
     $q = (string)($qty[$i] ?? '1');
     $p = (string)($price[$i] ?? '0');
-    $v = (string)($vat[$i] ?? '21');
-    $r = (string)($irpf[$i] ?? '15');
+    $v = (string)($vat[$i] ?? ($GLOBALS['defaultVat'] ?? '21'));
+    $r = (string)($irpf[$i] ?? ($GLOBALS['defaultIrpf'] ?? '15'));
     if ($d === '' && (float)$p === 0.0) { continue; }
     $out[] = [
       'description' => $d,
@@ -137,8 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         break;
       }
       $irpfValue = (float)str_replace(',', '.', (string)$item['irpf_rate']);
-      if ($irpfValue < 0 || $irpfValue > 19) {
-        $errors['items'] = 'El IRPF de cada línea debe estar entre 0 y 19';
+      if ($irpfValue < 0) {
+        $errors['items'] = 'El IRPF de cada línea debe ser igual o mayor que 0';
         break;
       }
     }
@@ -363,8 +368,8 @@ $canEdit = in_array($currentStatus, ['draft', 'sent'], true);
       + '<div class="grid-2"><div><label>Descripción</label><input type="text" name="item_description[]" /></div>'
       + '<div class="grid-2"><div><label>Cantidad</label><input type="text" name="item_quantity[]" value="1" /></div>'
       + '<div><label>Precio</label><input type="text" name="item_unit_price[]" value="0.00" /></div></div></div>'
-      + '<div class="grid-2"><div><label>IVA %</label><input type="text" name="item_vat_rate[]" value="21" /></div>'
-      + '<div><label>IRPF %</label><input type="text" name="item_irpf_rate[]" value="15" /></div></div>';
+      + '<div class="grid-2"><div><label>IVA %</label><input type="text" name="item_vat_rate[]" value="<?= htmlspecialchars($defaultVat) ?>" /></div>'
+      + '<div><label>IRPF %</label><input type="text" name="item_irpf_rate[]" value="<?= htmlspecialchars($defaultIrpf) ?>" /></div></div>';
     items.appendChild(div);
     recalc();
   }

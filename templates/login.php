@@ -1,6 +1,7 @@
 <?php
 use Moni\Repositories\UsersRepository;
 use Moni\Services\AuthService;
+use Moni\Services\OnboardingService;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
@@ -21,6 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             AuthService::login((int)$user['id'], $remember);
             $to = $_SESSION['_intended'] ?? route_path('dashboard');
             unset($_SESSION['_intended']);
+            if ($to === route_path('dashboard') && OnboardingService::shouldResumeAfterLogin((int)$user['id'])) {
+                $to = route_path('onboarding');
+            }
             moni_redirect($to);
         }
         Flash::add('error', 'Credenciales inválidas.');

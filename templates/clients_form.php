@@ -1,5 +1,6 @@
 <?php
 use Moni\Repositories\ClientsRepository;
+use Moni\Repositories\SettingsRepository;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
@@ -15,8 +16,8 @@ $values = [
   'email' => '',
   'phone' => '',
   'address' => '',
-  'default_vat' => '21',
-  'default_irpf' => '15',
+  'default_vat' => (string)(SettingsRepository::get('default_vat_rate') ?? '21'),
+  'default_irpf' => (string)(SettingsRepository::get('default_irpf_rate') ?? '15'),
 ];
 
 if ($editing) {
@@ -65,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($vat < 0 || $vat > 21) {
     $errors['default_vat'] = 'IVA debe estar entre 0 y 21';
   }
-  if ($irpf < 0 || $irpf > 19) {
-    $errors['default_irpf'] = 'IRPF debe estar entre 0 y 19';
+  if (!is_numeric(str_replace(',', '.', (string)$values['default_irpf'])) || $irpf < 0) {
+    $errors['default_irpf'] = 'IRPF debe ser numérico y no negativo';
   }
 
   if (empty($errors)) {

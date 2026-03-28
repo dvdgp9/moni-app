@@ -101,6 +101,7 @@ if (!function_exists('route_path')) {
             'suppliers' => '/proveedores',
             'supplier_form' => isset($params['id']) ? '/proveedores/editar' : '/proveedores/nuevo',
             'profile' => '/perfil',
+            'onboarding' => '/onboarding',
             'reminders' => '/notificaciones',
             'declaraciones' => '/declaraciones',
             'quotes' => '/presupuestos',

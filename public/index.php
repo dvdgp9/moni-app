@@ -115,6 +115,7 @@ $legacyRoutes = [
     'register' => 'register',
     'logout' => 'logout',
     'profile' => 'profile',
+    'onboarding' => 'onboarding',
     'reminders' => 'reminders',
     'declaraciones' => 'declaraciones',
     'quotes' => 'quotes',
@@ -144,6 +145,7 @@ $pathRoutes = [
     '/proveedores/nuevo' => 'supplier_form',
     '/proveedores/editar' => 'supplier_form',
     '/perfil' => 'profile',
+    '/onboarding' => 'onboarding',
     '/notificaciones' => 'reminders',
     '/declaraciones' => 'declaraciones',
     '/presupuestos' => 'quotes',
@@ -198,6 +200,7 @@ $routes = [
     'register' => $root . '/templates/register.php',
     'logout' => $root . '/templates/logout.php',
     'profile' => $root . '/templates/profile.php',
+    'onboarding' => $root . '/templates/onboarding.php',
     'reminders' => $root . '/templates/reminders.php',
     'declaraciones' => $root . '/templates/declaraciones.php',
     'quotes' => $root . '/templates/quotes_list.php',
@@ -214,7 +217,7 @@ $protected = [
     'invoices', 'invoice_form', 'invoice_pdf',
     'expenses', 'expense_form', 'expense_pdf',
     'suppliers', 'supplier_form',
-    'profile', 'reminders', 'declaraciones',
+    'profile', 'onboarding', 'reminders', 'declaraciones',
     'quotes', 'quote_form', 'quote_pdf',
 ];
 

@@ -18,6 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     $tz = isset($_POST['timezone']) ? trim((string)$_POST['timezone']) : null;
     $enabled = isset($_POST['reminders_enabled']) ? '1' : null; // null means no change
     $customDatesRaw = isset($_POST['custom_dates']) ? trim((string)$_POST['custom_dates']) : null;
+    $defaultVatRaw = isset($_POST['default_vat_rate']) ? trim((string)$_POST['default_vat_rate']) : null;
+    $defaultIrpfRaw = isset($_POST['default_irpf_rate']) ? trim((string)$_POST['default_irpf_rate']) : null;
     // Permitir formato líneas o JSON
     $custom = [];
     if ($customDatesRaw !== null && $customDatesRaw !== '') {
@@ -42,6 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
             Flash::add('error', 'El email de notificación no es válido.');
             moni_redirect(route_path('settings'));
         }
+        if ($defaultVatRaw !== null && $defaultVatRaw !== '') {
+            $vatNormalized = str_replace(',', '.', $defaultVatRaw);
+            if (!is_numeric($vatNormalized) || (float)$vatNormalized < 0 || (float)$vatNormalized > 21) {
+                Flash::add('error', 'El IVA por defecto debe ser numérico y estar entre 0 y 21.');
+                moni_redirect(route_path('settings'));
+            }
+        }
+        if ($defaultIrpfRaw !== null && $defaultIrpfRaw !== '') {
+            $irpfNormalized = str_replace(',', '.', $defaultIrpfRaw);
+            if (!is_numeric($irpfNormalized) || (float)$irpfNormalized < 0) {
+                Flash::add('error', 'El IRPF por defecto debe ser numérico y no negativo.');
+                moni_redirect(route_path('settings'));
+            }
+        }
         if ($notify !== null) { SettingsRepository::set('notify_email', $notify); }
         if ($tz !== null) { SettingsRepository::set('timezone', $tz); }
         if ($enabled !== null) { SettingsRepository::set('reminders_enabled', $enabled); }
@@ -52,6 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
             if ($days > 0 && $days <= 90) {
                 SettingsRepository::set('invoice_due_days', (string)$days);
             }
+        }
+        if ($defaultVatRaw !== null) {
+            SettingsRepository::set('default_vat_rate', $defaultVatRaw !== '' ? str_replace(',', '.', $defaultVatRaw) : null);
+        }
+        if ($defaultIrpfRaw !== null) {
+            SettingsRepository::set('default_irpf_rate', $defaultIrpfRaw !== '' ? str_replace(',', '.', $defaultIrpfRaw) : null);
         }
         Flash::add('success', 'Ajustes guardados correctamente.');
     } catch (Throwable $e) {
@@ -126,6 +148,8 @@ $s_custom_json = SettingsRepository::get('reminder_custom_dates') ?? '[]';
 $s_custom_arr = json_decode($s_custom_json, true);
 if (!is_array($s_custom_arr)) { $s_custom_arr = []; }
 $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Config::get('settings.invoice_due_days', 30));
+$s_default_vat = (string)(SettingsRepository::get('default_vat_rate') ?? '');
+$s_default_irpf = (string)(SettingsRepository::get('default_irpf_rate') ?? '');
 ?>
 <section>
   <h1>Ajustes</h1>
@@ -181,8 +205,21 @@ $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Confi
       <form method="post" style="margin-bottom:12px">
         <input type="hidden" name="save_settings" value="1" />
         <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
-        <label>Plazo por defecto (días)</label>
-        <input type="number" name="invoice_due_days" min="1" max="90" value="<?= (int)$s_due_days ?>" />
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+          <div>
+            <label>Plazo por defecto (días)</label>
+            <input type="number" name="invoice_due_days" min="1" max="90" value="<?= (int)$s_due_days ?>" />
+          </div>
+          <div>
+            <label>IVA habitual</label>
+            <input type="text" name="default_vat_rate" value="<?= htmlspecialchars($s_default_vat) ?>" placeholder="21" />
+          </div>
+          <div>
+            <label>IRPF habitual</label>
+            <input type="text" name="default_irpf_rate" value="<?= htmlspecialchars($s_default_irpf) ?>" placeholder="15" />
+          </div>
+        </div>
+        <p class="form-hint">Estos valores se usarán como base en nuevas facturas, presupuestos y clientes. Si los dejas vacíos, tendrás que escogerlos manualmente.</p>
         <div style="display:flex;justify-content:flex-end">
           <button type="submit" class="btn btn-secondary">Guardar</button>
         </div>

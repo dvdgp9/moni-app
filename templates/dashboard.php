@@ -7,6 +7,7 @@ use Moni\Repositories\QuotesRepository;
 use Moni\Repositories\RemindersRepository;
 use Moni\Repositories\SuppliersRepository;
 use Moni\Services\InvoiceService;
+use Moni\Services\OnboardingService;
 use Moni\Services\TaxQuarterService;
 
 $today = new DateTime();
@@ -136,6 +137,8 @@ foreach ($reminders as $reminder) {
 }
 usort($upcomingReminders, static fn(array $a, array $b): int => $a['date'] <=> $b['date']);
 $upcomingReminders = array_slice($upcomingReminders, 0, 4);
+$onboardingState = OnboardingService::getState((int)($_SESSION['user_id'] ?? 0));
+$showOnboardingCard = empty($onboardingState['completed_at']);
 
 $focusItems = [];
 if (count($overdueInvoices) > 0) {
@@ -204,6 +207,27 @@ function dashboard_date(?string $date): string
       </article>
     <?php endforeach; ?>
   </section>
+
+  <?php if ($showOnboardingCard): ?>
+    <section class="card dashboard-onboarding-card">
+      <div class="dashboard-panel-head">
+        <div>
+          <span class="dashboard-panel-kicker">Onboarding</span>
+          <h3>Tu cuenta está al <?= (int)$onboardingState['progress'] ?>%</h3>
+        </div>
+        <a href="<?= route_path('onboarding', ['resume' => 1, 'step' => (int)$onboardingState['step']]) ?>" class="btn btn-sm">Continuar configuración</a>
+      </div>
+      <div class="dashboard-mini-grid">
+        <?php foreach ($onboardingState['sections'] as $section): ?>
+          <div class="dashboard-mini-stat">
+            <span><?= htmlspecialchars($section['label']) ?></span>
+            <strong><?= $section['complete'] ? 'OK' : 'Pendiente' ?></strong>
+            <small style="color:var(--gray-600)"><?= htmlspecialchars($section['hint']) ?></small>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+  <?php endif; ?>
 
   <section class="dashboard-kpi-grid">
     <article class="dashboard-kpi-card">

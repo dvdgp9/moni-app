@@ -1,6 +1,7 @@
 <?php
 use Moni\Repositories\UsersRepository;
 use Moni\Services\AuthService;
+use Moni\Services\OnboardingService;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
@@ -32,8 +33,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $uid = UsersRepository::create($email, $password, $name !== '' ? $name : null);
         AuthService::login((int)$uid);
+        OnboardingService::setStep((int)$uid, 1);
         Flash::add('success', 'Bienvenido a Moni.');
-        moni_redirect(route_path('dashboard'));
+        moni_redirect(route_path('onboarding'));
     } catch (Throwable $e) {
         error_log('[register] ' . $e->getMessage());
         Flash::add('error', 'No se pudo completar el registro. Inténtalo de nuevo.');

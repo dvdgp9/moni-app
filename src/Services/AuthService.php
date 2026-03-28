@@ -17,6 +17,8 @@ final class AuthService
         $_SESSION['user_id'] = $userId;
         if ($remember) {
             self::issueRememberCookie($userId);
+        } else {
+            self::clearRememberCookie();
         }
     }
 
@@ -27,14 +29,7 @@ final class AuthService
         }
         unset($_SESSION['user_id']);
         $_SESSION = [];
-        // clear remember cookie
-        setcookie(self::COOKIE_NAME, '', [
-            'expires' => time() - 3600,
-            'path' => '/',
-            'secure' => self::isHttpsRequest(),
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+        self::clearRememberCookie();
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
             setcookie(session_name(), '', [
@@ -102,7 +97,50 @@ final class AuthService
     private static function appKey(): ?string
     {
         $k = $_ENV['APP_KEY'] ?? '';
-        return $k !== '' ? $k : null;
+        if ($k !== '') {
+            return $k;
+        }
+
+        $storageDir = dirname(__DIR__, 2) . '/storage';
+        $keyFile = $storageDir . '/app_key';
+
+        if (is_file($keyFile) && is_readable($keyFile)) {
+            $stored = trim((string)file_get_contents($keyFile));
+            if ($stored !== '') {
+                return $stored;
+            }
+        }
+
+        if (!is_dir($storageDir) && !@mkdir($storageDir, 0775, true) && !is_dir($storageDir)) {
+            error_log('[auth] No se pudo crear storage para la clave persistente de APP_KEY.');
+            return null;
+        }
+
+        try {
+            $generated = bin2hex(random_bytes(32));
+        } catch (\Throwable $e) {
+            error_log('[auth] No se pudo generar una clave persistente para recordar sesión: ' . $e->getMessage());
+            return null;
+        }
+
+        if (@file_put_contents($keyFile, $generated . PHP_EOL, LOCK_EX) === false) {
+            error_log('[auth] No se pudo guardar storage/app_key para recordar sesión.');
+            return null;
+        }
+
+        @chmod($keyFile, 0600);
+        return $generated;
+    }
+
+    private static function clearRememberCookie(): void
+    {
+        setcookie(self::COOKIE_NAME, '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => self::isHttpsRequest(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
     private static function isHttpsRequest(): bool

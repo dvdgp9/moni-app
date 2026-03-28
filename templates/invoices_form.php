@@ -21,8 +21,12 @@ $clients = ClientsRepository::all();
 
 // Defaults (read from DB first, then fallback to Config)
 $storedDays = SettingsRepository::get('invoice_due_days');
+$storedVat = SettingsRepository::get('default_vat_rate');
+$storedIrpf = SettingsRepository::get('default_irpf_rate');
 $defaultDays = $storedDays !== null ? (int)$storedDays : (int) Config::get('settings.invoice_due_days', 30);
 $defaultDays = ($defaultDays > 0 && $defaultDays <= 90) ? $defaultDays : 30;
+$defaultVat = $storedVat !== null && is_numeric(str_replace(',', '.', $storedVat)) ? (string)(float)str_replace(',', '.', $storedVat) : '21';
+$defaultIrpf = $storedIrpf !== null && is_numeric(str_replace(',', '.', $storedIrpf)) ? (string)(float)str_replace(',', '.', $storedIrpf) : '15';
 $invoice = [
   'client_id' => $clients[0]['id'] ?? 0,
   'issue_date' => date('Y-m-d'),
@@ -35,8 +39,8 @@ $items = [[
   'description' => '',
   'quantity' => '1',
   'unit_price' => '0.00',
-  'vat_rate' => '21',
-  'irpf_rate' => '15',
+  'vat_rate' => $defaultVat,
+  'irpf_rate' => $defaultIrpf,
 ]];
 
 if ($editing) {
@@ -57,7 +61,7 @@ if ($editing) {
     }
     if (empty($items)) {
       $items = [[
-        'description' => '', 'quantity' => '1', 'unit_price' => '0.00', 'vat_rate' => '21', 'irpf_rate' => '15'
+        'description' => '', 'quantity' => '1', 'unit_price' => '0.00', 'vat_rate' => $defaultVat, 'irpf_rate' => $defaultIrpf
       ]];
     }
   } else {
@@ -78,8 +82,8 @@ function parse_items_from_post(): array {
     $d = trim((string)($desc[$i] ?? ''));
     $q = (string)($qty[$i] ?? '1');
     $p = (string)($price[$i] ?? '0');
-    $v = (string)($vat[$i] ?? '21');
-    $r = (string)($irpf[$i] ?? '15');
+    $v = (string)($vat[$i] ?? ($GLOBALS['defaultVat'] ?? '21'));
+    $r = (string)($irpf[$i] ?? ($GLOBALS['defaultIrpf'] ?? '15'));
     if ($d === '' && (float)$p === 0.0) { continue; }
     $out[] = [
       'description' => $d,
@@ -163,8 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         break;
       }
       $irpfValue = (float)str_replace(',', '.', (string)$item['irpf_rate']);
-      if ($irpfValue < 0 || $irpfValue > 19) {
-        $errors['items'] = 'El IRPF de cada línea debe estar entre 0 y 19';
+      if ($irpfValue < 0) {
+        $errors['items'] = 'El IRPF de cada línea debe ser igual o mayor que 0';
         break;
       }
     }
@@ -399,11 +403,11 @@ $totals = InvoiceService::computeTotals($items);
       <div class="grid-2">
         <div>
           <label>IVA %</label>
-          <input type="text" name="item_vat_rate[]" value="21" />
+          <input type="text" name="item_vat_rate[]" value="<?= htmlspecialchars($defaultVat) ?>" />
         </div>
         <div>
           <label>IRPF %</label>
-          <input type="text" name="item_irpf_rate[]" value="15" />
+          <input type="text" name="item_irpf_rate[]" value="<?= htmlspecialchars($defaultIrpf) ?>" />
         </div>
       </div>`;
     items.appendChild(div);
