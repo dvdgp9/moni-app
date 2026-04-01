@@ -2,6 +2,7 @@
 use Moni\Repositories\UsersRepository;
 use Moni\Services\AuthService;
 use Moni\Services\OnboardingService;
+use Moni\Services\ReminderCatalogService;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
@@ -32,6 +33,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             moni_redirect(route_path('register'));
         }
         $uid = UsersRepository::create($email, $password, $name !== '' ? $name : null);
+        ReminderCatalogService::syncForUser((int)$uid);
         AuthService::login((int)$uid);
         OnboardingService::setStep((int)$uid, 1);
         Flash::add('success', 'Bienvenido a Moni.');

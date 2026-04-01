@@ -1,5 +1,6 @@
 <?php
 use Moni\Repositories\RemindersRepository;
+use Moni\Services\ReminderCatalogService;
 use Moni\Support\Flash;
 use Moni\Support\Csrf;
 use Moni\Support\Config;
@@ -80,6 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Load reminders and split groups
+if (!empty($_SESSION['user_id'])) {
+  try {
+    ReminderCatalogService::syncForUser((int)$_SESSION['user_id']);
+  } catch (Throwable $e) {
+    error_log('[reminders.catalog] ' . $e->getMessage());
+  }
+}
+
 $rows = RemindersRepository::all();
 $y = (int)date('Y');
 // Ordering selector

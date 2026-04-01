@@ -20,6 +20,9 @@ final class ReminderService
         $pdo = Database::pdo();
         $reminderLogsHasTitle = self::reminderLogsHasTitleColumn($pdo);
 
+        // Keep fiscal system reminders aligned before evaluating due events.
+        ReminderCatalogService::syncForAllUsers();
+
         $usersStmt = $pdo->query('SELECT id FROM users ORDER BY id ASC');
         $users = $usersStmt ? $usersStmt->fetchAll(PDO::FETCH_ASSOC) : [];
 
