@@ -118,7 +118,7 @@ final class ReminderCatalogService
             ],
             [
                 'label' => 'Calendario del contribuyente',
-                'url' => 'https://sede.agenciatributaria.gob.es/Sede/ayuda/calendario-contribuyente/calendario-contribuyente-2026.html',
+                'url' => 'https://sede.agenciatributaria.gob.es/Sede/calendario-contribuyente.html',
             ],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
