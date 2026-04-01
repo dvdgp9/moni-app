@@ -176,6 +176,14 @@ function format_range(?string $start, ?string $end): string {
   } catch (Throwable $e) { return htmlspecialchars((string)$start); }
 }
 
+function reminder_meta_label(array $reminder): string {
+  $title = mb_strtolower((string)($reminder['title'] ?? ''));
+  if (str_contains($title, 'renta')) {
+    return 'Campana anual';
+  }
+  return ((int)($reminder['mandatory'] ?? 0) === 1) ? 'Fiscal' : 'Recordatorio';
+}
+
 ?>
 <section>
   <h1>Notificaciones</h1>
@@ -240,7 +248,12 @@ function format_range(?string $start, ?string $end): string {
               <input type="hidden" name="enabled" value="<?= $r['enabled'] ? 0 : 1 ?>" />
               <button type="submit" class="toggle-switch <?= $r['enabled'] ? 'active' : '' ?>" data-role="toggle"></button>
             </form>
-            <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
+            <div class="reminder-copy">
+              <div class="reminder-meta">
+                <span class="reminder-badge"><?= htmlspecialchars(reminder_meta_label($r)) ?></span>
+              </div>
+              <div class="reminder-title"><?= htmlspecialchars($r['title']) ?></div>
+            </div>
             <?php $range = format_range($r['event_date'] ?? null, $r['end_date'] ?? null); ?>
             <div class="reminder-date"><?= htmlspecialchars($range) ?></div>
           </div>
@@ -252,10 +265,10 @@ function format_range(?string $start, ?string $end): string {
             }
           ?>
           <?php if (!empty($links)): ?>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px 40px">
+            <div class="reminder-links reminder-links-system">
               <?php foreach ($links as $lk): if (!isset($lk['url']) || !isset($lk['label'])) continue; ?>
-                <a href="<?= htmlspecialchars((string)$lk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none;padding:6px 10px;background:var(--gray-0);border:1px solid var(--gray-200);border-radius:999px;color:var(--gray-800);">
-                  <?= htmlspecialchars((string)$lk['label']) ?> ↗
+                <a href="<?= htmlspecialchars((string)$lk['url']) ?>" target="_blank" rel="noopener noreferrer" class="reminder-link-pill">
+                  <?= htmlspecialchars((string)$lk['label']) ?> <span aria-hidden="true">↗</span>
                 </a>
               <?php endforeach; ?>
             </div>
@@ -347,10 +360,10 @@ function format_range(?string $start, ?string $end): string {
             }
           ?>
           <?php if (!empty($links)): ?>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px 40px">
+            <div class="reminder-links">
               <?php foreach ($links as $lk): if (!isset($lk['url']) || !isset($lk['label'])) continue; ?>
-                <a href="<?= htmlspecialchars((string)$lk['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="text-decoration:none;padding:6px 10px;background:var(--gray-0);border:1px solid var(--gray-200);border-radius:999px;color:var(--gray-800);">
-                  <?= htmlspecialchars((string)$lk['label']) ?> ↗
+                <a href="<?= htmlspecialchars((string)$lk['url']) ?>" target="_blank" rel="noopener noreferrer" class="reminder-link-pill">
+                  <?= htmlspecialchars((string)$lk['label']) ?> <span aria-hidden="true">↗</span>
                 </a>
               <?php endforeach; ?>
             </div>

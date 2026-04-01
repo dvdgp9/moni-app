@@ -77,21 +77,21 @@ final class ReminderCatalogService
     {
         return [
             [
-                'title' => 'Renta: ya deberias poder presentarla',
+                'title' => 'Campana de la Renta: inicio de seguimiento',
                 'event_date' => '2026-04-15',
                 'end_date' => null,
                 'recurring' => 'yearly',
                 'links' => self::rentaLinks(),
             ],
             [
-                'title' => 'Renta: revisala antes de dejarla para el final',
+                'title' => 'Campana de la Renta: revision recomendada',
                 'event_date' => '2026-06-15',
                 'end_date' => null,
                 'recurring' => 'yearly',
                 'links' => self::rentaLinks(),
             ],
             [
-                'title' => 'Renta: ultimos dias antes del cierre',
+                'title' => 'Campana de la Renta: tramo final',
                 'event_date' => '2026-06-25',
                 'end_date' => null,
                 'recurring' => 'yearly',
