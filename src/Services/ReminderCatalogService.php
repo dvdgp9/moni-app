@@ -28,6 +28,7 @@ final class ReminderCatalogService
     public static function syncForUser(int $userId): void
     {
         $pdo = Database::pdo();
+        self::deleteObsoleteSystemReminders($pdo, $userId);
 
         foreach (self::systemReminders() as $reminder) {
             $select = $pdo->prepare('SELECT id, enabled FROM reminders WHERE user_id = :uid AND title = :title LIMIT 1');
@@ -120,5 +121,31 @@ final class ReminderCatalogService
                 'url' => 'https://sede.agenciatributaria.gob.es/Sede/ayuda/calendario-contribuyente/calendario-contribuyente-2026.html',
             ],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private static function deleteObsoleteSystemReminders(PDO $pdo, int $userId): void
+    {
+        $legacyTitles = [
+            'Renta: ya deberias poder presentarla',
+            'Renta: revisala antes de dejarla para el final',
+            'Renta: ultimos dias antes del cierre',
+            'Campana Renta 2025',
+        ];
+
+        $currentTitles = array_map(
+            static fn(array $reminder): string => (string)$reminder['title'],
+            self::systemReminders()
+        );
+
+        $titlesToDelete = array_values(array_unique(array_diff($legacyTitles, $currentTitles)));
+        if (empty($titlesToDelete)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($titlesToDelete), '?'));
+        $sql = "DELETE FROM reminders WHERE user_id = ? AND mandatory = 1 AND title IN ($placeholders)";
+        $stmt = $pdo->prepare($sql);
+        $params = [$userId, ...$titlesToDelete];
+        $stmt->execute($params);
     }
 }
