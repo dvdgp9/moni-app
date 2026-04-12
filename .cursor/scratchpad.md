@@ -685,11 +685,11 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
 - [x] PB2: Identificar gaps y oportunidades concretas
 - [x] PB3: Definir roadmap técnico detallado IA-first + OpenRouter
 - [x] T1: Config — `.env` + Settings de IA
-- [ ] T2: `AiExtractorService.php`
-- [ ] T3: `PdfToImageService.php`
-- [ ] T4: Reescribir flujo extracción en `expense_form.php`
-- [ ] T5: UI — indicadores de IA en formulario
-- [ ] T6: Settings UI — sección de IA
+- [x] T2: `AiExtractorService.php`
+- [x] T3: `PdfToImageService.php`
+- [x] T4: Reescribir flujo extracción en `expense_form.php`
+- [x] T5: UI — indicadores de IA en formulario
+- [x] T6: Settings UI — sección de IA
 - [ ] T7: Tests manuales y edge cases
 
 ## Current Status / Progress Tracking
@@ -700,14 +700,53 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
   - `src/bootstrap.php`: defaults IA (`ai_enabled`, `ai_model=google/gemini-3.1-flash-lite-preview`, `ai_base_url`, `ai_timeout`) + carga de overrides desde `SettingsRepository`.
   - `templates/settings.php`: nueva sección "Extracción inteligente (IA)" (toggle, modelo, base URL, timeout, estado de API key en `.env`) y persistencia de ajustes con validaciones.
   - Seguridad: la API key que compartió el usuario **no** se ha escrito en código ni en archivos versionados.
+- 2026-04-12 (Executor): **T2 completada**.
+  - Nuevo servicio `src/Services/AiExtractorService.php`.
+  - Implementados métodos:
+    - `isConfigured()` y `isEnabled()`.
+    - `extractFromText(string $text, array $categories): array`.
+    - `extractFromImagePath(string $imagePath, array $categories): array`.
+    - `testConnection(): bool`.
+  - Integración OpenRouter OpenAI-compatible (`/chat/completions`) con headers `Authorization`, `HTTP-Referer`, `X-Title`.
+  - Prompt estructurado en español con campos fiscales + `suggested_category` + `confidence`.
+  - Normalización de salida (fecha, importes, NIF, categoría).
+  - Validación rápida: `php -l src/Services/AiExtractorService.php` sin errores.
+- 2026-04-12 (Executor): **T3 completada**.
+  - Nuevo servicio `src/Services/PdfToImageService.php`.
+  - Conversión de primera página PDF a JPG con estrategia:
+    1) `Imagick` si está disponible,
+    2) `pdftoppm` por shell si existe,
+    3) degradación a `null` si no hay backend de conversión.
+  - Método `isAvailable()` añadido para diagnóstico.
+- 2026-04-12 (Executor): **T4 completada**.
+  - `templates/expense_form.php` actualizado a flujo **IA-first**.
+  - PDF:
+    - Si hay texto útil -> `AiExtractorService::extractFromText()`.
+    - Si no hay texto útil -> `PdfToImageService::convertFirstPage()` + `AiExtractorService::extractFromImagePath()`.
+  - Imagen:
+    - `AiExtractorService::extractFromImagePath()`.
+  - Fallback activo a `InvoiceParserService::parse()` solo si IA falla o no devuelve datos.
+  - Respuesta JSON ampliada con `extraction_source` (`ai|regex|manual`) y mensajes diferenciados.
+  - Validación sintáctica OK: `php -l src/Services/PdfToImageService.php` y `php -l templates/expense_form.php`.
+- 2026-04-12 (Executor): **T5 completada**.
+  - `templates/expense_form.php`: añadido badge visual de fuente de extracción (`IA`, `Local`, `Manual`).
+  - Añadido hint de categoría y autoselección de `suggested_category` cuando llega desde IA.
+  - Mensajería de resultado refinada para mejorar claridad al usuario.
+- 2026-04-12 (Executor): **T6 completada**.
+  - `templates/settings.php`: acción `test_ai_connection` con `AiExtractorService::testConnection()`.
+  - Añadido botón "Probar conexión IA" en la card de IA.
+  - Feedback por flash (`success/error`) según conexión OpenRouter.
+  - Validación sintáctica OK: `php -l templates/settings.php` y `php -l templates/expense_form.php`.
 
 ## Executor's Feedback or Assistance Requests
 - ✅ Modelo default fijado por usuario: `google/gemini-3.1-flash-lite-preview`.
-- Solicitud de validación manual (hito T1):
-  1) Abrir `Ajustes` y comprobar que aparece la sección "Extracción inteligente (IA)".
-  2) Verificar que se pueden guardar toggle/model/base URL/timeout.
-  3) Confirmar si el estado de API key aparece como "No configurada" (esperado hasta que se añada en `.env` del entorno activo).
-- Tras validación del usuario, continuar con **T2: `AiExtractorService.php`**.
+- T7 listo para ejecución manual conjunta (usuario + executor):
+  1) Ajustes -> IA: guardar modelo/base URL/timeout y pulsar "Probar conexión IA".
+  2) Subir PDF digital -> comprobar prellenado y badge "IA".
+  3) Subir imagen ticket -> comprobar extracción por IA.
+  4) Simular fallback: desactivar IA y subir PDF -> comprobar badge "Local"/comportamiento regex.
+  5) Verificar que `suggested_category` rellena categoría cuando existe.
+  6) Confirmar guardado final del gasto en CRUD sin regresiones.
 
 ## Lessons
 - OpenRouter es API OpenAI-compatible: mismo formato de payload, solo cambia base URL y auth header.

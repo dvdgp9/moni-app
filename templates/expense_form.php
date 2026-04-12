@@ -1,8 +1,10 @@
 <?php
 use Moni\Repositories\ExpensesRepository;
 use Moni\Repositories\SuppliersRepository;
+use Moni\Services\AiExtractorService;
 use Moni\Services\ExpenseDocumentService;
 use Moni\Services\PdfExtractorService;
+use Moni\Services\PdfToImageService;
 use Moni\Services\InvoiceParserService;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
@@ -82,13 +84,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $parsed = [];
         $supplierMatch = null;
         $hasContent = false;
+        $extractionSource = 'manual';
+        $categories = ExpensesRepository::getCategories();
 
         if ($stored['document_kind'] === 'pdf') {
             $destPath = dirname(__DIR__) . '/' . ltrim((string)$stored['relative_path'], '/');
             $text = PdfExtractorService::extractText($destPath);
             $hasContent = PdfExtractorService::hasUsefulContent($text);
-            $parsed = InvoiceParserService::parse($text);
+
+            if (AiExtractorService::isEnabled()) {
+                if ($hasContent) {
+                    $parsed = AiExtractorService::extractFromText($text, $categories);
+                } else {
+                    $imagePath = PdfToImageService::convertFirstPage($destPath);
+                    if ($imagePath !== null) {
+                        $parsed = AiExtractorService::extractFromImagePath($imagePath, $categories);
+                        @unlink($imagePath);
+                    }
+                }
+
+                if (!empty($parsed)) {
+                    $hasContent = true;
+                    $extractionSource = 'ai';
+                }
+            }
+
+            if (empty($parsed)) {
+                $parsed = InvoiceParserService::parse($text);
+                if (!empty(array_filter($parsed, static fn($v, $k) => !in_array($k, ['confidence', 'raw_text'], true) && $v !== null && $v !== '', ARRAY_FILTER_USE_BOTH))) {
+                    $extractionSource = 'regex';
+                }
+            }
+
             $supplierMatch = SuppliersRepository::findMatch($parsed['supplier_name'] ?? null, $parsed['supplier_nif'] ?? null);
+        } else {
+            $destPath = dirname(__DIR__) . '/' . ltrim((string)$stored['relative_path'], '/');
+            if (AiExtractorService::isEnabled()) {
+                $parsed = AiExtractorService::extractFromImagePath($destPath, $categories);
+                if (!empty($parsed)) {
+                    $hasContent = true;
+                    $extractionSource = 'ai';
+                    $supplierMatch = SuppliersRepository::findMatch($parsed['supplier_name'] ?? null, $parsed['supplier_nif'] ?? null);
+                }
+            }
         }
     } catch (\Throwable $e) {
         error_log("Error en extracción PDF: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
@@ -101,10 +139,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'pdf_path' => $stored['relative_path'],
         'has_content' => $hasContent,
         'extracted' => $parsed,
+        'extraction_source' => $extractionSource,
         'document_kind' => $stored['document_kind'],
         'message' => $stored['document_kind'] === 'image'
-            ? 'Imagen guardada. La base del scanner ya admite tickets desde movil; por ahora rellena o revisa los datos manualmente.'
-            : ($hasContent ? 'PDF procesado. Revisa los datos extraidos abajo.' : 'PDF guardado, pero no se ha podido leer texto util.'),
+            ? ($hasContent ? 'Imagen procesada con IA. Revisa los datos extraidos abajo.' : 'Imagen guardada, pero no se han podido extraer datos automaticamente.')
+            : ($hasContent
+                ? ($extractionSource === 'ai'
+                    ? 'PDF procesado con IA. Revisa los datos extraidos abajo.'
+                    : 'PDF procesado en modo local. Revisa los datos extraidos abajo.')
+                : 'PDF guardado, pero no se ha podido extraer información util.'),
         'supplier_match' => $supplierMatch ? [
             'id' => (int)$supplierMatch['id'],
             'name' => (string)$supplierMatch['name'],
@@ -263,6 +306,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
       <div class="alert" style="background:var(--success-50);border-color:var(--success-200);color:var(--success-700)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><polyline points="20 6 9 17 4 12"/></svg>
         <span id="extraction-message">Documento procesado. Revisa los datos extraidos abajo.</span>
+        <span id="extraction-source-badge" style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700;background:rgba(16,185,129,.18);color:var(--success-700)"></span>
       </div>
     </div>
 
@@ -387,6 +431,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
             <option value="<?= $key ?>" <?= $expense['category'] === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
           <?php endforeach; ?>
         </select>
+        <div class="field-hint" id="hint_category"></div>
       </div>
       <div>
         <label for="status">Estado</label>
@@ -509,6 +554,7 @@ $suppliersJson = array_map(static function (array $supplier): array {
   const resultDiv = document.getElementById('extraction-result');
   const warningDiv = document.getElementById('extraction-warning');
   const extractionMessage = document.getElementById('extraction-message');
+  const extractionSourceBadge = document.getElementById('extraction-source-badge');
   const extractionWarningMessage = document.getElementById('extraction-warning-message');
   const supplierLookup = document.getElementById('supplier_lookup');
   const supplierIdInput = document.getElementById('supplier_id');
@@ -673,10 +719,21 @@ $suppliersJson = array_map(static function (array $supplier): array {
       document.getElementById('pdf_path').value = data.pdf_path;
 
       if (data.has_content) {
+        if (extractionSourceBadge) {
+          const source = data.extraction_source || 'manual';
+          const sourceText = {
+            ai: 'IA',
+            regex: 'Local',
+            manual: 'Manual'
+          };
+          extractionSourceBadge.textContent = sourceText[source] || 'Manual';
+          extractionSourceBadge.style.display = 'inline-block';
+        }
         if (extractionMessage && data.message) extractionMessage.textContent = data.message;
         resultDiv.style.display = 'block';
         fillForm(data.extracted, data.supplier_match || null);
       } else {
+        if (extractionSourceBadge) extractionSourceBadge.style.display = 'none';
         if (extractionWarningMessage && data.message) extractionWarningMessage.textContent = data.message;
         warningDiv.style.display = 'block';
       }
@@ -723,6 +780,14 @@ $suppliersJson = array_map(static function (array $supplier): array {
       applySupplierSelection(supplierMatch);
     } else {
       matchSupplierFromFields();
+    }
+
+    if (extracted.suggested_category) {
+      const categoryHint = document.getElementById('hint_category');
+      categoryInput.value = extracted.suggested_category;
+      if (categoryHint) {
+        categoryHint.textContent = '✓ Categoría sugerida por IA';
+      }
     }
 
     // Auto-calculate if we have total but not base/vat

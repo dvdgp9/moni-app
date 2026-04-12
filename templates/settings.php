@@ -1,11 +1,29 @@
 <?php
 use Moni\Support\Config;
+use Moni\Services\AiExtractorService;
 use Moni\Services\EmailService;
 use Moni\Repositories\SettingsRepository;
 use Moni\Support\Csrf;
 use Moni\Support\Flash;
 
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_ai_connection'])) {
+    if (!Csrf::validate($_POST['_token'] ?? null)) {
+        Flash::add('error', 'CSRF inválido.');
+    } else {
+        try {
+            $ok = AiExtractorService::testConnection();
+            Flash::add($ok ? 'success' : 'error', $ok
+                ? 'Conexión IA correcta con OpenRouter.'
+                : 'No se pudo conectar con OpenRouter. Revisa API key, modelo y base URL.');
+        } catch (Throwable $e) {
+            error_log('[settings][ai-test] ' . $e->getMessage());
+            Flash::add('error', 'Error al probar conexión IA. Revisa logs.');
+        }
+    }
+    moni_redirect(route_path('settings'));
+}
 $flashAll = Flash::getAll();
 
 // Guardado de ajustes
@@ -329,6 +347,14 @@ $s_ai_api_key_configured = trim((string)($_ENV['OPENROUTER_API_KEY'] ?? '')) !==
 
         <div style="display:flex;justify-content:flex-end">
           <button type="submit" class="btn btn-secondary">Guardar IA</button>
+        </div>
+      </form>
+
+      <form method="post" style="margin-top:8px">
+        <input type="hidden" name="test_ai_connection" value="1" />
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn">Probar conexión IA</button>
         </div>
       </form>
     </div>
