@@ -1570,12 +1570,29 @@ h3 { font-size: 1.5rem; }
     padding: 0.68rem;
   }
 
+  .expenses-summary-grid .stat-card:nth-child(1) {
+    order: 2;
+  }
+
   .expenses-summary-grid .stat-card:nth-child(2) {
+    order: 1;
     grid-column: span 2;
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: end;
     gap: 8px;
+  }
+
+  .expenses-summary-grid .stat-card:nth-child(3) {
+    order: 3;
+  }
+
+  .expenses-summary-grid .stat-card:nth-child(4) {
+    order: 4;
+  }
+
+  .expenses-summary-grid .stat-card:nth-child(5) {
+    order: 5;
   }
 
   .expenses-summary-grid .stat-card:nth-child(2) .stat-label {
