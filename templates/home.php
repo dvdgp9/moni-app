@@ -165,23 +165,23 @@ $isLoggedIn = !empty($_SESSION['user_id']);
     <div class="section-lead">
       <span class="section-kicker">Cómo encaja</span>
       <h2>Una herramienta simple por fuera, útil por dentro.</h2>
-      <p>La entrada pública explica el producto. La zona privada está pensada para trabajar de verdad: ventas, presupuestos, gastos con IA y revisión fiscal sin mezclar navegación comercial y operativa.</p>
+      <p>La parte pública te cuenta qué puedes hacer con Moni. Y cuando entras, tienes tu espacio para trabajar de verdad: ventas, presupuestos, gastos con IA y la parte fiscal en un mismo sitio.</p>
     </div>
     <div class="flow-grid">
       <div class="flow-step">
         <span>1</span>
         <strong>Landing pública</strong>
-        <p>El usuario entiende rápido qué resuelve Moni: facturación, gastos asistidos y control fiscal para autónomos.</p>
+        <p>Aquí ves rápido si Moni encaja contigo: facturación, gastos más fáciles de registrar y control fiscal sin complicarte.</p>
       </div>
       <div class="flow-step">
         <span>2</span>
         <strong>Acceso o registro</strong>
-        <p>Desde ahí se entra por rutas dedicadas: login y alta, sin saltar directamente al dashboard.</p>
+        <p>Si te convence, entras o te registras en un momento y pasas directamente a tu zona de trabajo.</p>
       </div>
       <div class="flow-step">
         <span>3</span>
         <strong>Zona de trabajo</strong>
-        <p>Una vez autenticado, el usuario entra al dashboard y navega por ventas, presupuestos, gastos extraídos, fiscalidad y ajustes.</p>
+        <p>Dentro ya tienes todo más a mano: ventas, presupuestos, gastos extraídos, fiscalidad y ajustes para llevar el día a día con más calma.</p>
       </div>
     </div>
   </div>
@@ -205,7 +205,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       </div>
       <div class="pricing-panel">
         <strong>Ideal si quieres probar desde ya</strong>
-        <p>Si eres autónomo y te interesa una herramienta clara para tu operativa diaria, ya puedes probar un flujo real: emitir, presupuestar, subir gastos en PDF o foto y revisar todo desde un mismo sitio.</p>
+        <p>Si eres autónomo y quieres una herramienta clara para el día a día, ya puedes probar un flujo real: emitir, presupuestar, subir gastos en PDF o foto y revisarlo todo desde un mismo sitio.</p>
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
           <?= $isLoggedIn ? 'Abrir mi espacio' : 'Empezar gratis' ?>
         </a>
