@@ -701,11 +701,27 @@ $suppliersJson = array_map(static function (array $supplier): array {
     formData.append('_token', '<?= Csrf::token() ?>');
     formData.append('action', 'extract');
 
-    fetch('<?= route_path('expense_form') ?>', {
+    const extractUrl = window.location.pathname + window.location.search;
+
+    fetch(extractUrl, {
       method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      },
       body: formData
     })
-    .then(r => r.json())
+    .then(async r => {
+      const raw = await r.text();
+      let data = null;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        const snippet = (raw || '').slice(0, 180).replace(/\s+/g, ' ').trim();
+        throw new Error(`Respuesta no JSON (HTTP ${r.status}). ${snippet}`);
+      }
+      return data;
+    })
     .then(data => {
       progressDiv.style.display = 'none';
       

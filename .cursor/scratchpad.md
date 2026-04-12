@@ -737,6 +737,14 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
   - Añadido botón "Probar conexión IA" en la card de IA.
   - Feedback por flash (`success/error`) según conexión OpenRouter.
   - Validación sintáctica OK: `php -l templates/settings.php` y `php -l templates/expense_form.php`.
+- 2026-04-12 (Executor): **Hotfix extracción JSON aplicado** tras prueba manual del usuario.
+  - Síntoma: `Unexpected token '<', "<!doctype ..." is not valid JSON` al subir PDF/imagen.
+  - Causa probable: respuesta HTML por redirección/ruta al hacer POST a `route_path('expense_form')`.
+  - Fix en `templates/expense_form.php`:
+    - POST ahora a URL actual (`window.location.pathname + window.location.search`).
+    - `credentials: 'same-origin'` + header `X-Requested-With`.
+    - Parseo robusto: leer `response.text()`, intentar `JSON.parse`, mostrar snippet de respuesta si no es JSON.
+  - Validación sintáctica OK: `php -l templates/expense_form.php`.
 
 ## Executor's Feedback or Assistance Requests
 - ✅ Modelo default fijado por usuario: `google/gemini-3.1-flash-lite-preview`.
@@ -754,3 +762,4 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
 - El parser regex actual (`InvoiceParserService`) tiene ~494 líneas y falla frecuentemente. No merece más inversión; mejor redirigir a IA.
 - `SettingsRepository` soporta key-value por usuario → ideal para `ai_enabled`, `ai_model`, `ai_base_url`.
 - La API key debe ir en `.env` (no en BD) por seguridad. Se lee con `$_ENV['OPENROUTER_API_KEY']`.
+- En formularios con rutas `nuevo/editar`, para AJAX POST es más seguro usar URL actual (`window.location.pathname + window.location.search`) que un helper fijo de ruta, para evitar respuestas HTML por redirección y errores de parseo JSON.
