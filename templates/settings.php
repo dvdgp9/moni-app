@@ -20,6 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     $customDatesRaw = isset($_POST['custom_dates']) ? trim((string)$_POST['custom_dates']) : null;
     $defaultVatRaw = isset($_POST['default_vat_rate']) ? trim((string)$_POST['default_vat_rate']) : null;
     $defaultIrpfRaw = isset($_POST['default_irpf_rate']) ? trim((string)$_POST['default_irpf_rate']) : null;
+    $aiEnabledRaw = isset($_POST['ai_enabled']) ? trim((string)$_POST['ai_enabled']) : null;
+    $aiModelRaw = isset($_POST['ai_model']) ? trim((string)$_POST['ai_model']) : null;
+    $aiBaseUrlRaw = isset($_POST['ai_base_url']) ? trim((string)$_POST['ai_base_url']) : null;
+    $aiTimeoutRaw = isset($_POST['ai_timeout']) ? trim((string)$_POST['ai_timeout']) : null;
     // Permitir formato líneas o JSON
     $custom = [];
     if ($customDatesRaw !== null && $customDatesRaw !== '') {
@@ -58,6 +62,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
                 moni_redirect(route_path('settings'));
             }
         }
+        if ($aiEnabledRaw !== null && !in_array($aiEnabledRaw, ['0', '1'], true)) {
+            Flash::add('error', 'Valor inválido para activar IA.');
+            moni_redirect(route_path('settings'));
+        }
+        if ($aiBaseUrlRaw !== null && $aiBaseUrlRaw !== '' && !filter_var($aiBaseUrlRaw, FILTER_VALIDATE_URL)) {
+            Flash::add('error', 'La URL base de IA no es válida.');
+            moni_redirect(route_path('settings'));
+        }
+        if ($aiTimeoutRaw !== null && $aiTimeoutRaw !== '') {
+            if (!ctype_digit($aiTimeoutRaw)) {
+                Flash::add('error', 'El timeout de IA debe ser un número entero.');
+                moni_redirect(route_path('settings'));
+            }
+            $timeoutInt = (int)$aiTimeoutRaw;
+            if ($timeoutInt < 5 || $timeoutInt > 120) {
+                Flash::add('error', 'El timeout de IA debe estar entre 5 y 120 segundos.');
+                moni_redirect(route_path('settings'));
+            }
+        }
         if ($notify !== null) { SettingsRepository::set('notify_email', $notify); }
         if ($tz !== null) { SettingsRepository::set('timezone', $tz); }
         if ($enabled !== null) { SettingsRepository::set('reminders_enabled', $enabled); }
@@ -74,6 +97,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
         }
         if ($defaultIrpfRaw !== null) {
             SettingsRepository::set('default_irpf_rate', $defaultIrpfRaw !== '' ? str_replace(',', '.', $defaultIrpfRaw) : null);
+        }
+        if ($aiEnabledRaw !== null) {
+            SettingsRepository::set('ai_enabled', $aiEnabledRaw);
+        }
+        if ($aiModelRaw !== null) {
+            SettingsRepository::set('ai_model', $aiModelRaw !== '' ? $aiModelRaw : 'google/gemini-3.1-flash-lite-preview');
+        }
+        if ($aiBaseUrlRaw !== null) {
+            SettingsRepository::set('ai_base_url', $aiBaseUrlRaw !== '' ? $aiBaseUrlRaw : 'https://openrouter.ai/api/v1');
+        }
+        if ($aiTimeoutRaw !== null) {
+            SettingsRepository::set('ai_timeout', $aiTimeoutRaw !== '' ? $aiTimeoutRaw : '30');
         }
         Flash::add('success', 'Ajustes guardados correctamente.');
     } catch (Throwable $e) {
@@ -150,6 +185,12 @@ if (!is_array($s_custom_arr)) { $s_custom_arr = []; }
 $s_due_days = (int)(SettingsRepository::get('invoice_due_days') ?? (string)Config::get('settings.invoice_due_days', 30));
 $s_default_vat = (string)(SettingsRepository::get('default_vat_rate') ?? '');
 $s_default_irpf = (string)(SettingsRepository::get('default_irpf_rate') ?? '');
+$s_ai_enabled_raw = SettingsRepository::get('ai_enabled');
+$s_ai_enabled = $s_ai_enabled_raw === null ? (bool)Config::get('settings.ai_enabled', false) : ($s_ai_enabled_raw === '1' || $s_ai_enabled_raw === 'true');
+$s_ai_model = (string)(SettingsRepository::get('ai_model') ?? (string)Config::get('settings.ai_model', 'google/gemini-3.1-flash-lite-preview'));
+$s_ai_base_url = (string)(SettingsRepository::get('ai_base_url') ?? (string)Config::get('settings.ai_base_url', 'https://openrouter.ai/api/v1'));
+$s_ai_timeout = (int)(SettingsRepository::get('ai_timeout') ?? (string)Config::get('settings.ai_timeout', 30));
+$s_ai_api_key_configured = trim((string)($_ENV['OPENROUTER_API_KEY'] ?? '')) !== '';
 ?>
 <section>
   <h1>Ajustes</h1>
@@ -249,6 +290,47 @@ $s_default_irpf = (string)(SettingsRepository::get('default_irpf_rate') ?? '');
           <button type="submit" class="btn btn-secondary">Enviar vista previa</button>
         </div>
       </form>
+
+      <div class="section-header" style="margin-top:10px">
+        <h3 class="section-title">Extracción inteligente (IA)</h3>
+      </div>
+      <form method="post">
+        <input type="hidden" name="save_settings" value="1" />
+        <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-weight:600;color:var(--gray-800)">Activar extracción IA</span>
+          <input type="hidden" name="ai_enabled" id="settings-ai-enabled" value="<?= $s_ai_enabled ? '1' : '0' ?>" />
+          <button type="button" id="settings-ai-toggle-btn" class="toggle-switch <?= $s_ai_enabled ? 'active' : '' ?>" aria-label="Activar extracción IA"></button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr;gap:8px">
+          <div>
+            <label>Modelo (OpenRouter)</label>
+            <input type="text" name="ai_model" value="<?= htmlspecialchars($s_ai_model) ?>" placeholder="google/gemini-3.1-flash-lite-preview" />
+          </div>
+          <div>
+            <label>Base URL</label>
+            <input type="url" name="ai_base_url" value="<?= htmlspecialchars($s_ai_base_url) ?>" placeholder="https://openrouter.ai/api/v1" />
+          </div>
+          <div>
+            <label>Timeout (segundos)</label>
+            <input type="number" name="ai_timeout" min="5" max="120" value="<?= (int)$s_ai_timeout ?>" />
+          </div>
+        </div>
+
+        <p class="form-hint" style="margin-top:6px">
+          API key OpenRouter (solo `.env`):
+          <strong><?= $s_ai_api_key_configured ? 'Configurada' : 'No configurada' ?></strong>
+          <?php if (!$s_ai_api_key_configured): ?>
+            — Añade `OPENROUTER_API_KEY` en tu `.env` local/servidor.
+          <?php endif; ?>
+        </p>
+
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn btn-secondary">Guardar IA</button>
+        </div>
+      </form>
     </div>
   </div>
 </section>
@@ -258,6 +340,8 @@ $s_default_irpf = (string)(SettingsRepository::get('default_irpf_rate') ?? '');
   const btn = document.getElementById('settings-toggle-btn');
   const notify = document.getElementById('settings-notify');
   const hint = document.getElementById('notify-hint');
+  const aiInput = document.getElementById('settings-ai-enabled');
+  const aiBtn = document.getElementById('settings-ai-toggle-btn');
 
   function isEmailReady(v){ return (v||'').trim() !== ''; }
 
@@ -280,6 +364,15 @@ $s_default_irpf = (string)(SettingsRepository::get('default_irpf_rate') ?? '');
       const next = on ? '0' : '1';
       input.value = next;
       btn.classList.toggle('active', next === '1');
+    });
+  }
+
+  if (aiBtn && aiInput) {
+    aiBtn.addEventListener('click', function(){
+      const on = aiInput.value === '1';
+      const next = on ? '0' : '1';
+      aiInput.value = next;
+      aiBtn.classList.toggle('active', next === '1');
     });
   }
 

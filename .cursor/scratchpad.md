@@ -458,3 +458,260 @@ composer require smalot/pdfparser
 - Diseñar numeración de facturas desacoplada en un servicio con transacción reduce colisiones.
 - Configuración por `.env` + `settings` en BD permite multi-tenant futuro sin reconfigurar despliegue.
  - La verificación de duplicados debe usar identificadores estables. Si hay esquemas antiguos sin columna `title`, usar `reminder_id` por evento evita que un envío previo del día bloquee otros eventos diferentes.
+
+---
+
+# Planner: Benchmark TaxHacker para mejorar lector de gastos IA en Moni (2026-04-12)
+
+## Background and Motivation
+El usuario quiere reemplazar el sistema actual de extracción de facturas (regex-based, que no funciona bien) por un **pipeline IA-first usando OpenRouter** como proveedor de LLM. Inspirado en TaxHacker pero adaptado a Moni.
+
+**Decisiones del usuario:**
+- **OpenRouter** como proveedor principal (API OpenAI-compatible en `https://openrouter.ai/api/v1`).
+- **IA-first**: toda la extracción (PDF e imágenes) pasa por IA. El parser regex actual (`InvoiceParserService`) queda obsoleto.
+- **Auto-categorización** incluida en el prompt de IA.
+- El parser regex no se elimina físicamente aún (por si falla la IA), pero deja de ser el flujo principal.
+
+**Contexto actual confirmado en código:**
+- `ExpenseDocumentService`: almacena PDF/imagen, clasifica `document_kind` (pdf/image).
+- `PdfExtractorService`: extrae texto con `smalot/pdfparser`. Se conserva para enviar texto al LLM como contexto adicional (más barato que visión).
+- `InvoiceParserService`: ~494 líneas de regex. Queda como fallback si IA está desactivada.
+- `expense_form.php`: flujo AJAX `action=extract` → store → parse → respuesta JSON → fillForm JS.
+- `SettingsRepository`: key-value por usuario en tabla `settings`. Patrón `get(key)`/`set(key, value)`.
+- `.env.example`: sin variables de IA aún.
+- Categorías hardcodeadas en `ExpensesRepository::getCategories()`.
+- Migraciones hasta `009_create_quotes.sql`.
+
+## Key Challenges and Analysis
+
+### Arquitectura del pipeline IA-first
+
+```
+Documento (PDF/imagen)
+  │
+  ├─ ExpenseDocumentService::storeUploaded()  (ya existe)
+  │
+  ├─ ¿Es PDF con texto útil?
+  │     SÍ → extraer texto (PdfExtractorService) → enviar TEXTO al LLM (más barato, sin visión)
+  │     NO → convertir primera página a imagen
+  │
+  ├─ ¿Es imagen?
+  │     SÍ → enviar IMAGEN base64 al LLM (visión multimodal)
+  │
+  ├─ AiExtractorService::extract()
+  │     → POST a OpenRouter /chat/completions
+  │     → Prompt estructurado → respuesta JSON
+  │     → Parsear y normalizar resultado
+  │
+  ├─ SuppliersRepository::findMatch() (ya existe) para enlazar proveedor
+  │
+  └─ Devolver resultado unificado al frontend
+```
+
+### Prompt de extracción (español-first)
+El prompt pide JSON con campos fijos + categoría sugerida + confianza por campo.
+Campos: `supplier_name`, `supplier_nif`, `invoice_number`, `invoice_date`, `base_amount`, `vat_rate`, `vat_amount`, `total_amount`, `suggested_category`, `confidence`.
+Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCategories()`.
+
+### OpenRouter - detalles técnicos
+- Endpoint: `https://openrouter.ai/api/v1/chat/completions`
+- Auth: `Authorization: Bearer {API_KEY}`
+- Headers extra recomendados: `HTTP-Referer: {APP_URL}`, `X-Title: Moni`
+- Modelo recomendado: `google/gemini-2.0-flash-001` (barato, bueno en OCR, soporta visión)
+- Alternativas: `openai/gpt-4o-mini`, `anthropic/claude-3.5-haiku`
+- Para texto (sin visión): cualquier modelo barato sirve
+- Para imagen (visión): necesita modelo multimodal
+
+### PDF a imagen
+- Opción A: `Imagick` (extensión PHP) — `$im = new Imagick(); $im->readImage($pdf.'[0]'); $im->setImageFormat('jpg');`
+- Opción B: shell `pdftoppm -jpeg -r 200 -f 1 -l 1 input.pdf output`
+- Opción C: si ninguna disponible, enviar solo texto al LLM (degradación graceful)
+- Detectar disponibilidad en runtime y elegir la mejor
+
+### Config y seguridad
+- API key **solo en `.env`** (nunca en BD). Variable: `OPENROUTER_API_KEY`.
+- Modelo y base URL configurables desde Settings (BD) para poder cambiar sin redesplegar.
+- Settings keys: `ai_enabled`, `ai_model`, `ai_base_url` (default OpenRouter).
+- Timeout: 30s configurable.
+
+## High-level Task Breakdown
+
+### T1: Config — `.env` + Settings de IA
+**Archivos a modificar:**
+- `.env.example` — añadir `OPENROUTER_API_KEY=`
+- `templates/settings.php` — nueva sección "Extracción inteligente (IA)" (toggle, modelo, base URL, botón test)
+- Lógica de guardado en `settings.php` para las nuevas keys
+
+**Detalle:**
+- `OPENROUTER_API_KEY` en `.env` (seguro, nunca en BD)
+- `ai_enabled` (0/1) en settings BD — default `1` si hay API key
+- `ai_model` en settings BD — default `google/gemini-2.0-flash-001`
+- `ai_base_url` en settings BD — default `https://openrouter.ai/api/v1`
+- `ai_timeout` en settings BD — default `30`
+
+**Criterio de éxito:** Se pueden guardar/leer ajustes de IA desde la página de Settings. La API key se lee de `.env`.
+
+---
+
+### T2: `AiExtractorService.php` — servicio de extracción con IA
+**Archivo nuevo:** `src/Services/AiExtractorService.php`
+
+**Detalle:**
+- Método principal: `extract(string $contentOrImagePath, string $mode = 'text'): array`
+  - `$mode = 'text'`: envía texto plano en el prompt (sin visión)
+  - `$mode = 'image'`: codifica imagen en base64 y usa content type `image_url`
+- Construye el payload OpenAI-compatible:
+  ```php
+  [
+    'model' => $model,
+    'messages' => [
+      ['role' => 'system', 'content' => $systemPrompt],
+      ['role' => 'user', 'content' => $userContent], // texto o [{type:text},{type:image_url}]
+    ],
+    'response_format' => ['type' => 'json_object'],
+    'temperature' => 0.1,
+    'max_tokens' => 1000,
+  ]
+  ```
+- Usa `curl` nativo PHP (sin dependencias extra)
+- System prompt incluye:
+  - Instrucciones de extracción en español
+  - Lista de categorías válidas (inyectadas dinámicamente)
+  - Formato JSON esperado con ejemplo
+  - Instrucción de devolver `null` si un campo no se encuentra
+  - Instrucción de devolver confianza `high`/`medium`/`low` por campo
+- Parsea respuesta JSON y normaliza:
+  - Fechas a `YYYY-MM-DD`
+  - Importes a `float`
+  - NIF a mayúsculas
+- Método auxiliar: `testConnection(): bool` — para botón test en Settings
+- Manejo de errores: timeout, rate limit, respuesta inválida → devuelve array vacío + log
+
+**Criterio de éxito:** Dado un texto o imagen base64, devuelve array con campos extraídos o array vacío si falla. Logs de error informativos.
+
+---
+
+### T3: `PdfToImageService.php` — conversión PDF a imagen
+**Archivo nuevo:** `src/Services/PdfToImageService.php`
+
+**Detalle:**
+- Método: `convertFirstPage(string $pdfPath): ?string` → devuelve ruta a JPG temporal o `null`
+- Intenta en orden:
+  1. `Imagick` (si extensión cargada)
+  2. `pdftoppm` via `shell_exec` (si binario disponible)
+  3. `null` (degradación: se usará solo texto)
+- Guarda imagen temporal en `storage/expenses/tmp_*.jpg`
+- Limpieza: el llamante borra el temporal después de usarlo
+- Método auxiliar: `isAvailable(): bool` — para diagnosticar en Settings
+
+**Criterio de éxito:** Convierte primera página de PDF a JPG en al menos un entorno (dev o producción). Devuelve null si no puede.
+
+---
+
+### T4: Reescribir flujo de extracción en `expense_form.php`
+**Archivo a modificar:** `templates/expense_form.php` (bloque `action === 'extract'`, líneas ~57-117)
+
+**Nuevo flujo (reemplaza el actual):**
+```
+1. Store documento (sin cambios)
+2. Si IA habilitada Y hay API key:
+   a. PDF con texto útil → AiExtractorService::extract(texto, 'text')
+   b. PDF sin texto útil → PdfToImageService::convertFirstPage() → AiExtractorService::extract(imagen, 'image')
+   c. Imagen → AiExtractorService::extract(imagen, 'image')
+3. Si IA NO habilitada o falla:
+   a. PDF → PdfExtractorService + InvoiceParserService (fallback actual)
+   b. Imagen → sin extracción (manual)
+4. SuppliersRepository::findMatch() con datos extraídos
+5. Devolver JSON con:
+   - extracted (datos)
+   - extraction_source ('ai' | 'regex' | 'manual')
+   - suggested_category (nuevo campo)
+   - message adaptado según fuente
+```
+
+**Cambios en JS `fillForm()`:**
+- Nuevo campo `suggested_category` → pre-selecciona `<select id="category">`
+- Indicadores de fuente: badge "Extraído por IA" vs "Extraído localmente" vs "Manual"
+- Mensajes de confianza por campo (ya existe, se mantiene)
+
+**Criterio de éxito:** Subir un ticket/factura (PDF o imagen) → IA extrae todos los campos → formulario pre-llenado → usuario revisa y guarda.
+
+---
+
+### T5: UI — indicadores de IA en el formulario
+**Archivo a modificar:** `templates/expense_form.php` (zona de resultado de extracción)
+
+**Detalle:**
+- Banner de resultado muestra fuente: "Datos extraídos con IA (modelo X)" / "Datos extraídos localmente" / "Completa los datos manualmente"
+- Badge por campo de confianza (ya existe el sistema `field-hint`, se mantiene)
+- Si la IA sugiere categoría, el `<select>` se pre-selecciona y muestra hint "Categoría sugerida por IA"
+- Si la IA falla, mostrar warning claro y permitir reintento o continuar manual
+
+**Criterio de éxito:** El usuario distingue visualmente qué extrajo la IA y qué necesita revisar.
+
+---
+
+### T6: Settings UI — sección de IA
+**Archivo a modificar:** `templates/settings.php`
+
+**Detalle:**
+- Nueva sección/card "Extracción inteligente (IA)" con:
+  - Toggle activar/desactivar (`ai_enabled`)
+  - Campo modelo (`ai_model`) con placeholder y sugerencia
+  - Campo base URL (`ai_base_url`) con default OpenRouter
+  - Indicador de API key configurada (lee de `.env`, muestra "✓ Configurada" o "✗ No configurada — añade OPENROUTER_API_KEY en .env")
+  - Botón "Probar conexión" → AJAX → `AiExtractorService::testConnection()` → muestra resultado
+  - Info de coste estimado por documento
+- Posición: después de la sección SMTP/recordatorios
+
+**Criterio de éxito:** El usuario puede activar/desactivar IA, cambiar modelo, y verificar conexión desde Settings.
+
+---
+
+### T7: Tests manuales y edge cases
+**Verificar:**
+- PDF digital (texto) → extracción por IA modo texto ✓
+- PDF escaneado (imagen) → conversión + extracción por IA modo imagen ✓
+- Imagen JPG desde móvil (ticket) → extracción por IA modo imagen ✓
+- IA desactivada → fallback a regex (comportamiento actual) ✓
+- API key no configurada → warning en UI, fallback a regex ✓
+- Timeout/error de red → warning en UI, formulario manual ✓
+- Documento sin datos reconocibles → mensaje claro ✓
+
+**Criterio de éxito:** Todos los casos funcionan sin errores. Logs claros.
+
+## Project Status Board
+- [x] PB1: Benchmark TaxHacker vs Moni (alto nivel)
+- [x] PB2: Identificar gaps y oportunidades concretas
+- [x] PB3: Definir roadmap técnico detallado IA-first + OpenRouter
+- [x] T1: Config — `.env` + Settings de IA
+- [ ] T2: `AiExtractorService.php`
+- [ ] T3: `PdfToImageService.php`
+- [ ] T4: Reescribir flujo extracción en `expense_form.php`
+- [ ] T5: UI — indicadores de IA en formulario
+- [ ] T6: Settings UI — sección de IA
+- [ ] T7: Tests manuales y edge cases
+
+## Current Status / Progress Tracking
+- 2026-04-12 (Planner): benchmark completado.
+- 2026-04-12 (Planner): plan técnico detallado completado. **7 tareas**, enfoque IA-first con OpenRouter. Listo para Executor.
+- 2026-04-12 (Executor): **T1 completada**.
+  - `.env.example`: añadido `OPENROUTER_API_KEY=`.
+  - `src/bootstrap.php`: defaults IA (`ai_enabled`, `ai_model=google/gemini-3.1-flash-lite-preview`, `ai_base_url`, `ai_timeout`) + carga de overrides desde `SettingsRepository`.
+  - `templates/settings.php`: nueva sección "Extracción inteligente (IA)" (toggle, modelo, base URL, timeout, estado de API key en `.env`) y persistencia de ajustes con validaciones.
+  - Seguridad: la API key que compartió el usuario **no** se ha escrito en código ni en archivos versionados.
+
+## Executor's Feedback or Assistance Requests
+- ✅ Modelo default fijado por usuario: `google/gemini-3.1-flash-lite-preview`.
+- Solicitud de validación manual (hito T1):
+  1) Abrir `Ajustes` y comprobar que aparece la sección "Extracción inteligente (IA)".
+  2) Verificar que se pueden guardar toggle/model/base URL/timeout.
+  3) Confirmar si el estado de API key aparece como "No configurada" (esperado hasta que se añada en `.env` del entorno activo).
+- Tras validación del usuario, continuar con **T2: `AiExtractorService.php`**.
+
+## Lessons
+- OpenRouter es API OpenAI-compatible: mismo formato de payload, solo cambia base URL y auth header.
+- Para facturas españolas, enviar texto al LLM es significativamente más barato que enviar imagen (~10x). Solo usar visión cuando no hay texto extraíble.
+- El parser regex actual (`InvoiceParserService`) tiene ~494 líneas y falla frecuentemente. No merece más inversión; mejor redirigir a IA.
+- `SettingsRepository` soporta key-value por usuario → ideal para `ai_enabled`, `ai_model`, `ai_base_url`.
+- La API key debe ir en `.env` (no en BD) por seguridad. Se lee con `$_ENV['OPENROUTER_API_KEY']`.

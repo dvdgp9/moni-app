@@ -32,6 +32,10 @@ Config::init([
         'timezone' => $_ENV['TIMEZONE'] ?? 'Europe/Madrid',
         'custom_dates' => [], // array de strings YYYY-MM-DD
         'invoice_due_days' => 30,
+        'ai_enabled' => !empty($_ENV['OPENROUTER_API_KEY']),
+        'ai_model' => 'google/gemini-3.1-flash-lite-preview',
+        'ai_base_url' => 'https://openrouter.ai/api/v1',
+        'ai_timeout' => 30,
     ],
 ]);
 
@@ -67,6 +71,21 @@ try {
         $days = (int)$raw['invoice_due_days'];
         if ($days > 0 && $days <= 90) {
             $over['settings']['invoice_due_days'] = $days;
+        }
+    }
+    if (isset($raw['ai_enabled'])) {
+        $over['settings']['ai_enabled'] = $raw['ai_enabled'] === '1' || $raw['ai_enabled'] === 'true';
+    }
+    if (isset($raw['ai_model']) && trim((string)$raw['ai_model']) !== '') {
+        $over['settings']['ai_model'] = trim((string)$raw['ai_model']);
+    }
+    if (isset($raw['ai_base_url']) && trim((string)$raw['ai_base_url']) !== '') {
+        $over['settings']['ai_base_url'] = trim((string)$raw['ai_base_url']);
+    }
+    if (isset($raw['ai_timeout'])) {
+        $timeout = (int)$raw['ai_timeout'];
+        if ($timeout >= 5 && $timeout <= 120) {
+            $over['settings']['ai_timeout'] = $timeout;
         }
     }
     if (!empty($over)) {
