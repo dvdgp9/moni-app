@@ -37,11 +37,11 @@ $navGroups = [
 $isLoggedIn = !empty($_SESSION['user_id']);
 $mobileMorePages = ['clients', 'client_form', 'quotes', 'quote_form', 'suppliers', 'supplier_form', 'declaraciones', 'reminders', 'settings', 'profile'];
 $mobileNav = [
-  ['label' => 'Inicio', 'href' => route_path('dashboard'), 'active' => $page === 'dashboard'],
-  ['label' => 'Facturas', 'href' => route_path('invoices'), 'active' => in_array($page, ['invoices', 'invoice_form'], true)],
-  ['label' => 'Crear', 'href' => '#mobileCreateSheet', 'active' => false, 'button' => 'create'],
-  ['label' => 'Gastos', 'href' => route_path('expenses'), 'active' => in_array($page, ['expenses', 'expense_form'], true)],
-  ['label' => 'Mas', 'href' => '#mobileMoreSheet', 'active' => in_array($page, $mobileMorePages, true), 'button' => 'more'],
+  ['label' => 'Inicio', 'href' => route_path('dashboard'), 'active' => $page === 'dashboard', 'icon' => 'home'],
+  ['label' => 'Facturas', 'href' => route_path('invoices'), 'active' => in_array($page, ['invoices', 'invoice_form'], true), 'icon' => 'invoice'],
+  ['label' => 'Crear', 'href' => '#mobileCreateSheet', 'active' => false, 'button' => 'create', 'icon' => 'plus'],
+  ['label' => 'Gastos', 'href' => route_path('expenses'), 'active' => in_array($page, ['expenses', 'expense_form'], true), 'icon' => 'expense'],
+  ['label' => 'Mas', 'href' => '#mobileMoreSheet', 'active' => in_array($page, $mobileMorePages, true), 'button' => 'more', 'icon' => 'more'],
 ];
 ?><!doctype html>
 <html lang="es">
@@ -128,6 +128,19 @@ $mobileNav = [
     <div class="mobile-sheet-overlay" data-mobile-close hidden></div>
     <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
       <?php foreach ($mobileNav as $item): ?>
+        <?php ob_start(); ?>
+          <?php if ($item['icon'] === 'home'): ?>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.8 12 4l8 6.8V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.2Z"/></svg>
+          <?php elseif ($item['icon'] === 'invoice'): ?>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-1.6-2.7 1.6-2.6-1.6L8 21l-3-1.6V5a2 2 0 0 1 2-2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          <?php elseif ($item['icon'] === 'expense'): ?>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M7 13h.01M17 13h.01"/></svg>
+          <?php elseif ($item['icon'] === 'more'): ?>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
+          <?php else: ?>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <?php endif; ?>
+        <?php $mobileIcon = (string)ob_get_clean(); ?>
         <?php if (!empty($item['button'])): ?>
           <button
             type="button"
@@ -136,12 +149,12 @@ $mobileNav = [
             aria-expanded="false"
             aria-controls="mobile<?= ucfirst((string)$item['button']) ?>Sheet"
           >
-            <span class="mobile-nav-icon" aria-hidden="true"><?= $item['button'] === 'create' ? '+' : '...' ?></span>
+            <span class="mobile-nav-icon" aria-hidden="true"><?= $mobileIcon ?></span>
             <span><?= htmlspecialchars($item['label']) ?></span>
           </button>
         <?php else: ?>
           <a class="mobile-nav-item <?= $item['active'] ? 'active' : '' ?>" href="<?= $item['href'] ?>">
-            <span class="mobile-nav-dot" aria-hidden="true"></span>
+            <span class="mobile-nav-icon" aria-hidden="true"><?= $mobileIcon ?></span>
             <span><?= htmlspecialchars($item['label']) ?></span>
           </a>
         <?php endif; ?>
@@ -154,11 +167,11 @@ $mobileNav = [
         <strong>Crear rapido</strong>
         <button type="button" class="mobile-sheet-close" data-mobile-close aria-label="Cerrar">×</button>
       </div>
-      <div class="mobile-sheet-grid">
-        <a href="<?= route_path('invoice_form') ?>">Nueva factura</a>
-        <a href="<?= route_path('quote_form') ?>">Nuevo presupuesto</a>
-        <a href="<?= route_path('expense_form') ?>">Registrar gasto</a>
-        <a href="<?= route_path('client_form') ?>">Nuevo cliente</a>
+      <div class="mobile-sheet-grid mobile-create-grid">
+        <a href="<?= route_path('invoice_form') ?>"><span>Factura</span><small>Cobrar trabajo</small></a>
+        <a href="<?= route_path('quote_form') ?>"><span>Presupuesto</span><small>Enviar oferta</small></a>
+        <a href="<?= route_path('expense_form') ?>"><span>Gasto</span><small>Registrar compra</small></a>
+        <a href="<?= route_path('client_form') ?>"><span>Cliente</span><small>Nuevo contacto</small></a>
       </div>
     </section>
 
@@ -168,15 +181,35 @@ $mobileNav = [
         <strong>Mas opciones</strong>
         <button type="button" class="mobile-sheet-close" data-mobile-close aria-label="Cerrar">×</button>
       </div>
-      <div class="mobile-more-list">
-        <a href="<?= route_path('clients') ?>" class="<?= in_array($page, ['clients', 'client_form'], true) ? 'active' : '' ?>">Clientes</a>
-        <a href="<?= route_path('quotes') ?>" class="<?= in_array($page, ['quotes', 'quote_form'], true) ? 'active' : '' ?>">Presupuestos</a>
-        <a href="<?= route_path('suppliers') ?>" class="<?= in_array($page, ['suppliers', 'supplier_form'], true) ? 'active' : '' ?>">Proveedores</a>
-        <a href="<?= route_path('declaraciones') ?>" class="<?= $page === 'declaraciones' ? 'active' : '' ?>">Declaraciones</a>
-        <a href="<?= route_path('reminders') ?>" class="<?= $page === 'reminders' ? 'active' : '' ?>">Notificaciones</a>
-        <a href="<?= route_path('settings') ?>" class="<?= $page === 'settings' ? 'active' : '' ?>">Ajustes</a>
-        <a href="<?= route_path('profile') ?>" class="<?= $page === 'profile' ? 'active' : '' ?>">Perfil</a>
-        <a href="<?= route_path('logout') ?>">Salir</a>
+      <div class="mobile-more-groups">
+        <div class="mobile-more-group">
+          <span class="mobile-more-kicker">Ventas</span>
+          <div class="mobile-more-list">
+            <a href="<?= route_path('clients') ?>" class="<?= in_array($page, ['clients', 'client_form'], true) ? 'active' : '' ?>"><span>Clientes</span><small>Agenda comercial</small></a>
+            <a href="<?= route_path('quotes') ?>" class="<?= in_array($page, ['quotes', 'quote_form'], true) ? 'active' : '' ?>"><span>Presupuestos</span><small>Ofertas y conversiones</small></a>
+          </div>
+        </div>
+        <div class="mobile-more-group">
+          <span class="mobile-more-kicker">Compras</span>
+          <div class="mobile-more-list">
+            <a href="<?= route_path('suppliers') ?>" class="<?= in_array($page, ['suppliers', 'supplier_form'], true) ? 'active' : '' ?>"><span>Proveedores</span><small>Contactos y gastos</small></a>
+          </div>
+        </div>
+        <div class="mobile-more-group">
+          <span class="mobile-more-kicker">Fiscal</span>
+          <div class="mobile-more-list">
+            <a href="<?= route_path('declaraciones') ?>" class="<?= $page === 'declaraciones' ? 'active' : '' ?>"><span>Declaraciones</span><small>Trimestre e impuestos</small></a>
+            <a href="<?= route_path('reminders') ?>" class="<?= $page === 'reminders' ? 'active' : '' ?>"><span>Notificaciones</span><small>Avisos importantes</small></a>
+          </div>
+        </div>
+        <div class="mobile-more-group">
+          <span class="mobile-more-kicker">Cuenta</span>
+          <div class="mobile-more-list">
+            <a href="<?= route_path('settings') ?>" class="<?= $page === 'settings' ? 'active' : '' ?>"><span>Ajustes</span><small>Preferencias</small></a>
+            <a href="<?= route_path('profile') ?>" class="<?= $page === 'profile' ? 'active' : '' ?>"><span>Perfil</span><small>Datos fiscales</small></a>
+            <a href="<?= route_path('logout') ?>" class="mobile-more-logout"><span>Salir</span><small>Cerrar sesion</small></a>
+          </div>
+        </div>
       </div>
     </section>
 
