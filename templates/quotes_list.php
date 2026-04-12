@@ -164,14 +164,14 @@ $appUrl = rtrim((string)Config::get('app_url', ''), '/');
 ?>
 
 <section>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+  <div class="mobile-page-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
     <div>
       <h1 style="margin-bottom:8px">Presupuestos</h1>
       <p style="margin:0;color:var(--gray-600);max-width:760px">
         Crea, envía y gestiona presupuestos. Cuando el cliente acepte, conviértelo en factura con un clic.
       </p>
     </div>
-    <a href="<?= route_path('quote_form') ?>" class="btn">+ Nuevo presupuesto</a>
+    <a href="<?= route_path('quote_form') ?>" class="btn mobile-page-primary-action">+ Nuevo presupuesto</a>
   </div>
 
   <?php if (!empty($flashAll)): ?>
@@ -230,7 +230,7 @@ $appUrl = rtrim((string)Config::get('app_url', ''), '/');
   </div>
 
   <?php if (empty($quotes)): ?>
-    <div class="card" style="text-align:center;padding:48px">
+    <div class="card mobile-empty-card" style="text-align:center;padding:48px">
       <p style="color:var(--gray-600);margin:0">No hay presupuestos con los filtros actuales.</p>
       <div style="margin-top:16px">
         <a href="<?= route_path('quotes') ?>" class="btn btn-secondary">Ver todos</a>
@@ -238,7 +238,7 @@ $appUrl = rtrim((string)Config::get('app_url', ''), '/');
       </div>
     </div>
   <?php else: ?>
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card mobile-table-card" style="padding:0;overflow:hidden">
       <div class="invoices-table-wrap">
       <table class="table">
         <thead>
@@ -320,6 +320,61 @@ $appUrl = rtrim((string)Config::get('app_url', ''), '/');
         </tbody>
       </table>
       </div>
+    </div>
+    <div class="mobile-compact-list" aria-label="Presupuestos">
+      <?php foreach ($quotes as $row): ?>
+        <article class="mobile-compact-card <?= $row['is_expired'] ? 'is-danger' : '' ?>">
+          <div class="mobile-compact-main">
+            <div class="mobile-compact-title">
+              <strong><?= htmlspecialchars($row['quote_number'] ?: 'Borrador') ?></strong>
+              <span><?= htmlspecialchars($row['client_name'] ?? 'Sin cliente') ?></span>
+            </div>
+            <div class="mobile-compact-amount"><?= number_format((float)$row['total_amount'], 2, ',', '.') ?> €</div>
+          </div>
+          <div class="mobile-compact-meta">
+            <span class="status-badge <?= q_status_class($row['status']) ?>"><?= htmlspecialchars(q_status_label($row['status'])) ?></span>
+            <span><?= q_fmt_date($row['issue_date']) ?></span>
+            <span><?= !empty($row['valid_until']) ? 'Hasta ' . q_fmt_date($row['valid_until']) : 'Sin vencimiento' ?></span>
+          </div>
+          <?php if ($row['is_expired']): ?>
+            <div class="mobile-compact-warning danger">Expirado</div>
+          <?php endif; ?>
+          <div class="mobile-compact-actions">
+            <a class="btn btn-secondary btn-sm" href="<?= route_path('quote_form', ['id' => (int)$row['id']]) ?>">Editar</a>
+            <a class="btn btn-secondary btn-sm" href="<?= route_path('quote_pdf', ['id' => (int)$row['id']]) ?>" target="_blank" rel="noopener">PDF</a>
+            <?php if ($row['status'] === 'draft'): ?>
+              <form method="post">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="send" />
+                <input type="hidden" name="id" value="<?= (int)$row['id'] ?>" />
+                <button type="submit" class="btn btn-sm" onclick="return confirm('Se asignará número y se enviará al cliente por email. ¿Continuar?')">Enviar</button>
+              </form>
+            <?php endif; ?>
+            <?php if ($row['status'] === 'sent' && !empty($row['token'])): ?>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('<?= htmlspecialchars($appUrl . '/presupuesto/' . $row['token']) ?>').then(function(){alert('Enlace copiado')})">Copiar</button>
+            <?php endif; ?>
+            <?php if ($row['status'] === 'accepted'): ?>
+              <form method="post">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="convert" />
+                <input type="hidden" name="id" value="<?= (int)$row['id'] ?>" />
+                <button type="submit" class="btn btn-sm" onclick="return confirm('Se creará una factura borrador con los datos de este presupuesto. ¿Continuar?')">Convertir</button>
+              </form>
+            <?php endif; ?>
+            <?php if ($row['status'] === 'converted' && !empty($row['converted_invoice_id'])): ?>
+              <a class="btn btn-secondary btn-sm" href="<?= route_path('invoice_form', ['id' => (int)$row['converted_invoice_id']]) ?>">Factura</a>
+            <?php endif; ?>
+          </div>
+          <div class="mobile-compact-secondary-actions">
+            <form method="post" onsubmit="return confirm('¿Eliminar el presupuesto?');">
+              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+              <input type="hidden" name="_action" value="delete" />
+              <input type="hidden" name="id" value="<?= (int)$row['id'] ?>" />
+              <button type="submit">Eliminar</button>
+            </form>
+          </div>
+        </article>
+      <?php endforeach; ?>
     </div>
   <?php endif; ?>
 </section>

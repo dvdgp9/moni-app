@@ -34,6 +34,15 @@ $navGroups = [
     ],
   ],
 ];
+$isLoggedIn = !empty($_SESSION['user_id']);
+$mobileMorePages = ['clients', 'client_form', 'quotes', 'quote_form', 'suppliers', 'supplier_form', 'declaraciones', 'reminders', 'settings', 'profile'];
+$mobileNav = [
+  ['label' => 'Inicio', 'href' => route_path('dashboard'), 'active' => $page === 'dashboard'],
+  ['label' => 'Facturas', 'href' => route_path('invoices'), 'active' => in_array($page, ['invoices', 'invoice_form'], true)],
+  ['label' => 'Crear', 'href' => '#mobileCreateSheet', 'active' => false, 'button' => 'create'],
+  ['label' => 'Gastos', 'href' => route_path('expenses'), 'active' => in_array($page, ['expenses', 'expense_form'], true)],
+  ['label' => 'Mas', 'href' => '#mobileMoreSheet', 'active' => in_array($page, $mobileMorePages, true), 'button' => 'more'],
+];
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -82,7 +91,7 @@ $navGroups = [
             </div>
           </div>
         <?php endforeach; ?>
-        <?php if (!empty($_SESSION['user_id'])): ?>
+        <?php if ($isLoggedIn): ?>
           <span class="nav-spacer"></span>
           <!-- Penúltimo: Ajustes (icon settings-01) -->
           <a href="<?= route_path('settings') ?>" title="Ajustes" class="<?= ($page==='settings')?'active':'' ?>">
@@ -115,5 +124,114 @@ $navGroups = [
   <footer class="app-footer">
     <div class="container">© <?= date('Y') ?> Moni</div>
   </footer>
+  <?php if ($isLoggedIn): ?>
+    <div class="mobile-sheet-overlay" data-mobile-close hidden></div>
+    <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
+      <?php foreach ($mobileNav as $item): ?>
+        <?php if (!empty($item['button'])): ?>
+          <button
+            type="button"
+            class="mobile-nav-item mobile-nav-<?= htmlspecialchars($item['button']) ?> <?= $item['active'] ? 'active' : '' ?>"
+            data-mobile-sheet="<?= htmlspecialchars($item['button']) ?>"
+            aria-expanded="false"
+            aria-controls="mobile<?= ucfirst((string)$item['button']) ?>Sheet"
+          >
+            <span class="mobile-nav-icon" aria-hidden="true"><?= $item['button'] === 'create' ? '+' : '...' ?></span>
+            <span><?= htmlspecialchars($item['label']) ?></span>
+          </button>
+        <?php else: ?>
+          <a class="mobile-nav-item <?= $item['active'] ? 'active' : '' ?>" href="<?= $item['href'] ?>">
+            <span class="mobile-nav-dot" aria-hidden="true"></span>
+            <span><?= htmlspecialchars($item['label']) ?></span>
+          </a>
+        <?php endif; ?>
+      <?php endforeach; ?>
+    </nav>
+
+    <section id="mobileCreateSheet" class="mobile-sheet" aria-label="Crear" hidden>
+      <div class="mobile-sheet-handle" aria-hidden="true"></div>
+      <div class="mobile-sheet-head">
+        <strong>Crear rapido</strong>
+        <button type="button" class="mobile-sheet-close" data-mobile-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="mobile-sheet-grid">
+        <a href="<?= route_path('invoice_form') ?>">Nueva factura</a>
+        <a href="<?= route_path('quote_form') ?>">Nuevo presupuesto</a>
+        <a href="<?= route_path('expense_form') ?>">Registrar gasto</a>
+        <a href="<?= route_path('client_form') ?>">Nuevo cliente</a>
+      </div>
+    </section>
+
+    <section id="mobileMoreSheet" class="mobile-sheet" aria-label="Mas opciones" hidden>
+      <div class="mobile-sheet-handle" aria-hidden="true"></div>
+      <div class="mobile-sheet-head">
+        <strong>Mas opciones</strong>
+        <button type="button" class="mobile-sheet-close" data-mobile-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="mobile-more-list">
+        <a href="<?= route_path('clients') ?>" class="<?= in_array($page, ['clients', 'client_form'], true) ? 'active' : '' ?>">Clientes</a>
+        <a href="<?= route_path('quotes') ?>" class="<?= in_array($page, ['quotes', 'quote_form'], true) ? 'active' : '' ?>">Presupuestos</a>
+        <a href="<?= route_path('suppliers') ?>" class="<?= in_array($page, ['suppliers', 'supplier_form'], true) ? 'active' : '' ?>">Proveedores</a>
+        <a href="<?= route_path('declaraciones') ?>" class="<?= $page === 'declaraciones' ? 'active' : '' ?>">Declaraciones</a>
+        <a href="<?= route_path('reminders') ?>" class="<?= $page === 'reminders' ? 'active' : '' ?>">Notificaciones</a>
+        <a href="<?= route_path('settings') ?>" class="<?= $page === 'settings' ? 'active' : '' ?>">Ajustes</a>
+        <a href="<?= route_path('profile') ?>" class="<?= $page === 'profile' ? 'active' : '' ?>">Perfil</a>
+        <a href="<?= route_path('logout') ?>">Salir</a>
+      </div>
+    </section>
+
+    <script>
+    (function () {
+      const overlay = document.querySelector('.mobile-sheet-overlay');
+      const triggers = document.querySelectorAll('[data-mobile-sheet]');
+      const closeEls = document.querySelectorAll('[data-mobile-close]');
+      const sheets = {
+        create: document.getElementById('mobileCreateSheet'),
+        more: document.getElementById('mobileMoreSheet')
+      };
+
+      function closeSheets() {
+        Object.values(sheets).forEach(function (sheet) {
+          if (sheet) sheet.hidden = true;
+        });
+        triggers.forEach(function (trigger) {
+          trigger.setAttribute('aria-expanded', 'false');
+        });
+        if (overlay) overlay.hidden = true;
+        document.body.classList.remove('mobile-sheet-open');
+      }
+
+      function openSheet(name, trigger) {
+        const sheet = sheets[name];
+        if (!sheet) return;
+        closeSheets();
+        sheet.hidden = false;
+        if (overlay) overlay.hidden = false;
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+        document.body.classList.add('mobile-sheet-open');
+      }
+
+      triggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+          const name = trigger.getAttribute('data-mobile-sheet');
+          const expanded = trigger.getAttribute('aria-expanded') === 'true';
+          if (expanded) {
+            closeSheets();
+          } else {
+            openSheet(name, trigger);
+          }
+        });
+      });
+
+      closeEls.forEach(function (el) {
+        el.addEventListener('click', closeSheets);
+      });
+
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') closeSheets();
+      });
+    })();
+    </script>
+  <?php endif; ?>
 </body>
 </html>

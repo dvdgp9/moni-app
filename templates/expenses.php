@@ -77,9 +77,9 @@ foreach ($expenses as $e) {
 }
 ?>
 <section>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+  <div class="mobile-page-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <h1 style="margin:0">Gastos</h1>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="mobile-page-actions" style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="<?= route_path('suppliers') ?>" class="btn btn-secondary">Ver proveedores</a>
       <a href="<?= route_path('expense_form') ?>" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-3px"><path d="M12 5v14M5 12h14"/></svg>
@@ -167,7 +167,7 @@ foreach ($expenses as $e) {
   <?php endif; ?>
 
   <?php if (empty($expenses)): ?>
-    <div class="card" style="text-align:center;padding:48px">
+    <div class="card mobile-empty-card" style="text-align:center;padding:48px">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="1.5" style="margin-bottom:12px">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
@@ -178,7 +178,7 @@ foreach ($expenses as $e) {
       <a href="<?= route_path('expense_form') ?>" class="btn btn-primary" style="margin-top:16px">Registrar primer gasto</a>
     </div>
   <?php else: ?>
-    <div class="table-responsive">
+    <div class="table-responsive mobile-table-card">
       <table class="table">
         <thead>
           <tr>
@@ -254,6 +254,53 @@ foreach ($expenses as $e) {
           <?php endforeach; ?>
         </tbody>
       </table>
+    </div>
+    <div class="mobile-compact-list" aria-label="Gastos">
+      <?php foreach ($expenses as $e): ?>
+        <article class="mobile-compact-card <?= ($e['status'] ?? '') === 'validated' ? '' : 'is-warning' ?>">
+          <div class="mobile-compact-main">
+            <div class="mobile-compact-title">
+              <strong><?= htmlspecialchars($e['supplier_name']) ?></strong>
+              <span><?= $e['invoice_number'] ? htmlspecialchars($e['invoice_number']) : 'Sin numero' ?></span>
+            </div>
+            <div class="mobile-compact-amount"><?= number_format((float)$e['total_amount'], 2, ',', '.') ?> €</div>
+          </div>
+          <div class="mobile-compact-meta">
+            <?php if ($e['status'] === 'validated'): ?>
+              <span class="badge badge-success">Validado</span>
+            <?php else: ?>
+              <span class="badge badge-warning">Pendiente</span>
+            <?php endif; ?>
+            <span><?= date('d/m/Y', strtotime($e['invoice_date'])) ?></span>
+            <span><?= htmlspecialchars($categories[$e['category']] ?? $e['category']) ?></span>
+          </div>
+          <?php if (empty($e['supplier_id'])): ?>
+            <div class="mobile-compact-warning">Sin vincular a proveedor</div>
+          <?php endif; ?>
+          <div class="mobile-compact-actions">
+            <a href="<?= route_path('expense_form', ['id' => (int)$e['id']]) ?>" class="btn btn-sm">Editar</a>
+            <?php if ($e['pdf_path']): ?>
+              <a href="<?= route_path('expense_pdf', ['id' => (int)$e['id']]) ?>" target="_blank" class="btn btn-secondary btn-sm">PDF</a>
+            <?php endif; ?>
+            <?php if ($e['status'] !== 'validated'): ?>
+              <form method="post" onsubmit="return confirm('¿Validar este gasto?')">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="action" value="validate" />
+                <input type="hidden" name="id" value="<?= $e['id'] ?>" />
+                <button type="submit" class="btn btn-secondary btn-sm">Validar</button>
+              </form>
+            <?php endif; ?>
+          </div>
+          <div class="mobile-compact-secondary-actions">
+            <form method="post" onsubmit="return confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')">
+              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+              <input type="hidden" name="action" value="delete" />
+              <input type="hidden" name="id" value="<?= $e['id'] ?>" />
+              <button type="submit">Eliminar</button>
+            </form>
+          </div>
+        </article>
+      <?php endforeach; ?>
     </div>
   <?php endif; ?>
 </section>

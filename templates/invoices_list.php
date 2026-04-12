@@ -165,7 +165,7 @@ ob_start();
   </div>
 
   <?php if (empty($invoices)): ?>
-    <div class="card" style="text-align:center;padding:48px">
+    <div class="card invoices-empty-card" style="text-align:center;padding:48px">
       <p style="color:var(--gray-600);margin:0">No hay facturas con los filtros actuales.</p>
       <div style="margin-top:16px">
         <a href="<?= route_path('invoices') ?>" class="btn btn-secondary">Ver todas</a>
@@ -173,7 +173,7 @@ ob_start();
       </div>
     </div>
   <?php else: ?>
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card invoices-table-card" style="padding:0;overflow:hidden">
       <div class="invoices-table-wrap">
       <table class="table">
         <thead>
@@ -285,6 +285,70 @@ ob_start();
       </table>
       </div>
     </div>
+    <div class="mobile-invoice-list" aria-label="Facturas">
+      <?php foreach ($invoices as $i): ?>
+        <article class="mobile-invoice-card <?= $i['is_overdue'] ? 'is-overdue' : ($i['is_upcoming'] ? 'is-upcoming' : '') ?>">
+          <div class="mobile-invoice-main">
+            <div class="mobile-invoice-title">
+              <strong><?= htmlspecialchars($i['invoice_number'] ?: 'Borrador') ?></strong>
+              <span><?= htmlspecialchars($i['client_name'] ?? 'Sin cliente') ?></span>
+            </div>
+            <div class="mobile-invoice-amount"><?= number_format((float)$i['total_amount'], 2, ',', '.') ?> €</div>
+          </div>
+          <div class="mobile-invoice-meta">
+            <span class="status-badge status-<?= htmlspecialchars($i['status']) ?>"><?= htmlspecialchars(status_es($i['status'])) ?></span>
+            <span>Emitida <?= fmt_date($i['issue_date']) ?></span>
+            <span>
+              <?php if (!empty($i['due_date'])): ?>
+                Vence <?= fmt_date($i['due_date']) ?>
+              <?php else: ?>
+                Sin vencimiento
+              <?php endif; ?>
+            </span>
+          </div>
+          <?php if ($i['is_overdue']): ?>
+            <div class="mobile-invoice-warning danger">Pendiente y vencida</div>
+          <?php elseif ($i['is_upcoming']): ?>
+            <div class="mobile-invoice-warning">Vence pronto</div>
+          <?php endif; ?>
+          <div class="mobile-invoice-actions">
+            <a class="btn btn-sm" href="<?= route_path('invoice_form', ['id' => (int)$i['id']]) ?>">Editar</a>
+            <a class="btn btn-secondary btn-sm" href="<?= route_path('invoice_pdf', ['id' => (int)$i['id']]) ?>" target="_blank" rel="noopener">PDF</a>
+            <?php if ($i['status'] === 'draft'): ?>
+              <form method="post">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="issue" />
+                <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
+                <button type="submit" class="btn btn-secondary btn-sm">Emitir</button>
+              </form>
+            <?php elseif ($i['status'] === 'issued'): ?>
+              <form method="post">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="paid" />
+                <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
+                <button type="submit" class="btn btn-secondary btn-sm">Pagada</button>
+              </form>
+            <?php endif; ?>
+          </div>
+          <div class="mobile-invoice-secondary-actions">
+            <?php if ($i['status'] === 'issued'): ?>
+              <form method="post" onsubmit="return confirm('¿Cancelar la factura?');">
+                <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+                <input type="hidden" name="_action" value="cancelled" />
+                <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
+                <button type="submit">Cancelar</button>
+              </form>
+            <?php endif; ?>
+            <form method="post" onsubmit="return confirm('¿Eliminar la factura?');">
+              <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
+              <input type="hidden" name="_action" value="delete" />
+              <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
+              <button type="submit">Eliminar</button>
+            </form>
+          </div>
+        </article>
+      <?php endforeach; ?>
+    </div>
   <?php endif; ?>
 </div>
 <?php
@@ -298,14 +362,14 @@ if ($isAjax) {
 ?>
 
 <section>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+  <div class="invoices-page-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px">
     <div>
       <h1 style="margin-bottom:8px">Facturas</h1>
       <p style="margin:0;color:var(--gray-600);max-width:760px">
         Filtra por año y trimestre para ver lo relevante del periodo. Haz clic en los encabezados para ordenar.
       </p>
     </div>
-    <a href="<?= route_path('invoice_form') ?>" class="btn">+ Nueva factura</a>
+    <a href="<?= route_path('invoice_form') ?>" class="btn invoices-primary-action">+ Nueva factura</a>
   </div>
 
   <?php if (!empty($flashAll)): ?>
