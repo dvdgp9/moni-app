@@ -55,8 +55,13 @@ if ($editing) {
 }
 $documentIsImage = !empty($expense['pdf_path']) ? ExpenseDocumentService::isImagePath((string)$expense['pdf_path']) : false;
 
-// Handle document upload and extraction (AJAX or form submit)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'extract') {
+// Handle document upload and extraction (AJAX)
+$isPost = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+$postAction = (string)($_POST['action'] ?? '');
+$isAjax = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+$hasUpload = isset($_FILES['document']) && is_array($_FILES['document']);
+
+if ($isPost && ($postAction === 'extract' || ($isAjax && $hasUpload))) {
     while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json');
     
