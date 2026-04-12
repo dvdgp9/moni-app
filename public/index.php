@@ -236,6 +236,21 @@ if ($page === 'reminders' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ((
     exit;
 }
 
+if (
+    $page === 'expense_form'
+    && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && (
+        (($_POST['action'] ?? '') === 'extract')
+        || (
+            strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest'
+            && isset($_FILES['document'])
+        )
+    )
+) {
+    include $template;
+    exit;
+}
+
 if ($page === 'invoices' && (($_GET['ajax'] ?? '') === '1')) {
     include $template;
     exit;

@@ -739,11 +739,13 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
   - Validación sintáctica OK: `php -l templates/settings.php` y `php -l templates/expense_form.php`.
 - 2026-04-12 (Executor): **Hotfix extracción JSON aplicado** tras prueba manual del usuario.
   - Síntoma: `Unexpected token '<', "<!doctype ..." is not valid JSON` al subir PDF/imagen.
-  - Causa probable: respuesta HTML por redirección/ruta al hacer POST a `route_path('expense_form')`.
+  - Causa raíz confirmada: `public/index.php` envolvía `expense_form` con el layout HTML en peticiones POST AJAX, porque no existía excepción de router para extracción.
   - Fix en `templates/expense_form.php`:
     - POST ahora a URL actual (`window.location.pathname + window.location.search`).
     - `credentials: 'same-origin'` + header `X-Requested-With`.
     - Parseo robusto: leer `response.text()`, intentar `JSON.parse`, mostrar snippet de respuesta si no es JSON.
+  - Fix adicional en `public/index.php`:
+    - bypass del layout para `expense_form` cuando la petición es POST de extracción (`action=extract` o XHR + archivo).
   - Validación sintáctica OK: `php -l templates/expense_form.php`.
 
 ## Executor's Feedback or Assistance Requests
@@ -763,3 +765,4 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
 - `SettingsRepository` soporta key-value por usuario → ideal para `ai_enabled`, `ai_model`, `ai_base_url`.
 - La API key debe ir en `.env` (no en BD) por seguridad. Se lee con `$_ENV['OPENROUTER_API_KEY']`.
 - En formularios con rutas `nuevo/editar`, para AJAX POST es más seguro usar URL actual (`window.location.pathname + window.location.search`) que un helper fijo de ruta, para evitar respuestas HTML por redirección y errores de parseo JSON.
+- Si un template necesita devolver JSON en esta app, además del código del template hay que añadir una excepción en `public/index.php` para evitar que el layout lo envuelva.
