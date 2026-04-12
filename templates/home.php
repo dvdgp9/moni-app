@@ -11,7 +11,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       <h1 class="landing-title">Menos gestión. Más control.</h1>
       <p class="landing-subtitle">
         <?= htmlspecialchars($appName) ?> ayuda a pequeños autónomos a trabajar con más claridad: emitir y cobrar, enviar presupuestos,
-        registrar gastos desde móvil y revisar el trimestre sin montar un sistema paralelo con hojas, notas y recordatorios sueltos.
+        extraer gastos desde PDF o foto con ayuda de IA y revisar el trimestre sin montar un sistema paralelo con hojas, notas y recordatorios sueltos.
       </p>
       <div class="landing-actions">
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
@@ -65,12 +65,12 @@ $isLoggedIn = !empty($_SESSION['user_id']);
             </div>
             <div class="preview-row muted">
               <div>
-                <strong>Scanner de tickets</strong>
-                <span>Foto o PDF desde móvil</span>
+                <strong>Lector de gastos con IA</strong>
+                <span>PDF o imagen con revisión asistida</span>
               </div>
               <div>
-                <span>Listo</span>
-                <em>Gastos</em>
+                <span>Activo</span>
+                <em>OCR + extracción</em>
               </div>
             </div>
           </div>
@@ -92,11 +92,11 @@ $isLoggedIn = !empty($_SESSION['user_id']);
     </div>
     <div>
       <strong>Operación diaria clara</strong>
-      <span>Ver que toca ahora: cobrar, cerrar presupuestos, revisar gastos y preparar el trimestre.</span>
+      <span>Ver qué toca ahora: cobrar, cerrar presupuestos, revisar gastos extraídos y preparar el trimestre.</span>
     </div>
     <div>
-      <strong>Beta con feedback</strong>
-      <span>Tu uso y tus sugerencias ayudan a decidir que mejoramos primero.</span>
+      <strong>IA aplicada a lo útil</strong>
+      <span>Subes un PDF o una foto, Moni propone los datos del gasto y tú solo revisas antes de guardar.</span>
     </div>
   </div>
 </section>
@@ -106,7 +106,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
     <div class="section-lead">
       <span class="section-kicker">Funciones</span>
       <h2>Todo lo esencial para llevar tu actividad con cabeza.</h2>
-      <p>No intentamos ser un ERP enorme. La idea es darte una vista clara de ventas, compras y fiscalidad con una herramienta que puedas abrir y entender al momento.</p>
+      <p>No intentamos ser un ERP enorme. La idea es darte una vista clara de ventas, compras y fiscalidad con una herramienta ligera, práctica y cada vez más asistida.</p>
     </div>
     <div class="feature-grid">
       <article class="feature-card">
@@ -118,8 +118,8 @@ $isLoggedIn = !empty($_SESSION['user_id']);
         <p>Prepara presupuestos, envíalos por correo y deja que el cliente los acepte o rechace desde un enlace directo.</p>
       </article>
       <article class="feature-card">
-        <h3>Gastos y scanner base</h3>
-        <p>Sube PDFs o fotos de tickets desde móvil, vincula proveedores y deja preparado el gasto para revisarlo más rápido.</p>
+        <h3>Gastos con extracción inteligente</h3>
+        <p>Sube PDFs o fotos de tickets desde móvil y Moni propone proveedor, fecha, importes y categoría para que revises y guardes más rápido.</p>
       </article>
       <article class="feature-card">
         <h3>Centro fiscal y avisos</h3>
@@ -142,11 +142,15 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       </div>
       <div class="benefit-item">
         <strong>Reduces olvidos y cambios de contexto</strong>
-        <p>Menos tiempo buscando datos entre apps distintas y menos dependencias de hojas manuales.</p>
+        <p>Menos tiempo buscando datos entre apps distintas y menos trabajo manual al registrar tickets y facturas recibidas.</p>
       </div>
       <div class="benefit-item">
         <strong>Centralizas lo esencial sin complicarte</strong>
         <p>Clientes, facturas, presupuestos, gastos, proveedores y fiscalidad en un solo sitio, pensado para estructura ligera.</p>
+      </div>
+      <div class="benefit-item">
+        <strong>Revisas en vez de teclear desde cero</strong>
+        <p>La extracción asistida de gastos reduce fricción en el día a día: subes el documento, revisas la propuesta y corriges solo si hace falta.</p>
       </div>
       <div class="benefit-item">
         <strong>Influyes directamente en el producto</strong>
@@ -160,14 +164,14 @@ $isLoggedIn = !empty($_SESSION['user_id']);
   <div class="container">
     <div class="section-lead">
       <span class="section-kicker">Cómo encaja</span>
-      <h2>Web pública por un lado, aplicación por otro.</h2>
-      <p>La entrada pública explica el producto y capta nuevos usuarios. La zona privada queda reservada para trabajar dentro de la aplicación sin mezclar navegación comercial y operativa.</p>
+      <h2>Una herramienta simple por fuera, útil por dentro.</h2>
+      <p>La entrada pública explica el producto. La zona privada está pensada para trabajar de verdad: ventas, presupuestos, gastos con IA y revisión fiscal sin mezclar navegación comercial y operativa.</p>
     </div>
     <div class="flow-grid">
       <div class="flow-step">
         <span>1</span>
         <strong>Landing pública</strong>
-        <p>El tráfico llega a la home, conoce el producto, precios beta y propuesta para autónomos.</p>
+        <p>El usuario entiende rápido qué resuelve Moni: facturación, gastos asistidos y control fiscal para autónomos.</p>
       </div>
       <div class="flow-step">
         <span>2</span>
@@ -177,7 +181,7 @@ $isLoggedIn = !empty($_SESSION['user_id']);
       <div class="flow-step">
         <span>3</span>
         <strong>Zona de trabajo</strong>
-        <p>Una vez autenticado, el usuario entra al dashboard y navega por ventas, compras, fiscalidad y ajustes.</p>
+        <p>Una vez autenticado, el usuario entra al dashboard y navega por ventas, presupuestos, gastos extraídos, fiscalidad y ajustes.</p>
       </div>
     </div>
   </div>
@@ -191,17 +195,17 @@ $isLoggedIn = !empty($_SESSION['user_id']);
         <h2>Beta gratuita</h2>
         <p class="pricing-price">0 €</p>
         <p class="pricing-description">
-          Acceso completo durante la fase de desarrollo. A cambio, te pedimos sugerencias de mejora y que nos informes si encuentras errores o fricciones en el uso real.
+          Acceso completo durante la fase de desarrollo. Incluye facturas, presupuestos, gastos con extracción inteligente y centro fiscal. A cambio, te pedimos sugerencias de mejora y que nos informes si encuentras errores o fricciones en el uso real.
         </p>
         <ul class="pricing-list">
-          <li>Acceso a facturas, presupuestos, gastos, proveedores y centro fiscal</li>
+          <li>Acceso a facturas, presupuestos, gastos con IA, proveedores y centro fiscal</li>
           <li>Nuevas mejoras según evoluciona la beta</li>
           <li>Feedback directo para priorizar lo importante</li>
         </ul>
       </div>
       <div class="pricing-panel">
         <strong>Ideal si quieres probar desde ya</strong>
-        <p>Si eres autónomo y te interesa una herramienta clara para tu operativa diaria, puedes entrar ahora y ayudarnos a pulirla con uso real de verdad.</p>
+        <p>Si eres autónomo y te interesa una herramienta clara para tu operativa diaria, ya puedes probar un flujo real: emitir, presupuestar, subir gastos en PDF o foto y revisar todo desde un mismo sitio.</p>
         <a class="btn" href="<?= $isLoggedIn ? route_path('dashboard') : route_path('register') ?>">
           <?= $isLoggedIn ? 'Abrir mi espacio' : 'Empezar gratis' ?>
         </a>

@@ -747,6 +747,10 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
   - Fix adicional en `public/index.php`:
     - bypass del layout para `expense_form` cuando la petición es POST de extracción (`action=extract` o XHR + archivo).
   - Validación sintáctica OK: `php -l templates/expense_form.php`.
+- 2026-04-12 (Executor): **Landing pública actualizada** para reflejar estado real del producto.
+  - `templates/home.php`: copy revisado para destacar extracción inteligente de gastos desde PDF/foto, revisión asistida y posicionamiento actual del producto.
+  - `templates/layout_public.php`: footer ajustado para alinear el mensaje con facturación + gastos con ayuda inteligente + claridad fiscal.
+  - Objetivo: que la home ya no describa el lector de gastos como "scanner base", sino como capacidad activa del producto.
 
 ## Executor's Feedback or Assistance Requests
 - ✅ Modelo default fijado por usuario: `google/gemini-3.1-flash-lite-preview`.
@@ -766,3 +770,4 @@ Categorías válidas se inyectan en el prompt desde `ExpensesRepository::getCate
 - La API key debe ir en `.env` (no en BD) por seguridad. Se lee con `$_ENV['OPENROUTER_API_KEY']`.
 - En formularios con rutas `nuevo/editar`, para AJAX POST es más seguro usar URL actual (`window.location.pathname + window.location.search`) que un helper fijo de ruta, para evitar respuestas HTML por redirección y errores de parseo JSON.
 - Si un template necesita devolver JSON en esta app, además del código del template hay que añadir una excepción en `public/index.php` para evitar que el layout lo envuelva.
+- Cuando una capacidad pasa de "beta interna" a flujo real usable, la landing debe actualizarse para reflejarla explícitamente; si no, el producto parece menos avanzado de lo que ya es.

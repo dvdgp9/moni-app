@@ -59,7 +59,7 @@ $faviconIco = file_exists($brandDir . '/favicon.ico') ? '/assets/brand/favicon.i
     <div class="container public-footer-inner">
       <div>
         <strong><?= htmlspecialchars(Config::get('app_name', 'Moni')) ?></strong>
-        <p>Herramienta sencilla para autónomos que quieren facturas, gastos y recordatorios en orden.</p>
+        <p>Herramienta sencilla para autónomos que quieren facturar, registrar gastos con ayuda inteligente y llevar su fiscalidad con más claridad.</p>
       </div>
       <div class="public-footer-links">
         <a href="<?= route_path('login') ?>">Acceder</a>
