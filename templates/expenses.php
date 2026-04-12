@@ -75,10 +75,14 @@ foreach ($expenses as $e) {
         $uniqueSuppliers[$supplierKey] = true;
     }
 }
+$filtersActive = $filterYear || $filterCategory || $filterSupplier || $filterQ !== '';
 ?>
 <section>
-  <div class="mobile-page-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-    <h1 style="margin:0">Gastos</h1>
+  <div class="mobile-page-head expenses-page-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1 style="margin:0">Gastos</h1>
+      <p class="expenses-mobile-subtitle">Controla compras, tickets y facturas recibidas sin perder el hilo del trimestre.</p>
+    </div>
     <div class="mobile-page-actions" style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="<?= route_path('suppliers') ?>" class="btn btn-secondary">Ver proveedores</a>
       <a href="<?= route_path('expense_form') ?>" class="btn btn-primary">
@@ -96,13 +100,13 @@ foreach ($expenses as $e) {
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <div class="card" style="margin-bottom:16px">
-    <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-      <div style="min-width:220px;flex:1 1 240px">
+  <div class="card expenses-filter-card" style="margin-bottom:16px">
+    <form method="get" class="expenses-filter-form" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+      <div class="expenses-filter-search" style="min-width:220px;flex:1 1 240px">
         <label for="q">Buscar</label>
         <input id="q" name="q" value="<?= htmlspecialchars($filterQ) ?>" placeholder="Proveedor, NIF, factura o nota" />
       </div>
-      <div>
+      <div class="expenses-filter-field">
         <label for="year">Año</label>
         <select id="year" name="year" style="min-width:100px">
           <option value="">Todos</option>
@@ -114,7 +118,7 @@ foreach ($expenses as $e) {
           <?php endif; ?>
         </select>
       </div>
-      <div>
+      <div class="expenses-filter-field">
         <label for="category">Categoría</label>
         <select id="category" name="category" style="min-width:180px">
           <option value="">Todas</option>
@@ -123,7 +127,7 @@ foreach ($expenses as $e) {
           <?php endforeach; ?>
         </select>
       </div>
-      <div>
+      <div class="expenses-filter-field expenses-filter-supplier">
         <label for="supplier_id">Proveedor</label>
         <select id="supplier_id" name="supplier_id" style="min-width:220px">
           <option value="">Todos</option>
@@ -134,15 +138,25 @@ foreach ($expenses as $e) {
           <?php endforeach; ?>
         </select>
       </div>
-      <button type="submit" class="btn btn-sm">Filtrar</button>
-      <?php if ($filterYear || $filterCategory || $filterSupplier || $filterQ !== ''): ?>
-        <a href="<?= route_path('expenses') ?>" class="btn btn-sm" style="background:var(--gray-200);color:var(--gray-700)">Limpiar</a>
+      <div class="expenses-filter-actions">
+        <button type="submit" class="btn btn-sm">Filtrar</button>
+        <?php if ($filtersActive): ?>
+          <a href="<?= route_path('expenses') ?>" class="btn btn-sm" style="background:var(--gray-200);color:var(--gray-700)">Limpiar</a>
+        <?php endif; ?>
+      </div>
+      <?php if ($filtersActive): ?>
+        <div class="expenses-active-filters">
+          <?php if ($filterQ !== ''): ?><span>Busca: <?= htmlspecialchars($filterQ) ?></span><?php endif; ?>
+          <?php if ($filterYear): ?><span><?= (int)$filterYear ?></span><?php endif; ?>
+          <?php if ($filterCategory): ?><span><?= htmlspecialchars($categories[$filterCategory] ?? (string)$filterCategory) ?></span><?php endif; ?>
+          <?php if ($filterSupplier): ?><span>Proveedor seleccionado</span><?php endif; ?>
+        </div>
       <?php endif; ?>
     </form>
   </div>
 
   <?php if (!empty($expenses)): ?>
-    <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+    <div class="dashboard-grid expenses-summary-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
       <div class="stat-card">
         <div class="stat-value" style="color:var(--gray-800)"><?= count($expenses) ?></div>
         <div class="stat-label">Gastos visibles</div>
@@ -161,7 +175,7 @@ foreach ($expenses as $e) {
       </div>
       <div class="stat-card">
         <div class="stat-value" style="color:var(--gray-700)"><?= count($uniqueSuppliers) ?></div>
-        <div class="stat-label">Proveedores en resultado</div>
+        <div class="stat-label">Proveedores</div>
       </div>
     </div>
   <?php endif; ?>
@@ -255,13 +269,17 @@ foreach ($expenses as $e) {
         </tbody>
       </table>
     </div>
-    <div class="mobile-compact-list" aria-label="Gastos">
+    <div class="mobile-compact-list expenses-mobile-list" aria-label="Gastos">
       <?php foreach ($expenses as $e): ?>
-        <article class="mobile-compact-card <?= ($e['status'] ?? '') === 'validated' ? '' : 'is-warning' ?>">
+        <article class="mobile-compact-card expense-mobile-card <?= ($e['status'] ?? '') === 'validated' ? '' : 'is-warning' ?>">
           <div class="mobile-compact-main">
             <div class="mobile-compact-title">
               <strong><?= htmlspecialchars($e['supplier_name']) ?></strong>
-              <span><?= $e['invoice_number'] ? htmlspecialchars($e['invoice_number']) : 'Sin numero' ?></span>
+              <span>
+                <?= date('d/m/Y', strtotime($e['invoice_date'])) ?>
+                ·
+                <?= $e['invoice_number'] ? htmlspecialchars($e['invoice_number']) : 'Sin numero' ?>
+              </span>
             </div>
             <div class="mobile-compact-amount"><?= number_format((float)$e['total_amount'], 2, ',', '.') ?> €</div>
           </div>
@@ -271,8 +289,14 @@ foreach ($expenses as $e) {
             <?php else: ?>
               <span class="badge badge-warning">Pendiente</span>
             <?php endif; ?>
-            <span><?= date('d/m/Y', strtotime($e['invoice_date'])) ?></span>
             <span><?= htmlspecialchars($categories[$e['category']] ?? $e['category']) ?></span>
+            <?php if ($e['supplier_nif']): ?>
+              <span><?= htmlspecialchars($e['supplier_nif']) ?></span>
+            <?php endif; ?>
+          </div>
+          <div class="expense-mobile-breakdown">
+            <span>Base <?= number_format((float)$e['base_amount'], 2, ',', '.') ?> €</span>
+            <span>IVA <?= number_format((float)$e['vat_amount'], 2, ',', '.') ?> €</span>
           </div>
           <?php if (empty($e['supplier_id'])): ?>
             <div class="mobile-compact-warning">Sin vincular a proveedor</div>
