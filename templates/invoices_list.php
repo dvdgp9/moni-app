@@ -274,7 +274,9 @@ ob_start();
                     </button>
                   </form>
                 <?php endif; ?>
-                <span class="actions-sep" aria-hidden="true"></span>
+                <?php if ($i['status'] === 'draft' || $i['status'] === 'issued'): ?>
+                  <span class="actions-sep" aria-hidden="true"></span>
+                <?php endif; ?>
                 <?php if ($i['status'] === 'issued'): ?>
                   <form method="post" onsubmit="return confirm('¿Cancelar la factura?');">
                     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
