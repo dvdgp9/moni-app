@@ -576,11 +576,17 @@ input[type="color"]::-moz-color-swatch {
 }
 
 .table-actions {
-  display: flex;
-  gap: 0.375rem;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: flex-end;
+  white-space: nowrap;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.table-actions > * {
+  vertical-align: middle;
+}
+
+.table-actions > * + * {
+  margin-left: 0.375rem;
 }
 
 .table-actions .btn {
