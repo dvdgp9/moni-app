@@ -249,34 +249,49 @@ ob_start();
                 <div style="font-weight:700;color:var(--gray-800)"><?= number_format((float)$i['total_amount'], 2, ',', '.') ?> €</div>
               </td>
               <td class="table-actions">
-                <a class="btn" href="<?= route_path('invoice_form', ['id' => (int)$i['id']]) ?>">Editar</a>
-                <a class="btn btn-secondary" href="<?= route_path('invoice_pdf', ['id' => (int)$i['id']]) ?>" target="_blank" rel="noopener">PDF</a>
+                <a class="icon-btn is-primary" href="<?= route_path('invoice_form', ['id' => (int)$i['id']]) ?>" title="Editar" aria-label="Editar">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </a>
+                <a class="icon-btn" href="<?= route_path('invoice_pdf', ['id' => (int)$i['id']]) ?>" target="_blank" rel="noopener" title="Descargar PDF" aria-label="Descargar PDF">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+                </a>
                 <?php if ($i['status'] === 'draft'): ?>
-                  <form method="post" style="display:inline">
+                  <form method="post">
                     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                     <input type="hidden" name="_action" value="issue" />
                     <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
-                    <button type="submit" class="btn btn-secondary">Emitir</button>
+                    <button type="submit" class="icon-btn is-primary" title="Emitir" aria-label="Emitir">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
                   </form>
                 <?php elseif ($i['status'] === 'issued'): ?>
-                  <form method="post" style="display:inline">
+                  <form method="post">
                     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                     <input type="hidden" name="_action" value="paid" />
                     <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
-                    <button type="submit" class="btn btn-secondary">Marcar pagada</button>
+                    <button type="submit" class="icon-btn is-success" title="Marcar como pagada" aria-label="Marcar como pagada">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </button>
                   </form>
-                  <form method="post" style="display:inline" onsubmit="return confirm('¿Cancelar la factura?');">
+                <?php endif; ?>
+                <span class="actions-sep" aria-hidden="true"></span>
+                <?php if ($i['status'] === 'issued'): ?>
+                  <form method="post" onsubmit="return confirm('¿Cancelar la factura?');">
                     <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                     <input type="hidden" name="_action" value="cancelled" />
                     <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
-                    <button type="submit" class="btn btn-danger">Cancelar</button>
+                    <button type="submit" class="icon-btn is-warning" title="Cancelar factura" aria-label="Cancelar factura">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
+                    </button>
                   </form>
                 <?php endif; ?>
-                <form method="post" style="display:inline" onsubmit="return confirm('¿Eliminar la factura?');">
+                <form method="post" onsubmit="return confirm('¿Eliminar la factura?');">
                   <input type="hidden" name="_token" value="<?= Csrf::token() ?>" />
                   <input type="hidden" name="_action" value="delete" />
                   <input type="hidden" name="id" value="<?= (int)$i['id'] ?>" />
-                  <button type="submit" class="btn btn-danger">Eliminar</button>
+                  <button type="submit" class="icon-btn is-danger" title="Eliminar" aria-label="Eliminar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                  </button>
                 </form>
               </td>
             </tr>

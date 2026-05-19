@@ -577,8 +577,10 @@ input[type="color"]::-moz-color-swatch {
 
 .table-actions {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.375rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .table-actions .btn {
@@ -587,6 +589,60 @@ input[type="color"]::-moz-color-swatch {
   margin: 0;
   min-height: 36px; /* normalize height for Edit/PDF/Eliminar */
   line-height: 1;   /* avoid taller native button line-height */
+}
+
+.table-actions form { display: inline-flex; margin: 0; }
+
+/* Icon-only action buttons (compact, single-line action cells) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--gray-200);
+  background: #fff;
+  color: var(--gray-700);
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.15s ease,
+              color 0.15s ease,
+              border-color 0.15s ease,
+              box-shadow 0.15s ease;
+  position: relative;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.75;
+}
+
+.icon-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--gray-300);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.icon-btn:active { transform: translateY(0); }
+
+.icon-btn.is-primary:hover { color: var(--primary-dark); border-color: var(--primary-light); background: rgba(15, 163, 177, 0.06); }
+.icon-btn.is-success:hover { color: #047857; border-color: #6ee7b7; background: rgba(16, 185, 129, 0.08); }
+.icon-btn.is-warning:hover { color: #b45309; border-color: #fcd34d; background: rgba(245, 158, 11, 0.08); }
+.icon-btn.is-danger:hover  { color: #b91c1c; border-color: #fca5a5; background: rgba(239, 68, 68, 0.08); }
+
+/* Subtle divider between safe and destructive actions */
+.table-actions .actions-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--gray-200);
+  margin: 0 0.125rem;
+  flex-shrink: 0;
 }
 
 /* Modern Alerts */
@@ -1670,7 +1726,9 @@ h3 { font-size: 1.5rem; }
   }
   
   .table-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   
   .main-container {
