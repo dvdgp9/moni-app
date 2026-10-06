@@ -60,6 +60,17 @@ Comprobación de cálculos y validación (sin base de datos):
 php tests/tax_declarations.php
 ```
 
+Comprobación HTTP de guardado y redirecciones (requiere `pdo_sqlite` y
+`proc_open`, sin usar la base de datos configurada):
+
+```bash
+php tests/declarations_http.php
+```
+
+Ejecuta el entrypoint y el layout reales con datos de prueba, tanto con el búfer
+de PHP de 4 KB como sin él. Comprueba los POST de ambos modelos y que vuelvan
+a la declaración mediante una redirección 303, conservando período y mensajes.
+
 Las reglas se contrastaron con las
 [instrucciones del 130](https://sede.agenciatributaria.gob.es/Sede/impuestos-tasas/impuesto-sobre-renta-personas-fisicas/modelo-130-irpf______esionales-estimacion-directa-fraccionado_/instrucciones.html)
 y las

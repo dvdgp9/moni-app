@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach (['issues_invoices_with_irpf','has_rent_withholdings','has_payroll_or_professional_withholdings'] as $flag) { $profile[$flag] = isset($_POST[$flag]); }
             SettingsRepository::set('tax_profile',json_encode($profile,JSON_THROW_ON_ERROR));
             Flash::add('success','Configuración fiscal guardada.');
-            moni_redirect($url());
+            moni_redirect($url(), 303);
         }
         if ($action === 'import_history') {
             $importModel = (string)($_POST['history_model'] ?? '');
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($history as $row) { if ($row['receipt'] === $receipt) { throw new InvalidArgumentException('Ese justificante ya está registrado.'); } }
             TaxDeclarationsRepository::addSubmission(['model'=>$importModel,'year'=>$importYear,'quarter'=>$importQuarter,'boxes'=>$boxes,'result'=>$boxes[$importModel === '130' ? '19' : '71'],'receipt'=>$receipt,'filed_date'=>$filedDate,'origin'=>'manual','outcome'=>'Registrada desde la AEAT']);
             Flash::add('success','Declaración anterior registrada. Ya se puede usar para calcular los saldos siguientes.');
-            moni_redirect($url() . '#historial');
+            moni_redirect($url() . '#historial', 303);
         }
         if ($action === 'save') {
             $input = TaxDeclarationService::input($_POST,$model);
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             TaxDeclarationsRepository::saveDraft($model,$year,$quarter,$draft);
             if ($model === '130' && $input['previous_net'] !== null) { SettingsRepository::set('tax_previous_net_' . $year,(string)$input['previous_net']); }
             Flash::add('success','Borrador guardado y cálculo actualizado.');
-            moni_redirect($url() . '#casillas');
+            moni_redirect($url() . '#casillas', 303);
         }
         if ($action === 'review' || $action === 'presented') {
             $calculation = TaxDeclarationService::calculate($model,$year,$quarter,$sales,$expenses,$input,$history);
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $draft['reviewed_at'] = date('Y-m-d H:i:s');
                 TaxDeclarationsRepository::saveDraft($model,$year,$quarter,$draft);
                 Flash::add('success','Declaración marcada como revisada. Puedes usar la guía para rellenar la AEAT.');
-                moni_redirect($url() . '#casillas');
+                moni_redirect($url() . '#casillas', 303);
             }
             if (!hash_equals($signature,(string)($draft['reviewed_signature'] ?? ''))) { throw new InvalidArgumentException('Marca primero la declaración como revisada.'); }
             $receipt = trim((string)($_POST['receipt'] ?? ''));
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             TaxDeclarationsRepository::addSubmission(['model'=>$model,'year'=>$year,'quarter'=>$quarter,'boxes'=>$boxes,'result'=>$calculation['result'],'receipt'=>$receipt,'filed_date'=>$filedDate,'origin'=>'assistant','correction'=>!empty($input['complementary']),'previous_receipt'=>$input['previous_receipt'] ?? '', 'signature'=>$signature,'outcome'=>$calculation['outcome']]);
             Flash::add('success','Presentación registrada. Los importes quedan guardados en el historial.');
-            moni_redirect($url() . '#historial');
+            moni_redirect($url() . '#historial', 303);
         }
         throw new InvalidArgumentException('Acción no válida.');
     } catch (InvalidArgumentException $e) {

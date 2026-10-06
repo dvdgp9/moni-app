@@ -144,7 +144,12 @@ if (!function_exists('moni_redirect')) {
     function moni_redirect(string $path, int $status = 302): never
     {
         if (!headers_sent()) {
+            // Discard buffered layout output so the redirect is an empty response.
+            while (ob_get_level() > 0) {
+                if (!ob_end_clean()) { break; }
+            }
             header('Location: ' . $path, true, $status);
+            exit;
         }
 
         $safeUrl = htmlspecialchars($path, ENT_QUOTES, 'UTF-8');

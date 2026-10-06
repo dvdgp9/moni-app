@@ -3,6 +3,10 @@ use Moni\Support\Config;
 $root = dirname(__DIR__);
 $view = $template;
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+// Process form actions before the layout can flush HTML and commit the headers.
+ob_start();
+include $view;
+$viewContent = (string)ob_get_clean();
 // Brand assets autodiscovery
 $brandDir = $root . '/public/assets/brand';
 $logoPath = null;
@@ -118,7 +122,7 @@ $mobileNav = [
   </header>
   <main class="container">
     <div class="main-container<?= $page === 'invoices' ? '' : ' fade-in-up' ?>">
-      <?php include $view; ?>
+      <?= $viewContent ?>
     </div>
   </main>
   <footer class="app-footer">
